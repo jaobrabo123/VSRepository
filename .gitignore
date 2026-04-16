@@ -1,0 +1,14 @@
+node_modules/
+.vscode/
+dist/
+.env
+*.log
+/src/generated/prisma
+
+/generated/prisma
+.gemini/
+.cursor/
+.codex/
+.claude/
+.antigravity/
+.aiox-core/
