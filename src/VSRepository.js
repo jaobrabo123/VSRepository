@@ -8,7 +8,6 @@ export class VSRepository {
         const whereTypes = ['extending', 'overwrite'];
 
         const repositoryKeys = Object.keys(this);
-        console.log(repositoryKeys);
 
         const [repositoryKeysToMap, repositoryUnmappedKeys] = repositoryKeys.reduce((acc, key)=>{
             if(['tableName', 'selectModels', 'requiredWhere'].includes(key)) {
@@ -21,10 +20,6 @@ export class VSRepository {
 
         console.log('repositoryKeysToMap', repositoryKeysToMap)
         console.log('repositoryUnmappedKeys', repositoryUnmappedKeys)
-
-        function generatePrismaArgs(keyToMap, ...args) {
-            
-        }
 
         for (let keyToMap of repositoryKeysToMap) {
             if(typeof this[keyToMap] !== 'object' || this[keyToMap] === null || !this[keyToMap].map) {
@@ -163,65 +158,91 @@ export class VSRepository {
                         throw new Error("whereType inválido.");
                     }
 
-                    const keysSplited = keyToMapReplaced.split('And')
-                    console.log(keysSplited)
+                    let orMode = false;
+                    let keysSplitedOr = keyToMapReplaced.split('Or');
+                    if(keysSplitedOr.length > 1){
+                        orMode = true;
+                    }
 
-                    for (let keySplited of keysSplited) {
-                        
+                    function buildWhere(keySplitedAnd) {
+
                         const buildedWhere = {}
 
-                        if(keySplited.includes('Insensitive')){
+                        if(keySplitedAnd.includes('Insensitive')){
                             buildedWhere.properties = {}
                             buildedWhere.properties.mode = 'insensitive';
-                            keySplited = keySplited.replace('Insensitive', '')
+                            keySplitedAnd = keySplitedAnd.replace('Insensitive', '')
                         }
 
-                        if(keySplited.includes('StartsWith')){
+                        if(keySplitedAnd.includes('StartsWith')){
                             buildedWhere.pushProperty = 'startsWith';
-                            keySplited = keySplited.replace('StartsWith', '')
-                        } else if(keySplited.includes('NotStartsWith')){
+                            keySplitedAnd = keySplitedAnd.replace('StartsWith', '')
+                        } else if(keySplitedAnd.includes('NotStartsWith')){
                             buildedWhere.pushProperty = 'not.startsWith';
-                            keySplited = keySplited.replace('NotStartsWith', '')
-                        } else if(keySplited.includes('EndsWith')){
+                            keySplitedAnd = keySplitedAnd.replace('NotStartsWith', '')
+                        } else if(keySplitedAnd.includes('EndsWith')){
                             buildedWhere.pushProperty = 'endsWith';
-                            keySplited = keySplited.replace('EndsWith', '')
-                        } else if(keySplited.includes('NotEndsWith')){
+                            keySplitedAnd = keySplitedAnd.replace('EndsWith', '')
+                        } else if(keySplitedAnd.includes('NotEndsWith')){
                             buildedWhere.pushProperty = 'not.endsWith';
-                            keySplited = keySplited.replace('NotEndsWith', '')
-                        } else if(keySplited.includes('Contains')){
+                            keySplitedAnd = keySplitedAnd.replace('NotEndsWith', '')
+                        } else if(keySplitedAnd.includes('Contains')){
                             buildedWhere.pushProperty = 'contains';
-                            keySplited = keySplited.replace('Contains', '')
-                        } else if(keySplited.includes('NotContains')){
+                            keySplitedAnd = keySplitedAnd.replace('Contains', '')
+                        } else if(keySplitedAnd.includes('NotContains')){
                             buildedWhere.pushProperty = 'not.contains';
-                            keySplited = keySplited.replace('NotContains', '')
-                        } else if(keySplited.includes('LessThanEqual')){
+                            keySplitedAnd = keySplitedAnd.replace('NotContains', '')
+                        } else if(keySplitedAnd.includes('LessThanEqual')){
                             buildedWhere.pushProperty = 'lte';
-                            keySplited = keySplited.replace('LessThanEqual', '')
-                        } else if(keySplited.includes('LessThan')){
+                            keySplitedAnd = keySplitedAnd.replace('LessThanEqual', '')
+                        } else if(keySplitedAnd.includes('LessThan')){
                             buildedWhere.pushProperty = 'lt';
-                            keySplited = keySplited.replace('LessThan', '')
-                        } else if(keySplited.includes('GreaterThanEqual')){
+                            keySplitedAnd = keySplitedAnd.replace('LessThan', '')
+                        } else if(keySplitedAnd.includes('GreaterThanEqual')){
                             buildedWhere.pushProperty = 'gte';
-                            keySplited = keySplited.replace('GreaterThanEqual', '')
-                        } else if(keySplited.includes('GreaterThan')){
+                            keySplitedAnd = keySplitedAnd.replace('GreaterThanEqual', '')
+                        } else if(keySplitedAnd.includes('GreaterThan')){
                             buildedWhere.pushProperty = 'gt';
-                            keySplited = keySplited.replace('GreaterThan', '')
-                        } else if(keySplited.includes('Not')){
+                            keySplitedAnd = keySplitedAnd.replace('GreaterThan', '')
+                        } else if(keySplitedAnd.includes('Not')){
                             buildedWhere.pushProperty = 'not';
-                            keySplited = keySplited.replace('Not', '')
+                            keySplitedAnd = keySplitedAnd.replace('Not', '')
                         } else {
                             buildedWhere.pushProperty = '$$$';
                         }
 
-                        keySplited = keySplited[0].toLowerCase() + keySplited.slice(1, keySplited.length)
+                        keySplitedAnd = keySplitedAnd[0].toLowerCase() + keySplitedAnd.slice(1, keySplitedAnd.length)
 
-                        buildedWhere.name = keySplited;
+                        buildedWhere.name = keySplitedAnd;
 
-                        console.log(buildedWhere)
+                        return buildedWhere;
 
-                        whereArgs.push(buildedWhere)
+                    }
 
-                        argsCount++
+
+                    for (let i = 0; i < keysSplitedOr.length; i++) {
+
+                        const keysSplitedAnd = keysSplitedOr[i].split('And')
+                        console.log(keysSplitedAnd)
+
+                        for (const keySplitedAnd of keysSplitedAnd) {
+                            
+                            const buildedWhere = buildWhere(keySplitedAnd);
+
+
+                            if(!orMode) {
+                                whereArgs.push(buildedWhere)
+                            } else {
+                                buildedWhere.name = `OR.${i}idx.${buildedWhere.name}`;
+                                whereArgs.push(buildedWhere)
+                            }
+
+                            console.log('buildedWhere:',buildedWhere)
+
+
+                            argsCount++
+                        }
+
                     }
                 }
 
@@ -249,6 +270,8 @@ export class VSRepository {
                         throw new Error("Parametros faltando")
                     } else if(args.length > argsCount) {
                         db = args.at(-1);
+                    } else {
+                        args.push('1')
                     }
 
                     if(orderPosition !== undefined) {
@@ -263,23 +286,54 @@ export class VSRepository {
                     if(!ignoreWhere) {
 
                         const where = whereArgs.reduce((acc, arg, idx)=> {
-                            acc[arg.name] = {}
+                            let orIndex;
+                            console.log('arg.name', arg.name)
+                            const agrNameSplitedOr = arg.name.split('OR.')
+                            if(agrNameSplitedOr.length > 1) {
+                                const agrNameSplitedOrIdx = agrNameSplitedOr[1].split('idx.')
+                                orIndex = Number(agrNameSplitedOrIdx[0])
+                                arg.name = agrNameSplitedOrIdx[1]
+                            }
+                            console.log('arg.name', arg.name)
+
+                            const preAcc = {}
+                            preAcc[arg.name] = {}
                             if(arg.pushProperty === '$$$') {
-                                acc[arg.name] = args[idx]
+                                preAcc[arg.name] = args[idx]
                             } else {
                                 const pushProperty = arg.pushProperty;
-                                const pushPropertySplited = pushProperty.split('.');
-                                if(pushPropertySplited.length > 1) {
-                                    acc[arg.name][pushPropertySplited[0]] = {}
-                                    acc[arg.name][pushPropertySplited[0]][pushPropertySplited[1]] = args[idx]
+                                const pushPropertySplitedNot = pushProperty.split('not.');
+                                if(pushPropertySplitedNot.length > 1) {
+                                    preAcc[arg.name].not = {};
+                                    preAcc[arg.name].not[pushPropertySplitedNot[1]] = args[idx]
                                 } else {
-                                    acc[arg.name][pushProperty] = args[idx]
+                                    preAcc[arg.name][pushProperty] = args[idx]
                                 }
                                 for (const key in arg.properties) {
-                                    acc[arg.name][key] = arg.properties[key]
+                                    preAcc[arg.name][key] = arg.properties[key]
                                 }
                             }
-                            return acc;
+                            if(orIndex!==undefined) {
+                                console.log(preAcc)
+                                if(!preAcc.OR){
+                                    preAcc.OR = [];
+                                }
+                                if(acc.OR){
+                                    preAcc.OR = [...acc.OR]
+                                }
+                                console.log(preAcc)
+                                if(!preAcc.OR[orIndex]) {
+                                    preAcc.OR[orIndex] = {};
+                                }
+                                console.log(preAcc)
+                                preAcc.OR[orIndex][arg.name] = preAcc[arg.name];
+                                delete preAcc[arg.name];
+                                console.log(preAcc)
+                            }
+                            return {
+                                ...acc,
+                                ...preAcc
+                            };
                         }, {});
 
                         prismaArgs.where = {
@@ -298,7 +352,7 @@ export class VSRepository {
                         prismaArgs.update = args[updateIndex];
                     }
 
-                    console.log(argsCount)
+                    console.log(prismaArgs)
 
                     return await db[this.tableName][method](prismaArgs)
                 }

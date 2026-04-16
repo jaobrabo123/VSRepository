@@ -10,13 +10,28 @@ export class UsuarioRepository extends VSRepository {
 
     requiredWhere = { ativo: true };
 
-    findUniqueById = { map: true, selectModel: 'public', whereType: 'overwrite' };
+    findManyByContainsInsensitiveNomePaginated = {
+        map: true,
+        selectModel: 'public'
+    };
 
-    findManyByContainsInsensitiveNomePaginated = { map: true, selectModel: 'full' };
+    findManyByContainsInsensitiveNomeOrIdade = {
+        map: true,
+        selectModel: 'public'
+    }
 
-    findUniqueByEmail = { map: true, selectModel: 'full' };
+    findFirstByEmailStartsWithAndNomeContainsInsensitiveOrId = {
+        map: true,
+        selectModel: 'full'
+    }
 
-    create = { map: true, selectModel: 'public' };
-    
-    updateById = { map: true };
+    findUniqueById = {
+        map: true,
+        selectModel: 'public',
+        whereType: 'overwrite'
+    }
+
+    findFirstByProdutos = {
+        map: true
+    }
 }

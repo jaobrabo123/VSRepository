@@ -1,0 +1,1 @@
+console.log('OR.1.nome'.split('OR.'))
