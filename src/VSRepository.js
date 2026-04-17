@@ -37,6 +37,9 @@ export class VSRepository {
             let method;
             let dataIndex;
             let updateIndex;
+            let originalKey = keyToMap;
+            keyToMap = this[originalKey].proxyTo ?? keyToMap;
+            let existsMode = false;
 
             // console.log('this', this)
 
@@ -51,6 +54,10 @@ export class VSRepository {
                 keyToMapReplaced = keyToMap.replace('findFirst', '');
                 ignoreOrderByAndPagination = false;
                 ignoreWhere = true;
+                method = 'findFirst';
+            } else if(keyToMap.startsWith('existsBy')) {
+                keyToMapReplaced = keyToMap.replace('existsBy', '');
+                existsMode = true;
                 method = 'findFirst';
             } else if(keyToMap.startsWith('findManyBy')) {
                 keyToMapReplaced = keyToMap.replace('findManyBy', '');
@@ -156,7 +163,7 @@ export class VSRepository {
 
             if(!ignoreWhere) {
 
-                whereType = this[keyToMap].whereType ?? 'extending';
+                whereType = this[originalKey].whereType ?? 'extending';
                 if(!whereTypes.includes(whereType)){
                     throw new Error(`[VSRepository] (build) Invalid whereType: ${whereType}`);
                 }
@@ -257,7 +264,7 @@ export class VSRepository {
             let select;
             if(!ignoreSelect) {
 
-                const providedSelectModel = this[keyToMap].selectModel;
+                const providedSelectModel = this[originalKey].selectModel;
 
                 if(providedSelectModel) {
                     if(!this.selectModels || !Object.keys(this.selectModels).includes(providedSelectModel)){
@@ -268,7 +275,7 @@ export class VSRepository {
 
             }
 
-            this[keyToMap] = async (...args) => {
+            this[originalKey] = async (...args) => {
 
                 const prismaArgs = {};
 
@@ -368,7 +375,11 @@ export class VSRepository {
                     console.log(`[VSRepository] (runtime) Built arguments:\n`, JSON.stringify(prismaArgs, null, 2));
                 }
 
-                return await db[this.tableName][method](prismaArgs)
+                const result = await db[this.tableName][method](prismaArgs);
+                if(existsMode) {
+                    return !!result;
+                }
+                return result;
             }
 
         }

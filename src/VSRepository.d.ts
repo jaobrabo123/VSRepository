@@ -4,55 +4,110 @@ export type DbClient = PrismaClient;
 export type DbTransaction = Prisma.TransactionClient;
 export type ClientOrTransaction = DbClient | DbTransaction;
 
-// --- Tipos de Auxílio para Filtros e Opções ---
-export type PaginationOptions = { skip: number; take: number };
-export type OrderOptions = any; // Pode ser tipado como Prisma.XOrderByWithRelationInput se necessário
+type OrderPattern = {
+    [key: string]: 
+        | 'asc'
+        | 'desc'
+        | { _count: 'asc' | 'desc' }
+        | OrderPattern;
+}
 
-// --- Configuração dos Métodos (Autocomplete) ---
+export type PaginationOptions = { skip: number; take: number };
+export type OrderOptions = OrderPattern | OrderPattern[];
+
+type ValidMethodPatterns = 
+    | `existsBy${string}` // <-- Adicionado aqui
+    | `findUniqueBy${string}`
+    | `findFirstBy${string}`
+    | `findFirst${string}`
+    | `findManyBy${string}`
+    | `findMany${string}`
+    | `createManyAndReturn${string}`
+    | `createMany${string}`
+    | `create${string}`
+    | `updateManyAndReturn${string}`
+    | `updateMany${string}`
+    | `update${string}`
+    | `upsert${string}`
+    | `deleteMany${string}`
+    | `delete${string}`;
+
 export type MethodConfig<S extends string> = {
     readonly map: boolean;
     readonly selectModel: S;
     readonly whereType?: 'overwrite' | 'extending';
+    readonly proxyTo?: ValidMethodPatterns;
 };
 
-// --- Utilitários de String e Parsing de Argumentos ---
+// --- Utilitários de String e Parsing ---
+
 type Split<S extends string, D extends string> =
     string extends S ? string[] :
     S extends '' ? [] :
     S extends `${infer T}${D}${infer U}` ? [T, ...Split<U, D>] : [S];
 
-type MapToAny<Arr extends any[]> = 
-    Arr extends [infer First, ...infer Rest] ? [any, ...MapToAny<Rest>] : [];
+type Modifiers = 
+    | 'Insensitive' | 'NotStartsWith' | 'StartsWith' 
+    | 'NotEndsWith' | 'EndsWith' | 'NotContains' 
+    | 'Contains' | 'LessThanEqual' | 'LessThan' 
+    | 'GreaterThanEqual' | 'GreaterThan' | 'NotIn' 
+    | 'In' | 'Not';
 
-type ExtractAnds<S extends string> = MapToAny<Split<S, 'And'>>;
+type ExtractFieldName<S extends string, T> = 
+    Uncapitalize<S> extends keyof T 
+        ? Uncapitalize<S> 
+        : S extends `${Modifiers}${infer Rest}` 
+            ? ExtractFieldName<Rest, T>
+            : S extends `${infer Rest}${Modifiers}`
+                ? ExtractFieldName<Rest, T>
+                : unknown;
 
-type ExtractOrsTuple<Arr extends string[]> =
+type IsArrayFilter<S extends string> = 
+    S extends `${string}In${string}` 
+        ? (S extends `${string}Contains${string}` ? false : true)
+        : false;
+
+type GetFieldType<T, S extends string> = 
+    ExtractFieldName<S, T> extends infer FieldName 
+        ? FieldName extends keyof T
+            ? (IsArrayFilter<S> extends true ? T[FieldName][] : T[FieldName])
+            : any 
+        : any;
+
+type MapToContractTypes<T, Arr extends any[]> = 
+    Arr extends [infer First extends string, ...infer Rest]
+        ? [GetFieldType<T, First>, ...MapToContractTypes<T, Rest>]
+        : [];
+
+type ExtractAnds<T, S extends string> = MapToContractTypes<T, Split<S, 'And'>>;
+
+type ExtractOrsTuple<T, Arr extends string[]> =
     Arr extends [infer First extends string, ...infer Rest extends string[]]
-    ? [...ExtractAnds<First>, ...ExtractOrsTuple<Rest>]
+    ? [...ExtractAnds<T, First>, ...ExtractOrsTuple<T, Rest>]
     : [];
 
-type ExtractFields<R extends string> = 
-    R extends "" ? [] : ExtractOrsTuple<Split<R, 'Or'>>;
+type ExtractFields<T, R extends string> = 
+    R extends "" ? [] : ExtractOrsTuple<T, Split<R, 'Or'>>;
 
-// --- Lógica de Retorno Baseada no Prefixo ---
+// --- Lógica de Retorno ---
+
 type ResolveReturnType<M extends string, T_Selected> =
+    M extends "existsBy" ? boolean : // <-- Agora promete um boolean
     M extends "createMany" | "updateMany" | "deleteMany" ? { count: number } :
     M extends "findMany" | "createManyAndReturn" | "updateManyAndReturn" ? T_Selected[] :
     M extends "findUnique" | "findFirst" ? T_Selected | null :
     M extends "create" | "update" | "upsert" | "delete" ? T_Selected :
     never;
 
-// --- Mapeamento de Argumentos Especiais (Data, Update, Pagination, Order) ---
-// Simula a lógica do seu build() que adiciona args extras no final da tupla de 'where'
 type ExtraArgs<M extends string, R extends string> = [
     ...(M extends "upsert" ? [update: any, create: any] : 
        M extends "create" | "update" | "createMany" | "updateMany" | "createManyAndReturn" | "updateManyAndReturn" ? [data: any] : []),
-    ...(R extends `${string}PaginatedAndOrdered` | `${string}OrderedAndPaginated` ? [arg1: any, arg2: any] :
+    ...(R extends `${string}PaginatedAndOrdered` ? [pagination: PaginationOptions, order: OrderOptions] :
+       R extends `${string}OrderedAndPaginated` ? [order: OrderOptions, pagination: PaginationOptions] :
        R extends `${string}Paginated` ? [pagination: PaginationOptions] :
        R extends `${string}Ordered` ? [order: OrderOptions] : [])
 ];
 
-// --- Mapeamento dos Métodos Dinâmicos ---
 type SelectedModel<T, S extends keyof SelectModels, SelectModels> = 
     { [K in keyof T as K extends keyof SelectModels[S] ? K : never]: T[K] };
 
@@ -64,12 +119,13 @@ type CleanFields<R extends string> =
 
 type MethodFn<M extends string, T, R extends string, SelectModels, DefaultSelect extends keyof SelectModels> = 
     <S extends keyof SelectModels = DefaultSelect>(...args: [
-        ...ExtractFields<CleanFields<R>>,
+        ...ExtractFields<T, CleanFields<R>>, 
         ...ExtraArgs<M, R>,
-        db?: ClientOrTransaction | { selectModel: S }
+        db?: ClientOrTransaction
     ]) => Promise<ResolveReturnType<M, SelectedModel<T, S, SelectModels>>>;
 
 type MethodFactory<T, K extends string, SelectModels, DefaultSelect extends keyof SelectModels> = 
+    K extends `existsBy${infer R}` ? MethodFn<"existsBy", T, R, SelectModels, DefaultSelect> : // <-- Mapeamento do prefixo
     K extends `findUniqueBy${infer R}` ? MethodFn<"findUnique", T, R, SelectModels, DefaultSelect> :
     K extends `findFirstBy${infer R}` ? MethodFn<"findFirst", T, R, SelectModels, DefaultSelect> :
     K extends `findFirst${infer R}` ? MethodFn<"findFirst", T, R, SelectModels, DefaultSelect> :
@@ -87,18 +143,18 @@ type MethodFactory<T, K extends string, SelectModels, DefaultSelect extends keyo
 
 export type DynamicMethods<T, Instance, SelectModels> = {
     [K in keyof Instance as Instance[K] extends { map: true } ? K : never]: 
-        K extends string ? MethodFactory<T, K, SelectModels, Instance[K] extends { selectModel: infer S } ? (S extends keyof SelectModels ? S : never) : never> : never
+        K extends string 
+            ? Instance[K] extends { proxyTo: infer P extends string }
+                ? MethodFactory<T, P, SelectModels, Instance[K] extends { selectModel: infer S } ? (S extends keyof SelectModels ? S : never) : never>
+                : MethodFactory<T, K, SelectModels, Instance[K] extends { selectModel: infer S } ? (S extends keyof SelectModels ? S : never) : never>
+            : never
 };
 
-// --- CLASSE PRINCIPAL ---
 export abstract class VSRepository<T extends object> {
     abstract tableName: string;
     abstract selectModels: Record<string, { [K in keyof T]?: true }>;
     requiredWhere?: object;
     showWorking?: boolean;
-
     constructor(prisma: DbClient);
-
-    // A assinatura do build agora reflete a injeção de métodos
     build(): this & DynamicMethods<T, this, this['selectModels']>;
 }
