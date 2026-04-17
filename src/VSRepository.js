@@ -14,6 +14,7 @@ export class VSRepository {
         const className = this.constructor.name;
 
         const whereTypes = ['extending', 'overwrite'];
+        const pushWherePositions = ['start', 'middle', 'end'];
 
         const repositoryKeys = Object.keys(this);
 
@@ -165,12 +166,23 @@ export class VSRepository {
 
             const whereArgs = [];
             let whereType;
+            let pushWhere;
 
             if(!ignoreWhere) {
 
                 whereType = this[originalKey].whereType ?? 'extending';
                 if(!whereTypes.includes(whereType)){
                     throw new Error(`[VSRepository] (${className}: build) Invalid whereType: ${whereType}`);
+                }
+
+                pushWhere = this[originalKey].pushWhere;
+                if(pushWhere !== undefined) {
+                    if(!pushWhere.where) {
+                        throw new Error(`[VSRepository] (${className}: build) Where arg expected on pushWhere.`);
+                    }
+                    if(pushWhere.position && !pushWherePositions.includes(pushWhere.position)){
+                        throw new Error(`[VSRepository] (${className}: build) Invalid position on pushWhere: ${pushWhere.position}.`);
+                    }
                 }
 
                 let orMode = false;
@@ -368,12 +380,24 @@ export class VSRepository {
 
                     const where = VSRepositoryCache[className][originalKey](args);
 
-                    prismaArgs.where = {
-                        ...where,
-                        ...(whereType==='extending' ? {
-                            ...this.requiredWhere
-                        }:{})
-                    };
+                    if(pushWhere !== undefined) {
+                        const position = pushWhere.position ?? 'middle';
+                        const whereArg = pushWhere.where;
+                        prismaArgs.where = {
+                            ...(position==='start' ? whereArg : {}),
+                            ...where,
+                            ...(position==='middle' ? whereArg : {}),
+                            ...(whereType==='extending' ? this.requiredWhere : {}),
+                            ...(position==='end' ? whereArg : {}),
+                        };
+                    } else {
+                        prismaArgs.where = {
+                            ...where,
+                            ...(whereType==='extending' ? {
+                                ...this.requiredWhere
+                            }:{})
+                        };
+                    }                    
 
                 }
 

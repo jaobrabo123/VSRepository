@@ -32,11 +32,17 @@ type ValidMethodPatterns =
     | `deleteManyBy${string}`
     | `deleteBy${string}`;
 
-export type MethodConfig<S extends string> = {
+type PushWhere<W> = {
+    where: W;
+    position?: 'start' | 'middle' | 'end';
+}
+
+export type MethodConfig<S extends object, W> = {
     readonly map: boolean;
-    readonly selectModel: S;
+    readonly selectModel?: keyof S;
     readonly whereType?: 'overwrite' | 'extending';
     readonly proxyTo?: ValidMethodPatterns;
+    readonly pushWhere?: PushWhere<W>;
 };
 
 // --- Utilitários de String e Parsing ---
@@ -47,7 +53,7 @@ type Split<S extends string, D extends string> =
     S extends `${infer T}${D}${infer U}` ? [T, ...Split<U, D>] : [S];
 
 type Modifiers = 
-    | 'Insensitive' | 'NotStartsWith' | 'StartsWith' 
+    | 'NotStartsWith' | 'StartsWith' 
     | 'NotEndsWith' | 'EndsWith' | 'NotContains' 
     | 'Contains' | 'LessThanEqual' | 'LessThan' 
     | 'GreaterThanEqual' | 'GreaterThan' | 'NotIn' 
@@ -56,16 +62,39 @@ type Modifiers =
 type ExtractFieldName<S extends string, T> = 
     Uncapitalize<S> extends keyof T 
         ? Uncapitalize<S> 
-        : S extends `${Modifiers}${infer Rest}` 
-            ? ExtractFieldName<Rest, T>
-            : S extends `${infer Rest}${Modifiers}`
-                ? ExtractFieldName<Rest, T>
-                : unknown;
+        : S extends `NotInsensitive${infer Rest}` ? ExtractFieldName<Rest, T>
+        : S extends `Insensitive${infer Rest}` ? ExtractFieldName<Rest, T>
+        : S extends `NotIn${infer Rest}` ? ExtractFieldName<Rest, T>
+        // Se for In + sensitive, pula o In e continua de sensitive (que cairá no Insensitive acima)
+        : S extends `In${infer Rest}` ? ExtractFieldName<Rest, T> 
+        : S extends `Not${infer Rest}` ? ExtractFieldName<Rest, T>
+        : S extends `GreaterThanEqual${infer Rest}` ? ExtractFieldName<Rest, T>
+        : S extends `LessThanEqual${infer Rest}` ? ExtractFieldName<Rest, T>
+        
+        // 2. Sufixos Compostos
+        : S extends `${infer Rest}InInsensitive` ? ExtractFieldName<Rest, T>
+        : S extends `${infer Rest}NotInsensitive` ? ExtractFieldName<Rest, T>
+        : S extends `${infer Rest}ContainsInsensitive` ? ExtractFieldName<Rest, T>
+        : S extends `${infer Rest}GreaterThanEqual` ? ExtractFieldName<Rest, T>
+        : S extends `${infer Rest}LessThanEqual` ? ExtractFieldName<Rest, T>
+        : S extends `${infer Rest}NotIn` ? ExtractFieldName<Rest, T>
+        : S extends `${infer Rest}Insensitive` ? ExtractFieldName<Rest, T>
+
+        // 3. Modificadores Atômicos
+        : S extends `${Modifiers}${infer Rest}` ? ExtractFieldName<Rest, T>
+        : S extends `${infer Rest}${Modifiers}` ? ExtractFieldName<Rest, T>
+        : unknown;
 
 type IsArrayFilter<S extends string> = 
-    S extends `${string}In${string}` 
-        ? (S extends `${string}Contains${string}` ? false : true)
-        : false;
+    // 1. Sufixos (Ex: NomeIn, IdNotIn)
+    S extends `${string}NotIn` ? true :
+    S extends `${string}In` ? true : 
+    // 2. Prefixos (Aqui evitamos o falso positivo do NotInsensitive)
+    S extends `NotIn${infer Rest}` 
+        ? (Rest extends `sensitive${string}` ? false : (Rest extends "" ? false : true)) 
+        : S extends `In${infer Rest}` 
+            ? (Rest extends `sensitive${string}` ? false : (Rest extends "" ? false : true)) 
+            : false;
 
 type GetFieldType<T, S extends string> = 
     ExtractFieldName<S, T> extends infer FieldName 
@@ -161,7 +190,7 @@ export type DynamicMethods<T, Instance, SelectModels, I> = {
 
 export abstract class VSRepository<T extends object, I extends Record<string, any> = {}> {
     abstract tableName: string;
-    abstract selectModels: Record<string, { [K in keyof T]?: true | object }>;
+    selectModels: Record<string, { [K in keyof T]?: true | object }>;
     requiredWhere?: object;
     showWorking?: boolean;
     constructor(prisma: DbClient);
