@@ -387,16 +387,31 @@ export class VSRepository {
                     prismaArgs.create = args[createIndex];
                 }
 
+                let start;
                 if(this.showWorking){
                     console.log(`[VSRepository] (${className}: runtime) Executing ${method} on ${this.tableName}.`);
-                    console.log(`[VSRepository] (${className}: runtime) Built arguments:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (${className}: runtime) Built arguments to ${method} on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    start = performance.now();
                 }
 
-                const result = await db[this.tableName][method](prismaArgs);
-                if(existsMode) {
-                    return !!result;
+                try {
+                    const result = await db[this.tableName][method](prismaArgs);
+
+                    if(this.showWorking) {
+                        const end = performance.now();
+                        const duration = (end - start).toFixed(2);
+                        console.log(`[VSRepository] (${className}: runtime) Executed ${method} on ${this.tableName} (took: ${duration}ms).`);
+                    }
+
+                    if(existsMode) {
+                        return !!result;
+                    }
+                    return result;
+                } catch (err) {
+                    console.log(`[VSRepository] (${className}: runtime) Fatal error when executing ${method} on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    throw err;
                 }
-                return result;
+                
             }
 
         }
