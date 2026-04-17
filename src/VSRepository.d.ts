@@ -101,15 +101,15 @@ type ResolveReturnType<M extends string, T_Selected> =
 
 type ExtraArgs<M extends string, R extends string, I> = [
     ...(M extends "upsertBy" 
-        ? [update: I extends { updateInput: infer U } ? U : any, create: I extends { createInput: infer C } ? C : any] : 
+        ? [update: I extends { updateInput: infer U } ? U : unknown, create: I extends { createInput: infer C } ? C : unknown] : 
        M extends "create" 
-        ? [data: I extends { createInput: infer C } ? C : any] :
+        ? [data: I extends { createInput: infer C } ? C : unknown] :
        M extends "updateBy" 
-        ? [data: I extends { updateInput: infer U } ? U : any] :
+        ? [data: I extends { updateInput: infer U } ? U : unknown] :
        M extends "createMany" | "createManyAndReturn" 
-        ? [data: I extends { createManyInput: infer CM } ? CM : any] :
+        ? [data: I extends { createManyInput: infer CM } ? CM : unknown] :
        M extends "updateManyBy" | "updateManyAndReturnBy" 
-        ? [data: I extends { updateManyInput: infer UM } ? UM : any] : 
+        ? [data: I extends { updateManyInput: infer UM } ? UM : unknown] : 
        []),
     ...(R extends `${string}PaginatedAndOrdered` ? [pagination: PaginationOptions, order: OrderOptions] :
        R extends `${string}OrderedAndPaginated` ? [order: OrderOptions, pagination: PaginationOptions] :
