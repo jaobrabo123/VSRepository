@@ -1,7 +1,8 @@
+import prisma from "./db.js";
 import { UsuarioRepository } from "./repositories/usuarioRepository.js";
 
 async function testes() {
-    const usuarioRepository = new UsuarioRepository();
+    const usuarioRepository = new UsuarioRepository(prisma);
     usuarioRepository.build()
 
     const buscaPaginadaPorNome = await usuarioRepository.findManyByContainsInsensitiveNomePaginated('USU', {skip: 1, take:10});

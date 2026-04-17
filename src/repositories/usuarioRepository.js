@@ -2,6 +2,7 @@ import { VSRepository } from "../VSRepository.js";
 
 export class UsuarioRepository extends VSRepository {
     tableName = 'usuario';
+    showWorking = true;
     
     selectModels = {
         public: { id: true, nome: true, email: true },
