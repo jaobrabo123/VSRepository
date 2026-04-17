@@ -269,7 +269,7 @@ export class VSRepository {
                     VSRepositoryCache[className] = {};
                 }
 
-                VSRepositoryCache[className][keyToMap] = (args)=>{
+                VSRepositoryCache[className][originalKey] = (args)=>{
                     return whereArgs.reduce((acc, arg, idx)=> {
                         let orIndex;
                         let argName = arg.name;
@@ -366,7 +366,7 @@ export class VSRepository {
 
                 if(!ignoreWhere) {
 
-                    const where = VSRepositoryCache[className][keyToMap](args);
+                    const where = VSRepositoryCache[className][originalKey](args);
 
                     prismaArgs.where = {
                         ...where,
