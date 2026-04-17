@@ -25,12 +25,12 @@ type ValidMethodPatterns =
     | `createManyAndReturn${string}`
     | `createMany${string}`
     | `create${string}`
-    | `updateManyAndReturn${string}`
-    | `updateMany${string}`
-    | `update${string}`
-    | `upsert${string}`
-    | `deleteMany${string}`
-    | `delete${string}`;
+    | `updateManyAndReturnBy${string}`
+    | `updateManyBy${string}`
+    | `updateBy${string}`
+    | `upsertBy${string}`
+    | `deleteManyBy${string}`
+    | `deleteBy${string}`;
 
 export type MethodConfig<S extends string> = {
     readonly map: boolean;
@@ -71,7 +71,7 @@ type GetFieldType<T, S extends string> =
     ExtractFieldName<S, T> extends infer FieldName 
         ? FieldName extends keyof T
             ? (IsArrayFilter<S> extends true ? T[FieldName][] : T[FieldName])
-            : any 
+            : unknown 
         : any;
 
 type MapToContractTypes<T, Arr extends any[]> = 
@@ -93,15 +93,24 @@ type ExtractFields<T, R extends string> =
 
 type ResolveReturnType<M extends string, T_Selected> =
     M extends "existsBy" ? boolean : // <-- Agora promete um boolean
-    M extends "createMany" | "updateMany" | "deleteMany" ? { count: number } :
-    M extends "findMany" | "createManyAndReturn" | "updateManyAndReturn" ? T_Selected[] :
+    M extends "createMany" | "updateManyBy" | "deleteManyBy" ? { count: number } :
+    M extends "findMany" | "createManyAndReturn" | "updateManyAndReturnBy" ? T_Selected[] :
     M extends "findUnique" | "findFirst" ? T_Selected | null :
-    M extends "create" | "update" | "upsert" | "delete" ? T_Selected :
+    M extends "create" | "updateBy" | "upsertBy" | "deleteBy" ? T_Selected :
     never;
 
-type ExtraArgs<M extends string, R extends string> = [
-    ...(M extends "upsert" ? [update: any, create: any] : 
-       M extends "create" | "update" | "createMany" | "updateMany" | "createManyAndReturn" | "updateManyAndReturn" ? [data: any] : []),
+type ExtraArgs<M extends string, R extends string, I> = [
+    ...(M extends "upsertBy" 
+        ? [update: I extends { updateInput: infer U } ? U : any, create: I extends { createInput: infer C } ? C : any] : 
+       M extends "create" 
+        ? [data: I extends { createInput: infer C } ? C : any] :
+       M extends "updateBy" 
+        ? [data: I extends { updateInput: infer U } ? U : any] :
+       M extends "createMany" | "createManyAndReturn" 
+        ? [data: I extends { createManyInput: infer CM } ? CM : any] :
+       M extends "updateManyBy" | "updateManyAndReturnBy" 
+        ? [data: I extends { updateManyInput: infer UM } ? UM : any] : 
+       []),
     ...(R extends `${string}PaginatedAndOrdered` ? [pagination: PaginationOptions, order: OrderOptions] :
        R extends `${string}OrderedAndPaginated` ? [order: OrderOptions, pagination: PaginationOptions] :
        R extends `${string}Paginated` ? [pagination: PaginationOptions] :
@@ -117,44 +126,44 @@ type CleanFields<R extends string> =
     R extends `${infer F}Paginated` ? F :
     R extends `${infer F}Ordered` ? F : R;
 
-type MethodFn<M extends string, T, R extends string, SelectModels, DefaultSelect extends keyof SelectModels> = 
+type MethodFn<M extends string, T, R extends string, SelectModels, DefaultSelect extends keyof SelectModels, I> = 
     <S extends keyof SelectModels = DefaultSelect>(...args: [
         ...ExtractFields<T, CleanFields<R>>, 
-        ...ExtraArgs<M, R>,
+        ...ExtraArgs<M, R, I>, // <-- I aqui
         db?: ClientOrTransaction
     ]) => Promise<ResolveReturnType<M, SelectedModel<T, S, SelectModels>>>;
 
-type MethodFactory<T, K extends string, SelectModels, DefaultSelect extends keyof SelectModels> = 
-    K extends `existsBy${infer R}` ? MethodFn<"existsBy", T, R, SelectModels, DefaultSelect> : // <-- Mapeamento do prefixo
-    K extends `findUniqueBy${infer R}` ? MethodFn<"findUnique", T, R, SelectModels, DefaultSelect> :
-    K extends `findFirstBy${infer R}` ? MethodFn<"findFirst", T, R, SelectModels, DefaultSelect> :
-    K extends `findFirst${infer R}` ? MethodFn<"findFirst", T, R, SelectModels, DefaultSelect> :
-    K extends `findManyBy${infer R}` ? MethodFn<"findMany", T, R, SelectModels, DefaultSelect> :
-    K extends `findMany${infer R}` ? MethodFn<"findMany", T, R, SelectModels, DefaultSelect> :
-    K extends `createManyAndReturn${infer R}` ? MethodFn<"createManyAndReturn", T, R, SelectModels, DefaultSelect> :
-    K extends `createMany${infer R}` ? MethodFn<"createMany", T, R, SelectModels, DefaultSelect> :
-    K extends `create${infer R}` ? MethodFn<"create", T, R, SelectModels, DefaultSelect> :
-    K extends `updateManyAndReturn${infer R}` ? MethodFn<"updateManyAndReturn", T, R, SelectModels, DefaultSelect> :
-    K extends `updateMany${infer R}` ? MethodFn<"updateMany", T, R, SelectModels, DefaultSelect> :
-    K extends `update${infer R}` ? MethodFn<"update", T, R, SelectModels, DefaultSelect> :
-    K extends `upsert${infer R}` ? MethodFn<"upsert", T, R, SelectModels, DefaultSelect> :
-    K extends `deleteMany${infer R}` ? MethodFn<"deleteMany", T, R, SelectModels, DefaultSelect> :
-    K extends `delete${infer R}` ? MethodFn<"delete", T, R, SelectModels, DefaultSelect> : never;
+type MethodFactory<T, K extends string, SelectModels, DefaultSelect extends keyof SelectModels, I> =
+    K extends `existsBy${infer R}` ? MethodFn<"existsBy", T, R, SelectModels, DefaultSelect, I> : // <-- Mapeamento do prefixo
+    K extends `findUniqueBy${infer R}` ? MethodFn<"findUnique", T, R, SelectModels, DefaultSelect, I> :
+    K extends `findFirstBy${infer R}` ? MethodFn<"findFirst", T, R, SelectModels, DefaultSelect, I> :
+    K extends `findFirst${infer R}` ? MethodFn<"findFirst", T, R, SelectModels, DefaultSelect, I> :
+    K extends `findManyBy${infer R}` ? MethodFn<"findMany", T, R, SelectModels, DefaultSelect, I> :
+    K extends `findMany${infer R}` ? MethodFn<"findMany", T, R, SelectModels, DefaultSelect, I> :
+    K extends `createManyAndReturn${infer R}` ? MethodFn<"createManyAndReturn", T, R, SelectModels, DefaultSelect, I> :
+    K extends `createMany${infer R}` ? MethodFn<"createMany", T, R, SelectModels, DefaultSelect, I> :
+    K extends `create${infer R}` ? MethodFn<"create", T, R, SelectModels, DefaultSelect, I> :
+    K extends `updateManyAndReturnBy${infer R}` ? MethodFn<"updateManyAndReturnBy", T, R, SelectModels, DefaultSelect, I> :
+    K extends `updateManyBy${infer R}` ? MethodFn<"updateManyBy", T, R, SelectModels, DefaultSelect, I> :
+    K extends `updateBy${infer R}` ? MethodFn<"updateBy", T, R, SelectModels, DefaultSelect, I> :
+    K extends `upsertBy${infer R}` ? MethodFn<"upsertBy", T, R, SelectModels, DefaultSelect, I> :
+    K extends `deleteManyBy${infer R}` ? MethodFn<"deleteManyBy", T, R, SelectModels, DefaultSelect, I> :
+    K extends `deleteBy${infer R}` ? MethodFn<"deleteBy", T, R, SelectModels, DefaultSelect, I> : never;
 
-export type DynamicMethods<T, Instance, SelectModels> = {
+export type DynamicMethods<T, Instance, SelectModels, I> = {
     [K in keyof Instance as Instance[K] extends { map: true } ? K : never]: 
         K extends string 
             ? Instance[K] extends { proxyTo: infer P extends string }
-                ? MethodFactory<T, P, SelectModels, Instance[K] extends { selectModel: infer S } ? (S extends keyof SelectModels ? S : never) : never>
-                : MethodFactory<T, K, SelectModels, Instance[K] extends { selectModel: infer S } ? (S extends keyof SelectModels ? S : never) : never>
+                ? MethodFactory<T, P, SelectModels, Instance[K] extends { selectModel: infer S } ? (S extends keyof SelectModels ? S : never) : never, I>
+                : MethodFactory<T, K, SelectModels, Instance[K] extends { selectModel: infer S } ? (S extends keyof SelectModels ? S : never) : never, I>
             : never
 };
 
-export abstract class VSRepository<T extends object> {
+export abstract class VSRepository<T extends object, I extends Record<string, any> = {}> {
     abstract tableName: string;
-    abstract selectModels: Record<string, { [K in keyof T]?: true }>;
+    abstract selectModels: Record<string, { [K in keyof T]?: true | object }>;
     requiredWhere?: object;
     showWorking?: boolean;
     constructor(prisma: DbClient);
-    build(): this & DynamicMethods<T, this, this['selectModels']>;
+    build(): this & DynamicMethods<T, this, this['selectModels'], I>;
 }
