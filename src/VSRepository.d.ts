@@ -158,7 +158,7 @@ type CleanFields<R extends string> =
 type MethodFn<M extends string, T, R extends string, SelectModels, DefaultSelect extends keyof SelectModels, I> = 
     <S extends keyof SelectModels = DefaultSelect>(...args: [
         ...ExtractFields<T, CleanFields<R>>, 
-        ...ExtraArgs<M, R, I>, // <-- I aqui
+        ...ExtraArgs<M, R, I>,
         db?: ClientOrTransaction
     ]) => Promise<ResolveReturnType<M, SelectedModel<T, S, SelectModels>>>;
 
@@ -179,20 +179,34 @@ type MethodFactory<T, K extends string, SelectModels, DefaultSelect extends keyo
     K extends `deleteManyBy${infer R}` ? MethodFn<"deleteManyBy", T, R, SelectModels, DefaultSelect, I> :
     K extends `deleteBy${infer R}` ? MethodFn<"deleteBy", T, R, SelectModels, DefaultSelect, I> : never;
 
+type ResolveSelectModel<Config, Instance, SelectModels> = 
+    Config extends { selectModel: infer S }
+        ? S extends keyof SelectModels 
+            ? S 
+            : Instance extends { defaultSelectModel: infer D } 
+                ? D extends keyof SelectModels ? D : never
+                : never
+        : Instance extends { defaultSelectModel: infer D } 
+            ? D extends keyof SelectModels ? D : never
+            : never;
+
 export type DynamicMethods<T, Instance, SelectModels, I> = {
     [K in keyof Instance as Instance[K] extends { map: true } ? K : never]: 
         K extends string 
             ? Instance[K] extends { proxyTo: infer P extends string }
-                ? MethodFactory<T, P, SelectModels, Instance[K] extends { selectModel: infer S } ? (S extends keyof SelectModels ? S : never) : never, I>
-                : MethodFactory<T, K, SelectModels, Instance[K] extends { selectModel: infer S } ? (S extends keyof SelectModels ? S : never) : never, I>
+                ? MethodFactory<T, P, SelectModels, ResolveSelectModel<Instance[K], Instance, SelectModels>, I>
+                : MethodFactory<T, K, SelectModels, ResolveSelectModel<Instance[K], Instance, SelectModels>, I>
             : never
 };
 
 export abstract class VSRepository<T extends object, I extends Record<string, any> = {}> {
     abstract tableName: string;
-    selectModels: Record<string, { [K in keyof T]?: true | object }>;
+
+    selectModels?: Record<string, { [K in keyof T]?: true | object }>;
+    defaultSelectModel?: string;
     requiredWhere?: object;
     showWorking?: boolean;
+
     constructor(prisma: DbClient);
     build(): this & DynamicMethods<T, this, this['selectModels'], I>;
 }

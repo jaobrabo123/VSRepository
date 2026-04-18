@@ -281,7 +281,7 @@ export class VSRepository {
                     VSRepositoryCache[className] = {};
                 }
 
-                VSRepositoryCache[className][originalKey] = (args)=>{
+                VSRepositoryCache[className][originalKey] = (args) => {
                     return whereArgs.reduce((acc, arg, idx)=> {
                         let orIndex;
                         let argName = arg.name;
@@ -343,9 +343,14 @@ export class VSRepository {
 
                 if(providedSelectModel) {
                     if(!this.selectModels || !Object.keys(this.selectModels).includes(providedSelectModel)){
-                        throw new Error(`[VSRepository] (${className}: build) Invalid selectModel: ${providedSelectModel}`)
+                        throw new Error(`[VSRepository] (${className}: build) Invalid selectModel: ${providedSelectModel}`);
                     }
                     select = this.selectModels[providedSelectModel];
+                } else if(this.defaultSelectModel) {
+                    if(!Object.keys(this.selectModels).includes(this.defaultSelectModel)){
+                        throw new Error(`[VSRepository] (${className}: build) Invalid defaultSelectModel: ${this.defaultSelectModel}`);
+                    }
+                    select = this.selectModels[this.defaultSelectModel];
                 }
 
             }
