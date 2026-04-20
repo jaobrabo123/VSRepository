@@ -37,14 +37,6 @@ type PushWhere<W> = {
     position?: 'start' | 'middle' | 'end';
 }
 
-export type MethodConfig<S extends object, W> = {
-    readonly map: boolean;
-    readonly selectModel?: keyof S;
-    readonly whereType?: 'overwrite' | 'extending';
-    readonly proxyTo?: ValidMethodPatterns;
-    readonly pushWhere?: PushWhere<W>;
-};
-
 // --- Utilitários de String e Parsing ---
 
 type Split<S extends string, D extends string> =
@@ -136,14 +128,14 @@ type ExtraArgs<M extends string, R extends string, I> = [
        M extends "updateBy" 
         ? [data: I extends { updateInput: infer U } ? U : unknown] :
        M extends "createMany" | "createManyAndReturn" 
-        ? [data: I extends { createManyInput: infer CM } ? CM : unknown] :
+        ? [data: I extends { createManyInput: infer CM } ? CM | CM[] : unknown] :
        M extends "updateManyBy" | "updateManyAndReturnBy" 
-        ? [data: I extends { updateManyInput: infer UM } ? UM : unknown] : 
+        ? [data: I extends { updateManyInput: infer UM } ? UM | UM[] : unknown] : 
        []),
-    ...(R extends `${string}PaginatedAndOrdered` ? [pagination: PaginationOptions, order: OrderOptions] :
-       R extends `${string}OrderedAndPaginated` ? [order: OrderOptions, pagination: PaginationOptions] :
+    ...(R extends `${string}PaginatedAndOrdered` ? [pagination: PaginationOptions, order: I extends { orderByInput: infer OB } ? OB | OB[] : OrderOptions] :
+       R extends `${string}OrderedAndPaginated` ? [order: I extends { orderByInput: infer OB } ? OB | OB[] : OrderOptions, pagination: PaginationOptions] :
        R extends `${string}Paginated` ? [pagination: PaginationOptions] :
-       R extends `${string}Ordered` ? [order: OrderOptions] : [])
+       R extends `${string}Ordered` ? [order: I extends { orderByInput: infer OB } ? OB | OB[] : OrderOptions] : [])
 ];
 
 type SelectedModel<T, S extends keyof SelectModels, SelectModels> = 
@@ -153,7 +145,8 @@ type CleanFields<R extends string> =
     R extends `${infer F}PaginatedAndOrdered` ? F :
     R extends `${infer F}OrderedAndPaginated` ? F :
     R extends `${infer F}Paginated` ? F :
-    R extends `${infer F}Ordered` ? F : R;
+    R extends `${infer F}Ordered` ? F :
+    R extends `${infer F}SkipDuplicates` ? F : R;
 
 type MethodFn<M extends string, T, R extends string, SelectModels, DefaultSelect extends keyof SelectModels, I> = 
     <S extends keyof SelectModels = DefaultSelect>(...args: [
@@ -199,12 +192,44 @@ export type DynamicMethods<T, Instance, SelectModels, I> = {
             : never
 };
 
-export abstract class VSRepository<T extends object, I extends Record<string, any> = {}> {
-    abstract tableName: string;
+// Este tipo extrai todos os inputs necessários baseados no nome do modelo no schema
+export type PrismaModelInputs<M extends Prisma.ModelName> = {
+    select: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['select'];
+    createInput: Prisma.TypeMap['model'][M]['operations']['create']['args']['data'];
+    createManyInput: Prisma.TypeMap['model'][M]['operations']['createMany']['args']['data'];
+    updateInput: Prisma.TypeMap['model'][M]['operations']['update']['args']['data'];
+    updateManyInput: Prisma.TypeMap['model'][M]['operations']['updateMany']['args']['data'];
+    whereInput: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['where'];
+    orderByInput: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['orderBy'];
+};
 
-    selectModels?: Record<string, { [K in keyof T]?: true | object }>;
-    defaultSelectModel?: string;
-    requiredWhere?: object;
+// --- Seus novos atalhos ---
+export type ModelSelect<M extends Prisma.ModelName> = PrismaModelInputs<M>["select"];
+export type ModelWhere<M extends Prisma.ModelName> = PrismaModelInputs<M>["whereInput"];
+
+// O genérico M agora exige que o objeto tenha um tableName válido e um selectModels (que pode ser opcional)
+export type MethodConfig<M extends { tableName: Prisma.ModelName; selectModels?: any }> = {
+    readonly map: boolean;
+    // Pega as chaves do selectModels. O NonNullable evita erros caso o selectModels não seja definido na classe filha
+    readonly selectModel?: keyof NonNullable<M["selectModels"]>;
+    readonly whereType?: 'overwrite' | 'extending';
+    readonly proxyTo?: ValidMethodPatterns;
+    // Extrai o Where dinamicamente usando o tableName do repositório
+    readonly pushWhere?: PushWhere<ModelWhere<M["tableName"]>>;
+};
+
+export type SelectModels<M extends {tableName: Prisma.ModelName}> = Record<string, ModelSelect<M["tableName"]>>;
+
+export abstract class VSRepository<
+    T extends object, 
+    M extends Prisma.ModelName, // Adicionamos o nome do modelo aqui
+    I extends PrismaModelInputs<M> = PrismaModelInputs<M> // O padrão agora é automático
+> {
+    abstract tableName: Uncapitalize<M>;
+
+    selectModels?: SelectModels<this>;
+    defaultSelectModel?: keyof this['selectModels'];
+    requiredWhere?: ModelWhere<M>;
     showWorking?: boolean;
 
     constructor(prisma: DbClient);

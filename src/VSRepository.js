@@ -46,6 +46,8 @@ export class VSRepository {
             let originalKey = keyToMap;
             keyToMap = this[originalKey].proxyTo ?? keyToMap;
             let existsMode = false;
+            let skipDuplicates;
+            let ignoreSkipDuplicates = true;
 
             // console.log('this', this)
 
@@ -77,6 +79,7 @@ export class VSRepository {
             } else if(keyToMap.startsWith('createManyAndReturn')) {
                 keyToMapReplaced = keyToMap.replace('createManyAndReturn', '')
                 ignoreWhere = true;
+                ignoreSkipDuplicates = false;
                 method = 'createManyAndReturn';
                 dataIndex = 0
                 argsCount++;
@@ -84,6 +87,7 @@ export class VSRepository {
                 keyToMapReplaced = keyToMap.replace('createMany', '')
                 ignoreWhere = true;
                 ignoreSelect = true;
+                ignoreSkipDuplicates = false;
                 method = 'createMany';
                 dataIndex = 0
                 argsCount++;
@@ -127,7 +131,12 @@ export class VSRepository {
             }
 
 
-            const prismaArgs = {}
+            if(!ignoreSkipDuplicates) {
+                if(keyToMapReplaced.endsWith('SkipDuplicates')) {
+                    keyToMapReplaced = keyToMapReplaced.replace('SkipDuplicates', '');
+                    skipDuplicates = true;
+                }
+            }
 
             let orderPosition;
             let paginationPosition;
@@ -379,6 +388,10 @@ export class VSRepository {
                     const paginate = args.at(paginationPosition);
                     prismaArgs.skip = paginate.skip;
                     prismaArgs.take = paginate.take;
+                }
+
+                if(skipDuplicates!==undefined){
+                    prismaArgs.skipDuplicates = skipDuplicates;
                 }
 
                 if(!ignoreWhere) {
