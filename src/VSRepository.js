@@ -286,63 +286,6 @@ export class VSRepository {
 
                 }
 
-                if(!VSRepositoryCache[className]) {
-                    VSRepositoryCache[className] = {};
-                }
-
-                VSRepositoryCache[className][originalKey] = (args) => {
-                    return whereArgs.reduce((acc, arg, idx)=> {
-                        let orIndex;
-                        let argName = arg.name;
-                        const agrNameSplitedOr = argName.split('OR.')
-                        if(agrNameSplitedOr.length > 1) {
-                            const agrNameSplitedOrIdx = agrNameSplitedOr[1].split('idx.')
-                            orIndex = Number(agrNameSplitedOrIdx[0])
-                            argName = agrNameSplitedOrIdx[1]
-                        }
-                        // console.log('argName', argName)
-
-                        const preAcc = {}
-                        preAcc[argName] = {}
-                        if(arg.pushProperty === '$$$') {
-                            preAcc[argName] = args[idx]
-                        } else {
-                            const pushProperty = arg.pushProperty;
-                            const pushPropertySplitedNot = pushProperty.split('not.');
-                            if(pushPropertySplitedNot.length > 1) {
-                                preAcc[argName].not = {};
-                                preAcc[argName].not[pushPropertySplitedNot[1]] = args[idx]
-                            } else {
-                                preAcc[argName][pushProperty] = args[idx]
-                            }
-                            for (const key in arg.properties) {
-                                preAcc[argName][key] = arg.properties[key]
-                            }
-                        }
-                        if(orIndex!==undefined) {
-                            // console.log(preAcc)
-                            if(!preAcc.OR){
-                                preAcc.OR = [];
-                            }
-                            if(acc.OR){
-                                preAcc.OR = [...acc.OR]
-                            }
-                            // console.log(preAcc)
-                            if(!preAcc.OR[orIndex]) {
-                                preAcc.OR[orIndex] = {};
-                            }
-                            // console.log(preAcc)
-                            preAcc.OR[orIndex][argName] = preAcc[argName];
-                            delete preAcc[argName];
-                            // console.log(preAcc)
-                        }
-                        return {
-                            ...acc,
-                            ...preAcc
-                        };
-                    }, {});
-                }
-
             }
 
             let select;
@@ -364,21 +307,15 @@ export class VSRepository {
 
             }
 
-            this[originalKey] = async (...args) => {
+            if(!VSRepositoryCache[className]) {
+                VSRepositoryCache[className] = {};
+            }
 
+            VSRepositoryCache[className][originalKey] = (args) => {
                 const prismaArgs = {};
 
                 if(select) {
                     prismaArgs.select = select;
-                }
-                
-                let db = this.prisma;
-                if(args.length < argsCount) {
-                    throw new Error(`[VSRepository] (${className}: runtime) Missing parameters.`);
-                } else if(args.length > argsCount) {
-                    db = args.at(-1);
-                } else {
-                    args.push('1')
                 }
 
                 if(orderPosition !== undefined) {
@@ -395,8 +332,57 @@ export class VSRepository {
                 }
 
                 if(!ignoreWhere) {
+                    
+                    const where = whereArgs.reduce((acc, arg, idx)=> {
+                        let orIndex;
+                        let argName = arg.name;
+                        const agrNameSplitedOr = argName.split('OR.')
+                        if(agrNameSplitedOr.length > 1) {
+                            const agrNameSplitedOrIdx = agrNameSplitedOr[1].split('idx.')
+                            orIndex = Number(agrNameSplitedOrIdx[0])
+                            argName = agrNameSplitedOrIdx[1]
+                        }
 
-                    const where = VSRepositoryCache[className][originalKey](args);
+                        const preAcc = {}
+                        preAcc[argName] = {}
+                        if(arg.pushProperty === '$$$') {
+                            preAcc[argName] = args[idx]
+                        } else {
+                            const pushProperty = arg.pushProperty;
+                            const pushPropertySplitedNot = pushProperty.split('not.');
+                            if(pushPropertySplitedNot.length > 1) {
+                                preAcc[argName].not = {};
+                                preAcc[argName].not[pushPropertySplitedNot[1]] = args[idx]
+                            } else {
+                                preAcc[argName][pushProperty] = args[idx]
+                            }
+                            for (const key in arg.properties) {
+                                preAcc[argName][key] = arg.properties[key]
+                            }
+                        }
+                        if(orIndex!==undefined) {
+                            
+                            if(!preAcc.OR){
+                                preAcc.OR = [];
+                            }
+
+                            if(acc.OR){
+                                preAcc.OR = [...acc.OR]
+                            }
+                            
+                            if(!preAcc.OR[orIndex]) {
+                                preAcc.OR[orIndex] = {};
+                            }
+                            
+                            preAcc.OR[orIndex][argName] = preAcc[argName];
+                            delete preAcc[argName];
+
+                        }
+                        return {
+                            ...acc,
+                            ...preAcc
+                        };
+                    }, {});
 
                     if(pushWhere !== undefined) {
                         const position = pushWhere.position ?? 'middle';
@@ -415,8 +401,7 @@ export class VSRepository {
                                 ...this.requiredWhere
                             }:{})
                         };
-                    }                    
-
+                    }
                 }
 
                 if(dataIndex !== undefined) {
@@ -428,6 +413,22 @@ export class VSRepository {
                 if(createIndex !== undefined) {
                     prismaArgs.create = args[createIndex];
                 }
+
+                return prismaArgs;
+            }
+
+            this[originalKey] = async (...args) => {
+                
+                let db = this.prisma;
+                if(args.length < argsCount) {
+                    throw new Error(`[VSRepository] (${className}: runtime) Missing parameters.`);
+                } else if(args.length > argsCount) {
+                    db = args.at(-1);
+                } else {
+                    args.push('1')
+                }
+
+                const prismaArgs = VSRepositoryCache[className][originalKey](args);
 
                 let start;
                 if(this.showWorking){

@@ -183,7 +183,7 @@ type ResolveSelectModel<Config, Instance, SelectModels> =
             ? D extends keyof SelectModels ? D : never
             : never;
 
-export type DynamicMethods<T, Instance, SelectModels, I> = {
+type DynamicMethods<T, Instance, SelectModels, I> = {
     [K in keyof Instance as Instance[K] extends { map: true } ? K : never]: 
         K extends string 
             ? Instance[K] extends { proxyTo: infer P extends string }
@@ -223,15 +223,14 @@ export type SelectModels<M extends {tableName: Prisma.ModelName}> = Record<strin
 export abstract class VSRepository<
     T extends object, 
     M extends Prisma.ModelName, // Adicionamos o nome do modelo aqui
-    I extends PrismaModelInputs<M> = PrismaModelInputs<M> // O padrão agora é automático
 > {
     abstract tableName: Uncapitalize<M>;
 
-    selectModels?: SelectModels<this>;
+    selectModels?: SelectModels<{ tableName: M }>;
     defaultSelectModel?: keyof this['selectModels'];
     requiredWhere?: ModelWhere<M>;
     showWorking?: boolean;
 
     constructor(prisma: DbClient);
-    build(): this & DynamicMethods<T, this, this['selectModels'], I>;
+    build(): this & DynamicMethods<T, this, this['selectModels'], PrismaModelInputs<M>>;
 }
