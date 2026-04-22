@@ -5,9 +5,73 @@ export class VSRepository {
     tableName;
     prisma;
     showWorking = false;
+    pkName;
 
     constructor(prisma) {
         this.prisma = prisma;
+    }
+
+    async get(pk, db) {
+        if(db===undefined) db = this.prisma;
+
+        const prismaArgs = { where: {[this.pkName]: pk} };
+
+        if(this.defaultSelectModel) {
+            prismaArgs.select = this.selectModels[this.defaultSelectModel];
+        }
+
+        try {
+            return await db[this.tableName].findFirstOrThrow(prismaArgs);
+        } catch (err) {
+            console.log(`[VSRepository] (${this.constructor.name}: runtime) Fatal error when trying to get on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+            throw err;
+        }
+    }
+
+    async remove(pk, db) {
+        if(db===undefined) db = this.prisma;
+
+        const prismaArgs = { where: {[this.pkName]: pk} };
+
+        if(this.defaultSelectModel) {
+            prismaArgs.select = this.selectModels[this.defaultSelectModel];
+        }
+        
+        try {
+            return await db[this.tableName].delete(prismaArgs);
+        } catch (err) {
+            console.log(`[VSRepository] (${this.constructor.name}: runtime) Fatal error when trying to remove on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+            throw err;
+        }
+    }
+
+    async save(obj, db) {
+        if(db===undefined) db = this.prisma;
+
+        const prismaArgs = {};
+        if(this.defaultSelectModel) {
+            prismaArgs.select = this.selectModels[this.defaultSelectModel];
+        }
+
+        try {
+            if(obj[this.pkName] !== undefined){
+                const update = {...obj};
+                delete update[this.pkName]
+
+                prismaArgs.create = obj;
+                prismaArgs.update = update;
+                prismaArgs.where = {[this.pkName]: obj[this.pkName]}
+
+                return await db[this.tableName].upsert(prismaArgs);
+            } else {
+                prismaArgs.data = obj;
+
+                return await db[this.tableName].create(prismaArgs);
+            }
+        } catch (err) {
+            console.log(`[VSRepository] (${this.constructor.name}: runtime) Fatal error when trying to save on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+            throw err;
+        }
     }
 
     build() {
@@ -346,7 +410,6 @@ export class VSRepository {
             }
 
             VSRepositoryCache[className][originalKey] = (args) => {
-                const argsLength = args.length;
                 const prismaArgs = {};
 
                 if(select) {
@@ -354,10 +417,10 @@ export class VSRepository {
                 }
 
                 if(orderPosition !== undefined) {
-                    prismaArgs.orderBy = args[argsLength+orderPosition]
+                    prismaArgs.orderBy = args.at(orderPosition);
                 }
                 if(paginationPosition !== undefined) {
-                    const paginate = args[argsLength+paginationPosition];
+                    const paginate = args.at(paginationPosition);
                     prismaArgs.skip = paginate.skip;
                     prismaArgs.take = paginate.take;
                 }
@@ -405,23 +468,27 @@ export class VSRepository {
 
                     if(OR) where.OR = OR;
                     if(pushWhere !== undefined) {
-                        Object.assign(where, pushWhere);
+                        let safePushWhere = { ...pushWhere };
+                        if(where.OR && safePushWhere.OR) safePushWhere.OR = safePushWhere.OR.concat(where.OR)
+                        Object.assign(where, safePushWhere);
                     }
                     if(whereType==='extending') {
-                        Object.assign(where, this.requiredWhere);
+                        let requiredWhere = { ...this.requiredWhere };
+                        if(where.OR && requiredWhere.OR) requiredWhere.OR = requiredWhere.OR.concat(where.OR)
+                        Object.assign(where, requiredWhere);
                     }
                     
-                    prismaArgs.where = where
+                    prismaArgs.where = where;
                 }
 
                 if(dataIndex !== undefined) {
-                    prismaArgs.data = args[dataIndex];
+                    prismaArgs.data = args.at(dataIndex);
                 }
                 if(updateIndex !== undefined) {
-                    prismaArgs.update = args[updateIndex];
+                    prismaArgs.update = args.at(updateIndex);
                 }
                 if(createIndex !== undefined) {
-                    prismaArgs.create = args[createIndex];
+                    prismaArgs.create = args.at(createIndex);
                 }
 
                 return prismaArgs;

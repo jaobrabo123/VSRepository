@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from './generated/prisma/client';
+import { PrismaClient, Prisma } from '@generated/prisma/client';
 
 export type DbClient = PrismaClient;
 export type DbTransaction = Prisma.TransactionClient;
@@ -79,7 +79,7 @@ type ExtractFieldName<S extends string, T> =
         // 3. Modificadores Atômicos
         : S extends `${Modifiers}${infer Rest}` ? ExtractFieldName<Rest, T>
         : S extends `${infer Rest}${Modifiers}` ? ExtractFieldName<Rest, T>
-        : never;
+        : S;
 
 type IsArrayFilter<S extends string> = 
     // 1. Sufixos (Ex: NomeIn, IdNotIn)
@@ -227,6 +227,8 @@ export type PrismaModelInputs<M extends Prisma.ModelName> = {
     whereInput: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['where'];
     orderByInput: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['orderBy'];
     cursorInput: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['cursor'];
+    upsertCreateInput: Prisma.TypeMap['model'][M]['operations']['upsert']['args']['create'];
+    upsertUpdateInput: Prisma.TypeMap['model'][M]['operations']['upsert']['args']['update'];
 };
 
 /**
@@ -306,6 +308,14 @@ export type MethodConfig<M extends { tableName: Prisma.ModelName; selectModels?:
  */
 export type SelectModels<M extends {tableName: Prisma.ModelName}> = Record<string, ModelSelect<M["tableName"]>>;
 
+export type ModelUpsertInput<M extends Prisma.ModelName> = 
+    PrismaModelInputs<M>['upsertCreateInput'] | PrismaModelInputs<M>['upsertUpdateInput'];
+
+type ResolveDefaultReturn<T, DefaultModel, Models> = 
+    DefaultModel extends keyof Models
+        ? SelectedModel<T, DefaultModel, Models>
+        : T;
+
 /**
  * Classe base para repositórios dinâmicos inspirados em convenções de nome
  * no estilo Spring Data, mas gerando operações Prisma tipadas.
@@ -336,6 +346,7 @@ export abstract class VSRepository<
      * @example "usuario"
      */
     abstract tableName: Uncapitalize<M>;
+    abstract pkName: keyof T;
 
     /**
      * Dicionário de projeções reutilizáveis para este repositório.
@@ -378,6 +389,28 @@ export abstract class VSRepository<
      * @param prisma Instância raiz do Prisma Client usada para resolver delegates e executar operações.
      */
     constructor(prisma: DbClient);
+
+    /**
+     * Busca um registro diretamente pela Primary Key.
+     * @param pk Valor da chave primária do registro.
+     * @param db (Opcional) Cliente Prisma ou contexto de transação ativa.
+     */
+    get(pk: T[this['pkName']], db?: ClientOrTransaction): Promise<ResolveDefaultReturn<T, this['defaultSelectModel'], this['selectModels']>>;
+
+    /**
+     * Remove fisicamente um registro do banco pela sua Primary Key.
+     * @param pk Valor da chave primária do registro a ser deletado.
+     * @param db (Opcional) Cliente Prisma ou contexto de transação ativa.
+     */
+    remove(pk: T[this['pkName']], db?: ClientOrTransaction): Promise<ResolveDefaultReturn<T, this['defaultSelectModel'], this['selectModels']>>;
+
+    /**
+     * Salva um registro. Se o objeto possuir a propriedade definida em `pkName`, executa um `upsert`. 
+     * Caso contrário, executa um `create` padrão.
+     * @param obj Objeto contendo os dados a serem salvos (Update ou Create payload).
+     * @param db (Opcional) Cliente Prisma ou contexto de transação ativa.
+     */
+    save(obj: ModelUpsertInput<M>, db?: ClientOrTransaction): Promise<ResolveDefaultReturn<T, this['defaultSelectModel'], this['selectModels']>>;
 
     /**
      * Materializa, em tempo de execução, os métodos dinâmicos configurados na classe.
