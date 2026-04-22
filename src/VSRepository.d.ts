@@ -12,7 +12,11 @@ type OrderPattern = {
         | OrderPattern;
 }
 
-export type PaginationOptions = { skip: number; take: number };
+export type PaginationOptions<TCursor = unknown> = { 
+    skip?: number; 
+    take?: number; 
+    cursor?: TCursor; 
+};
 export type OrderOptions = OrderPattern | OrderPattern[];
 
 type ValidMethodPatterns = 
@@ -30,12 +34,9 @@ type ValidMethodPatterns =
     | `updateBy${string}`
     | `upsertBy${string}`
     | `deleteManyBy${string}`
-    | `deleteBy${string}`;
-
-type PushWhere<W> = {
-    where: W;
-    position?: 'start' | 'middle' | 'end';
-}
+    | `deleteBy${string}`
+    | `countBy${string}`
+    | `count${string}`;
 
 // --- Utilitários de String e Parsing ---
 
@@ -62,6 +63,9 @@ type ExtractFieldName<S extends string, T> =
         : S extends `Not${infer Rest}` ? ExtractFieldName<Rest, T>
         : S extends `GreaterThanEqual${infer Rest}` ? ExtractFieldName<Rest, T>
         : S extends `LessThanEqual${infer Rest}` ? ExtractFieldName<Rest, T>
+        : S extends `${infer Rest}NotStartsWith` ? ExtractFieldName<Rest, T> // <-- AQUI
+        : S extends `${infer Rest}NotEndsWith` ? ExtractFieldName<Rest, T>   // <-- AQUI
+        : S extends `${infer Rest}NotContains` ? ExtractFieldName<Rest, T>   // <-- AQUI
         
         // 2. Sufixos Compostos
         : S extends `${infer Rest}InInsensitive` ? ExtractFieldName<Rest, T>
@@ -75,7 +79,7 @@ type ExtractFieldName<S extends string, T> =
         // 3. Modificadores Atômicos
         : S extends `${Modifiers}${infer Rest}` ? ExtractFieldName<Rest, T>
         : S extends `${infer Rest}${Modifiers}` ? ExtractFieldName<Rest, T>
-        : unknown;
+        : never;
 
 type IsArrayFilter<S extends string> = 
     // 1. Sufixos (Ex: NomeIn, IdNotIn)
@@ -118,6 +122,7 @@ type ResolveReturnType<M extends string, T_Selected> =
     M extends "findMany" | "createManyAndReturn" | "updateManyAndReturnBy" ? T_Selected[] :
     M extends "findUnique" | "findFirst" ? T_Selected | null :
     M extends "create" | "updateBy" | "upsertBy" | "deleteBy" ? T_Selected :
+    M extends "count" ? number :
     never;
 
 type ExtraArgs<M extends string, R extends string, I> = [
@@ -132,10 +137,20 @@ type ExtraArgs<M extends string, R extends string, I> = [
        M extends "updateManyBy" | "updateManyAndReturnBy" 
         ? [data: I extends { updateManyInput: infer UM } ? UM | UM[] : unknown] : 
        []),
-    ...(R extends `${string}PaginatedAndOrdered` ? [pagination: PaginationOptions, order: I extends { orderByInput: infer OB } ? OB | OB[] : OrderOptions] :
-       R extends `${string}OrderedAndPaginated` ? [order: I extends { orderByInput: infer OB } ? OB | OB[] : OrderOptions, pagination: PaginationOptions] :
-       R extends `${string}Paginated` ? [pagination: PaginationOptions] :
-       R extends `${string}Ordered` ? [order: I extends { orderByInput: infer OB } ? OB | OB[] : OrderOptions] : [])
+    ...(R extends `${string}PaginatedAndOrdered` ? [
+        pagination: PaginationOptions<I extends { cursorInput: infer C } ? C : unknown>, 
+        order: I extends { orderByInput: infer OB } ? OB | OB[] : OrderOptions
+    ] :
+       R extends `${string}OrderedAndPaginated` ? [
+        order: I extends { orderByInput: infer OB } ? OB | OB[] : OrderOptions, 
+        pagination: PaginationOptions<I extends { cursorInput: infer C } ? C : unknown>
+    ] :
+       R extends `${string}Paginated` ? [
+        pagination: PaginationOptions<I extends { cursorInput: infer C } ? C : unknown>
+    ] :
+       R extends `${string}Ordered` ? [
+        order: I extends { orderByInput: infer OB } ? OB | OB[] : OrderOptions
+    ] : [])
 ];
 
 type SelectedModel<T, S extends keyof SelectModels, SelectModels> = 
@@ -170,7 +185,9 @@ type MethodFactory<T, K extends string, SelectModels, DefaultSelect extends keyo
     K extends `updateBy${infer R}` ? MethodFn<"updateBy", T, R, SelectModels, DefaultSelect, I> :
     K extends `upsertBy${infer R}` ? MethodFn<"upsertBy", T, R, SelectModels, DefaultSelect, I> :
     K extends `deleteManyBy${infer R}` ? MethodFn<"deleteManyBy", T, R, SelectModels, DefaultSelect, I> :
-    K extends `deleteBy${infer R}` ? MethodFn<"deleteBy", T, R, SelectModels, DefaultSelect, I> : never;
+    K extends `deleteBy${infer R}` ? MethodFn<"deleteBy", T, R, SelectModels, DefaultSelect, I> :
+    K extends `countBy${infer R}` ? MethodFn<"count", T, R, SelectModels, DefaultSelect, I> :
+    K extends `count${infer R}` ? MethodFn<"count", T, R, SelectModels, DefaultSelect, I> : never;
 
 type ResolveSelectModel<Config, Instance, SelectModels> = 
     Config extends { selectModel: infer S }
@@ -192,7 +209,15 @@ type DynamicMethods<T, Instance, SelectModels, I> = {
             : never
 };
 
-// Este tipo extrai todos os inputs necessários baseados no nome do modelo no schema
+/**
+ * Mapeia, a partir do nome de um modelo do Prisma, os principais tipos de input
+ * usados pelo VSRepository para montar operações fortemente tipadas.
+ *
+ * Isso centraliza o acesso ao `Prisma.TypeMap` e evita repetir extrações de tipos
+ * em cada repositório concreto.
+ *
+ * @template M Nome do modelo no schema do Prisma.
+ */
 export type PrismaModelInputs<M extends Prisma.ModelName> = {
     select: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['select'];
     createInput: Prisma.TypeMap['model'][M]['operations']['create']['args']['data'];
@@ -201,36 +226,166 @@ export type PrismaModelInputs<M extends Prisma.ModelName> = {
     updateManyInput: Prisma.TypeMap['model'][M]['operations']['updateMany']['args']['data'];
     whereInput: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['where'];
     orderByInput: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['orderBy'];
+    cursorInput: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['cursor'];
 };
 
-// --- Seus novos atalhos ---
+/**
+ * Atalho para o tipo de `select` do Prisma de um modelo.
+ *
+ * @template M Nome do modelo no schema do Prisma.
+ */
 export type ModelSelect<M extends Prisma.ModelName> = PrismaModelInputs<M>["select"];
+
+/**
+ * Atalho para o tipo de `where` do Prisma de um modelo.
+ *
+ * @template M Nome do modelo no schema do Prisma.
+ */
 export type ModelWhere<M extends Prisma.ModelName> = PrismaModelInputs<M>["whereInput"];
 
-// O genérico M agora exige que o objeto tenha um tableName válido e um selectModels (que pode ser opcional)
+/**
+ * Configuração de um método dinâmico exposto pelo repositório.
+ *
+ * Cada propriedade configurada com esse tipo pode ser convertida em um método
+ * real quando `build()` for chamado, respeitando projeção, filtros adicionais
+ * e redirecionamentos de assinatura.
+ *
+ * @template M Metadados mínimos do repositório, incluindo `tableName` e `selectModels`.
+ */
 export type MethodConfig<M extends { tableName: Prisma.ModelName; selectModels?: any }> = {
+    /**
+     * Habilita a geração dinâmica deste método.
+     *
+     * Apenas propriedades com `map: true` serão consideradas pelo `build()`.
+     */
     readonly map: boolean;
-    // Pega as chaves do selectModels. O NonNullable evita erros caso o selectModels não seja definido na classe filha
+    
+    /**
+     * Define qual projeção de `selectModels` será usada como retorno padrão.
+     *
+     * Útil para controlar visibilidade de campos e padronizar retornos
+     * sem precisar repetir `select` manualmente.
+     */
     readonly selectModel?: keyof NonNullable<M["selectModels"]>;
+    
+    /**
+     * Define como `requiredWhere` será combinado com os filtros da chamada.
+     *
+     * - `'extending'`: Mescla com os filtros passados na chamada do método (padrão).
+     * - `'overwrite'`: Ignora o `requiredWhere` global e usa apenas os filtros
+     *   da chamada e o `pushWhere`, se existir.
+     */
     readonly whereType?: 'overwrite' | 'extending';
+    
+    /**
+     * Redireciona este método para outro padrão de nome suportado.
+     *
+     * Isso permite expor nomes semânticos no repositório enquanto a inferência
+     * continua baseada em uma assinatura válida do parser.
+     *
+     * @example 'findManyByStatus'
+     */
     readonly proxyTo?: ValidMethodPatterns;
-    // Extrai o Where dinamicamente usando o tableName do repositório
-    readonly pushWhere?: PushWhere<ModelWhere<M["tableName"]>>;
+    
+    /**
+     * Filtros Prisma fixos injetados em todas as chamadas deste método.
+     *
+     * Útil para especializar um método para um subconjunto de registros.
+     *
+     * @example `{ status: 'ATIVO' }`
+     */
+    readonly pushWhere?: ModelWhere<M["tableName"]>;
 };
 
+/**
+ * Conjunto nomeado de projeções Prisma (`select`) disponíveis para um repositório.
+ *
+ * Cada chave representa uma visão reutilizável do modelo.
+ *
+ * @template M Metadados contendo o `tableName` do modelo Prisma.
+ */
 export type SelectModels<M extends {tableName: Prisma.ModelName}> = Record<string, ModelSelect<M["tableName"]>>;
 
+/**
+ * Classe base para repositórios dinâmicos inspirados em convenções de nome
+ * no estilo Spring Data, mas gerando operações Prisma tipadas.
+ *
+ * A proposta é permitir que o repositório exponha métodos como
+ * `findManyByNomeContains`, `updateById` ou aliases configurados com `proxyTo`,
+ * mantendo inferência de parâmetros e retorno em tempo de compilação.
+ *
+ * O fluxo esperado é:
+ * 1. Definir `tableName`.
+ * 2. Opcionalmente definir `selectModels`, `defaultSelectModel` e `requiredWhere`.
+ * 3. Declarar propriedades com `MethodConfig`.
+ * 4. Chamar `build()` para materializar os métodos dinâmicos.
+ *
+ * @template T Contrato base retornado pelo repositório.
+ * @template M Nome exato do modelo no schema do Prisma.
+ */
 export abstract class VSRepository<
     T extends object, 
-    M extends Prisma.ModelName, // Adicionamos o nome do modelo aqui
+    M extends Prisma.ModelName,
 > {
+    /**
+     * Nome do delegate do Prisma que será acessado no client.
+     *
+     * Deve corresponder ao nome do modelo com inicial minúscula, já que o acesso
+     * em runtime ocorre via `prisma[tableName]`.
+     *
+     * @example "usuario"
+     */
     abstract tableName: Uncapitalize<M>;
 
+    /**
+     * Dicionário de projeções reutilizáveis para este repositório.
+     *
+     * Cada entrada representa um `select` do Prisma que pode ser reutilizado
+     * por métodos dinâmicos para padronizar o shape do retorno.
+     *
+     * @example { basico: { id: true, nome: true }, completo: { id: true, perfil: true } }
+     */
     selectModels?: SelectModels<{ tableName: M }>;
+
+    /**
+     * Chave de `selectModels` usada como projeção padrão do repositório.
+     *
+     * Quando um método dinâmico não define `selectModel`, esta configuração
+     * passa a ser o fallback de retorno.
+     */
     defaultSelectModel?: keyof this['selectModels'];
+
+    /**
+     * Filtro global aplicado a todas as queries geradas por este repositório.
+     *
+     * Ideal para regras transversais como soft delete, tenant atual,
+     * escopo organizacional ou visibilidade mínima.
+     *
+     * @example { deletadoEm: null } ou { tenantId: 1 }
+     */
     requiredWhere?: ModelWhere<M>;
+
+    /**
+     * Quando habilitado, permite exibir logs de funcionamento do repositório.
+     *
+     * Útil para depuração das assinaturas resolvidas e do processo de build.
+     */
     showWorking?: boolean;
 
+    /**
+     * Cria a instância base do repositório.
+     *
+     * @param prisma Instância raiz do Prisma Client usada para resolver delegates e executar operações.
+     */
     constructor(prisma: DbClient);
+
+    /**
+     * Materializa, em tempo de execução, os métodos dinâmicos configurados na classe.
+     *
+     * Normalmente é chamado no final do construtor da implementação concreta,
+     * retornando a própria instância enriquecida com os métodos inferidos.
+     *
+     * @returns A instância atual com os métodos dinâmicos tipados adicionados.
+     */
     build(): this & DynamicMethods<T, this, this['selectModels'], PrismaModelInputs<M>>;
 }

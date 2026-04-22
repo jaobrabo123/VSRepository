@@ -14,7 +14,6 @@ export class VSRepository {
         const className = this.constructor.name;
 
         const whereTypes = ['extending', 'overwrite'];
-        const pushWherePositions = ['start', 'middle', 'end'];
 
         const repositoryKeys = Object.keys(this);
 
@@ -49,8 +48,6 @@ export class VSRepository {
             let skipDuplicates;
             let ignoreSkipDuplicates = true;
 
-            // console.log('this', this)
-
             if(keyToMap.startsWith('findUniqueBy')) {
                 keyToMapReplaced = keyToMap.replace('findUniqueBy', '');
                 method = 'findUnique';
@@ -63,6 +60,17 @@ export class VSRepository {
                 ignoreOrderByAndPagination = false;
                 ignoreWhere = true;
                 method = 'findFirst';
+            } else if(keyToMap.startsWith('countBy')) {
+                keyToMapReplaced = keyToMap.replace('countBy', '');
+                ignoreOrderByAndPagination = false;
+                ignoreSelect = true;
+                method = 'count';
+            } else if(keyToMap.startsWith('count')) {
+                keyToMapReplaced = keyToMap.replace('count', '');
+                ignoreOrderByAndPagination = false;
+                ignoreSelect = true;
+                ignoreWhere = true;
+                method = 'count';
             } else if(keyToMap.startsWith('existsBy')) {
                 keyToMapReplaced = keyToMap.replace('existsBy', '');
                 existsMode = true;
@@ -176,6 +184,7 @@ export class VSRepository {
             const whereArgs = [];
             let whereType;
             let pushWhere;
+            let whereResolved;
 
             if(!ignoreWhere) {
 
@@ -185,14 +194,6 @@ export class VSRepository {
                 }
 
                 pushWhere = this[originalKey].pushWhere;
-                if(pushWhere !== undefined) {
-                    if(!pushWhere.where) {
-                        throw new Error(`[VSRepository] (${className}: build) Where arg expected on pushWhere.`);
-                    }
-                    if(pushWhere.position && !pushWherePositions.includes(pushWhere.position)){
-                        throw new Error(`[VSRepository] (${className}: build) Invalid position on pushWhere: ${pushWhere.position}.`);
-                    }
-                }
 
                 let orMode = false;
                 let keysSplitedOr = keyToMapReplaced.split('Or');
@@ -264,7 +265,6 @@ export class VSRepository {
                 for (let i = 0; i < keysSplitedOr.length; i++) {
 
                     const keysSplitedAnd = keysSplitedOr[i].split('And')
-                    // console.log(keysSplitedAnd)
 
                     for (const keySplitedAnd of keysSplitedAnd) {
                         
@@ -286,6 +286,40 @@ export class VSRepository {
 
                 }
 
+                whereResolved = whereArgs.map(arg=>{
+                    let context = [];
+                    let otherProps
+
+                    let argName = arg.name;
+                    const agrNameSplitedOr = argName.split('OR.')
+                    if(agrNameSplitedOr.length > 1) {
+                        const agrNameSplitedOrIdx = agrNameSplitedOr[1].split('idx.')
+                        context.push('OR')
+                        context.push(Number(agrNameSplitedOrIdx[0]))
+                        argName = agrNameSplitedOrIdx[1]
+                    }
+
+                    context.push(argName)
+                    if(arg.pushProperty !== '$$$'){
+                        const pushProperty = arg.pushProperty;
+                        const pushPropertySplitedNot = pushProperty.split('not.');
+                        if(pushPropertySplitedNot.length > 1) {
+                            context.push('not')
+                            context.push(pushPropertySplitedNot[1])
+                        } else {
+                            context.push(pushProperty);
+                        }
+                        otherProps = {}
+                        for (const key in arg.properties) {
+                            otherProps[key] = arg.properties[key]
+                        }
+                    }
+                    
+                    return { context, otherProps };
+                });
+                if(this.showWorking) {
+                    console.log(`[VSRepository] (${className}: build) Where object resolved to ${keyToMap}:\n`, JSON.stringify(whereResolved, null, 2));
+                }
             }
 
             let select;
@@ -312,6 +346,7 @@ export class VSRepository {
             }
 
             VSRepositoryCache[className][originalKey] = (args) => {
+                const argsLength = args.length;
                 const prismaArgs = {};
 
                 if(select) {
@@ -319,10 +354,10 @@ export class VSRepository {
                 }
 
                 if(orderPosition !== undefined) {
-                    prismaArgs.orderBy = args.at(orderPosition)
+                    prismaArgs.orderBy = args[argsLength+orderPosition]
                 }
                 if(paginationPosition !== undefined) {
-                    const paginate = args.at(paginationPosition);
+                    const paginate = args[argsLength+paginationPosition];
                     prismaArgs.skip = paginate.skip;
                     prismaArgs.take = paginate.take;
                 }
@@ -332,76 +367,51 @@ export class VSRepository {
                 }
 
                 if(!ignoreWhere) {
+
+                    const where = {};
+                    let OR;
                     
-                    const where = whereArgs.reduce((acc, arg, idx)=> {
-                        let orIndex;
-                        let argName = arg.name;
-                        const agrNameSplitedOr = argName.split('OR.')
-                        if(agrNameSplitedOr.length > 1) {
-                            const agrNameSplitedOrIdx = agrNameSplitedOr[1].split('idx.')
-                            orIndex = Number(agrNameSplitedOrIdx[0])
-                            argName = agrNameSplitedOrIdx[1]
-                        }
-
-                        const preAcc = {}
-                        preAcc[argName] = {}
-                        if(arg.pushProperty === '$$$') {
-                            preAcc[argName] = args[idx]
-                        } else {
-                            const pushProperty = arg.pushProperty;
-                            const pushPropertySplitedNot = pushProperty.split('not.');
-                            if(pushPropertySplitedNot.length > 1) {
-                                preAcc[argName].not = {};
-                                preAcc[argName].not[pushPropertySplitedNot[1]] = args[idx]
+                    for (let j = 0; j < whereResolved.length; j++) {
+                        let path = {}
+                        let current = path
+                        let ormode = false;
+                        let oridx;
+                        const context = whereResolved[j].context
+                        const contextLength = context.length;
+                        const contextLengthM1 = contextLength-1;
+                        for (let i = 0; i < contextLength; i++) {
+                            if(i<contextLengthM1){
+                                if(context[i]==='OR'){
+                                    ormode = true;
+                                } else if(typeof context[i] === 'number'){
+                                    oridx = context[i];
+                                } else {
+                                    if(!current[context[i]]) current[context[i]] = {};
+                                    current = current[context[i]];
+                                }
                             } else {
-                                preAcc[argName][pushProperty] = args[idx]
-                            }
-                            for (const key in arg.properties) {
-                                preAcc[argName][key] = arg.properties[key]
+                                current[context[i]] = args[j];
                             }
                         }
-                        if(orIndex!==undefined) {
-                            
-                            if(!preAcc.OR){
-                                preAcc.OR = [];
-                            }
 
-                            if(acc.OR){
-                                preAcc.OR = [...acc.OR]
-                            }
-                            
-                            if(!preAcc.OR[orIndex]) {
-                                preAcc.OR[orIndex] = {};
-                            }
-                            
-                            preAcc.OR[orIndex][argName] = preAcc[argName];
-                            delete preAcc[argName];
-
+                        if (ormode) {
+                            if(!OR) OR = [];
+                            if(!OR[oridx]) OR[oridx] = {}
+                            Object.assign(OR[oridx], path)
+                        } else {
+                            Object.assign(where, path);
                         }
-                        return {
-                            ...acc,
-                            ...preAcc
-                        };
-                    }, {});
-
-                    if(pushWhere !== undefined) {
-                        const position = pushWhere.position ?? 'middle';
-                        const whereArg = pushWhere.where;
-                        prismaArgs.where = {
-                            ...(position==='start' ? whereArg : {}),
-                            ...where,
-                            ...(position==='middle' ? whereArg : {}),
-                            ...(whereType==='extending' ? this.requiredWhere : {}),
-                            ...(position==='end' ? whereArg : {}),
-                        };
-                    } else {
-                        prismaArgs.where = {
-                            ...where,
-                            ...(whereType==='extending' ? {
-                                ...this.requiredWhere
-                            }:{})
-                        };
                     }
+
+                    if(OR) where.OR = OR;
+                    if(pushWhere !== undefined) {
+                        Object.assign(where, pushWhere);
+                    }
+                    if(whereType==='extending') {
+                        Object.assign(where, this.requiredWhere);
+                    }
+                    
+                    prismaArgs.where = where
                 }
 
                 if(dataIndex !== undefined) {
@@ -423,7 +433,7 @@ export class VSRepository {
                 if(args.length < argsCount) {
                     throw new Error(`[VSRepository] (${className}: runtime) Missing parameters.`);
                 } else if(args.length > argsCount) {
-                    db = args.at(-1);
+                    db = args[args.length - 1];
                 } else {
                     args.push('1')
                 }
