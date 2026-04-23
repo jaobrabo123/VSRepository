@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@generated/prisma/client';
+import { PrismaClient, Prisma } from './generated/prisma/client';
 
 export type DbClient = PrismaClient;
 export type DbTransaction = Prisma.TransactionClient;
@@ -20,7 +20,7 @@ export type PaginationOptions<TCursor = unknown> = {
 export type OrderOptions = OrderPattern | OrderPattern[];
 
 type ValidMethodPatterns = 
-    | `existsBy${string}` // <-- Adicionado aqui
+    | `existsBy${string}`
     | `findUniqueBy${string}`
     | `findFirstBy${string}`
     | `findFirst${string}`
@@ -63,9 +63,9 @@ type ExtractFieldName<S extends string, T> =
         : S extends `Not${infer Rest}` ? ExtractFieldName<Rest, T>
         : S extends `GreaterThanEqual${infer Rest}` ? ExtractFieldName<Rest, T>
         : S extends `LessThanEqual${infer Rest}` ? ExtractFieldName<Rest, T>
-        : S extends `${infer Rest}NotStartsWith` ? ExtractFieldName<Rest, T> // <-- AQUI
-        : S extends `${infer Rest}NotEndsWith` ? ExtractFieldName<Rest, T>   // <-- AQUI
-        : S extends `${infer Rest}NotContains` ? ExtractFieldName<Rest, T>   // <-- AQUI
+        : S extends `${infer Rest}NotStartsWith` ? ExtractFieldName<Rest, T>
+        : S extends `${infer Rest}NotEndsWith` ? ExtractFieldName<Rest, T>
+        : S extends `${infer Rest}NotContains` ? ExtractFieldName<Rest, T>
         
         // 2. Sufixos Compostos
         : S extends `${infer Rest}InInsensitive` ? ExtractFieldName<Rest, T>
@@ -345,8 +345,15 @@ export abstract class VSRepository<
      *
      * @example "usuario"
      */
-    abstract tableName: Uncapitalize<M>;
-    abstract pkName: keyof T;
+    abstract readonly tableName: Uncapitalize<M>;
+
+    /**
+     * Nome da propriedade da chave primária.
+     *
+     * É usada pelos métodos base do repositório, como `get`, `remove`
+     * e `save`, para identificar o campo que referencia unicamente o registro.
+     */
+    abstract readonly pkName: keyof T;
 
     /**
      * Dicionário de projeções reutilizáveis para este repositório.
@@ -356,7 +363,7 @@ export abstract class VSRepository<
      *
      * @example { basico: { id: true, nome: true }, completo: { id: true, perfil: true } }
      */
-    selectModels?: SelectModels<{ tableName: M }>;
+    readonly selectModels?: SelectModels<{ tableName: M }>;
 
     /**
      * Chave de `selectModels` usada como projeção padrão do repositório.
@@ -364,7 +371,7 @@ export abstract class VSRepository<
      * Quando um método dinâmico não define `selectModel`, esta configuração
      * passa a ser o fallback de retorno.
      */
-    defaultSelectModel?: keyof this['selectModels'];
+    readonly defaultSelectModel?: keyof this['selectModels'];
 
     /**
      * Filtro global aplicado a todas as queries geradas por este repositório.
@@ -374,14 +381,14 @@ export abstract class VSRepository<
      *
      * @example { deletadoEm: null } ou { tenantId: 1 }
      */
-    requiredWhere?: ModelWhere<M>;
+    readonly requiredWhere?: ModelWhere<M>;
 
     /**
      * Quando habilitado, permite exibir logs de funcionamento do repositório.
      *
      * Útil para depuração das assinaturas resolvidas e do processo de build.
      */
-    showWorking?: boolean;
+    readonly showWorking?: boolean;
 
     /**
      * Cria a instância base do repositório.
@@ -394,6 +401,7 @@ export abstract class VSRepository<
      * Busca um registro diretamente pela Primary Key.
      * @param pk Valor da chave primária do registro.
      * @param db (Opcional) Cliente Prisma ou contexto de transação ativa.
+     * Obs: usa o defaultSelectModel, se fornecido, para o select e respeita o requiredWhere.
      */
     get(pk: T[this['pkName']], db?: ClientOrTransaction): Promise<ResolveDefaultReturn<T, this['defaultSelectModel'], this['selectModels']>>;
 
@@ -401,24 +409,40 @@ export abstract class VSRepository<
      * Remove fisicamente um registro do banco pela sua Primary Key.
      * @param pk Valor da chave primária do registro a ser deletado.
      * @param db (Opcional) Cliente Prisma ou contexto de transação ativa.
+     * Obs: usa o defaultSelectModel, se fornecido, para o select e respeita o requiredWhere.
      */
     remove(pk: T[this['pkName']], db?: ClientOrTransaction): Promise<ResolveDefaultReturn<T, this['defaultSelectModel'], this['selectModels']>>;
 
     /**
      * Salva um registro. Se o objeto possuir a propriedade definida em `pkName`, executa um `upsert`. 
-     * Caso contrário, executa um `create` padrão.
+     * Caso contrário, executa um `create`.
      * @param obj Objeto contendo os dados a serem salvos (Update ou Create payload).
      * @param db (Opcional) Cliente Prisma ou contexto de transação ativa.
+     * Obs: usa o defaultSelectModel, se fornecido, para o select e respeita o requiredWhere.
      */
     save(obj: ModelUpsertInput<M>, db?: ClientOrTransaction): Promise<ResolveDefaultReturn<T, this['defaultSelectModel'], this['selectModels']>>;
 
     /**
      * Materializa, em tempo de execução, os métodos dinâmicos configurados na classe.
      *
-     * Normalmente é chamado no final do construtor da implementação concreta,
+     * Deve ser chamado no final do construtor da implementação concreta,
      * retornando a própria instância enriquecida com os métodos inferidos.
      *
+     * @param freeze Se `false`, não aplica Object.freeze() na instância após o build, permitindo mutações.
      * @returns A instância atual com os métodos dinâmicos tipados adicionados.
      */
-    build(): this & DynamicMethods<T, this, this['selectModels'], PrismaModelInputs<M>>;
+    build(freeze: false): this & DynamicMethods<T, this, this['selectModels'], PrismaModelInputs<M>>;
+
+    /**
+     * Materializa, em tempo de execução, os métodos dinâmicos configurados na classe.
+     *
+     * Deve ser chamado no final do construtor da implementação concreta,
+     * retornando a própria instância enriquecida com os métodos inferidos.
+     *
+     * @param freeze Se `true` (padrão), aplica Object.freeze() na instância após o build para evitar mutações.
+     * @returns A instância atual com os métodos dinâmicos tipados adicionados.
+     */
+    build(freeze?: true): Readonly<this & DynamicMethods<T, this, this['selectModels'], PrismaModelInputs<M>>>;
+
+    vsrepocache: never;
 }

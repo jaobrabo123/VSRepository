@@ -1,11 +1,10 @@
-const VSRepositoryCache = {};
-
 export class VSRepository {
 
     tableName;
     prisma;
     showWorking = false;
     pkName;
+    vsrepocache = new Map();
 
     constructor(prisma) {
         this.prisma = prisma;
@@ -14,14 +13,35 @@ export class VSRepository {
     async get(pk, db) {
         if(db===undefined) db = this.prisma;
 
-        const prismaArgs = { where: {[this.pkName]: pk} };
+        const prismaArgs = {};
+
+        const where = { [this.pkName]: pk };
+        if(this.requiredWhere) {
+            Object.assign(where, this.requiredWhere);
+        }
+        prismaArgs.where = where;
 
         if(this.defaultSelectModel) {
             prismaArgs.select = this.selectModels[this.defaultSelectModel];
         }
 
+        let start;
+        if(this.showWorking){
+            console.log(`[VSRepository] (${this.constructor.name}: runtime) Executing get on ${this.tableName}.`);
+            console.log(`[VSRepository] (${this.constructor.name}: runtime) Built arguments to get on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+            start = performance.now();
+        }
+
         try {
-            return await db[this.tableName].findFirstOrThrow(prismaArgs);
+            const result = await db[this.tableName].findUniqueOrThrow(prismaArgs);
+
+            if(this.showWorking) {
+                const end = performance.now();
+                const duration = (end - start).toFixed(2);
+                console.log(`[VSRepository] (${this.constructor.name}: runtime) Executed get on ${this.tableName} (took: ${duration}ms).`);
+            }
+
+            return result;
         } catch (err) {
             console.log(`[VSRepository] (${this.constructor.name}: runtime) Fatal error when trying to get on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
             throw err;
@@ -31,14 +51,34 @@ export class VSRepository {
     async remove(pk, db) {
         if(db===undefined) db = this.prisma;
 
-        const prismaArgs = { where: {[this.pkName]: pk} };
+        const prismaArgs = {};
+
+        const where = { [this.pkName]: pk };
+        if(this.requiredWhere) {
+            Object.assign(where, this.requiredWhere);
+        }
+        prismaArgs.where = where;
 
         if(this.defaultSelectModel) {
             prismaArgs.select = this.selectModels[this.defaultSelectModel];
         }
         
+        let start;
+        if(this.showWorking){
+            console.log(`[VSRepository] (${this.constructor.name}: runtime) Executing remove on ${this.tableName}.`);
+            console.log(`[VSRepository] (${this.constructor.name}: runtime) Built arguments to remove on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+            start = performance.now();
+        }
         try {
-            return await db[this.tableName].delete(prismaArgs);
+            const result = await db[this.tableName].delete(prismaArgs);
+
+            if(this.showWorking) {
+                const end = performance.now();
+                const duration = (end - start).toFixed(2);
+                console.log(`[VSRepository] (${this.constructor.name}: runtime) Executed remove on ${this.tableName} (took: ${duration}ms).`);
+            }
+
+            return result;
         } catch (err) {
             console.log(`[VSRepository] (${this.constructor.name}: runtime) Fatal error when trying to remove on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
             throw err;
@@ -53,28 +93,56 @@ export class VSRepository {
             prismaArgs.select = this.selectModels[this.defaultSelectModel];
         }
 
+        let start;
+        if(this.showWorking){
+            console.log(`[VSRepository] (${this.constructor.name}: runtime) Executing save on ${this.tableName}.`);
+            start = performance.now();
+        }
+
         try {
+            let result;
             if(obj[this.pkName] !== undefined){
                 const update = {...obj};
                 delete update[this.pkName]
 
                 prismaArgs.create = obj;
                 prismaArgs.update = update;
-                prismaArgs.where = {[this.pkName]: obj[this.pkName]}
 
-                return await db[this.tableName].upsert(prismaArgs);
+                const where = { [this.pkName]: obj[this.pkName] };
+                if(this.requiredWhere) {
+                    Object.assign(where, this.requiredWhere);
+                }
+                prismaArgs.where = where;
+
+                if(this.showWorking) {
+                    console.log(`[VSRepository] (${this.constructor.name}: runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                }
+
+                result = await db[this.tableName].upsert(prismaArgs);
             } else {
                 prismaArgs.data = obj;
 
-                return await db[this.tableName].create(prismaArgs);
+                if(this.showWorking) {
+                    console.log(`[VSRepository] (${this.constructor.name}: runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                }
+
+                result = await db[this.tableName].create(prismaArgs);
             }
+
+            if(this.showWorking) {
+                const end = performance.now();
+                const duration = (end - start).toFixed(2);
+                console.log(`[VSRepository] (${this.constructor.name}: runtime) Executed save on ${this.tableName} (took: ${duration}ms).`);
+            }
+
+            return result;
         } catch (err) {
             console.log(`[VSRepository] (${this.constructor.name}: runtime) Fatal error when trying to save on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
             throw err;
         }
     }
 
-    build() {
+    build(freeze = true) {
         const className = this.constructor.name;
 
         const whereTypes = ['extending', 'overwrite'];
@@ -111,6 +179,8 @@ export class VSRepository {
             let existsMode = false;
             let skipDuplicates;
             let ignoreSkipDuplicates = true;
+            const whereParams = [];
+            const otherParams = [];
 
             if(keyToMap.startsWith('findUniqueBy')) {
                 keyToMapReplaced = keyToMap.replace('findUniqueBy', '');
@@ -137,6 +207,7 @@ export class VSRepository {
                 method = 'count';
             } else if(keyToMap.startsWith('existsBy')) {
                 keyToMapReplaced = keyToMap.replace('existsBy', '');
+                ignoreSelect = true;
                 existsMode = true;
                 method = 'findFirst';
             } else if(keyToMap.startsWith('findManyBy')) {
@@ -153,7 +224,8 @@ export class VSRepository {
                 ignoreWhere = true;
                 ignoreSkipDuplicates = false;
                 method = 'createManyAndReturn';
-                dataIndex = 0
+                dataIndex = 0;
+                otherParams.push('data');
                 argsCount++;
             } else if(keyToMap.startsWith('createMany')) {
                 keyToMapReplaced = keyToMap.replace('createMany', '')
@@ -161,35 +233,42 @@ export class VSRepository {
                 ignoreSelect = true;
                 ignoreSkipDuplicates = false;
                 method = 'createMany';
-                dataIndex = 0
+                dataIndex = 0;
+                otherParams.push('data');
                 argsCount++;
             } else if(keyToMap.startsWith('create')) {
                 keyToMapReplaced = keyToMap.replace('create', '')
                 ignoreWhere = true;
                 method = 'create';
                 dataIndex = 0
+                otherParams.push('data');
                 argsCount++;
             } else if(keyToMap.startsWith('updateManyAndReturnBy')) {
                 keyToMapReplaced = keyToMap.replace('updateManyAndReturnBy', '')
                 method = 'updateManyAndReturn';
                 dataIndex = -2;
+                otherParams.push('data');
                 argsCount++;
             } else if(keyToMap.startsWith('updateManyBy')) {
                 keyToMapReplaced = keyToMap.replace('updateManyBy', '')
                 ignoreSelect = true;
                 method = 'updateMany';
                 dataIndex = -2;
+                otherParams.push('data');
                 argsCount++;
             } else if(keyToMap.startsWith('updateBy')) {
                 keyToMapReplaced = keyToMap.replace('updateBy', '')
                 method = 'update';
                 dataIndex = -2;
+                otherParams.push('data');
                 argsCount++;
             } else if(keyToMap.startsWith('upsertBy')) {
                 keyToMapReplaced = keyToMap.replace('upsertBy', '')
                 method = 'upsert';
                 createIndex = -2;
                 updateIndex = -3;
+                otherParams.push('update');
+                otherParams.push('create');
                 argsCount += 2;
             } else if(keyToMap.startsWith('deleteManyBy')) {
                 keyToMapReplaced = keyToMap.replace('deleteManyBy', '')
@@ -218,6 +297,9 @@ export class VSRepository {
                 if(keyToMapReplaced.endsWith('PaginatedAndOrdered')) {
                     orderPosition = -2;
                     paginationPosition = -3;
+
+                    otherParams.push('pagination');
+                    otherParams.push('order');
                     
                     keyToMapReplaced = keyToMapReplaced.replace('PaginatedAndOrdered', '')
 
@@ -225,18 +307,25 @@ export class VSRepository {
                 } else if(keyToMapReplaced.endsWith('OrderedAndPaginated')) {
                     orderPosition = -3;
                     paginationPosition = -2;
+
+                    otherParams.push('order');
+                    otherParams.push('pagination');
                     
                     keyToMapReplaced = keyToMapReplaced.replace('OrderedAndPaginated', '')
 
                     argsCount+=2
                 } else if(keyToMapReplaced.endsWith('Paginated')) {
                     paginationPosition = -2;
+
+                    otherParams.push('pagination');
                     
                     keyToMapReplaced = keyToMapReplaced.replace('Paginated', '')
 
                     argsCount++
                 } else if(keyToMapReplaced.endsWith('Ordered')) {
                     orderPosition = -2;
+
+                    otherParams.push('order');
                     
                     keyToMapReplaced = keyToMapReplaced.replace('Ordered', '')
 
@@ -378,6 +467,8 @@ export class VSRepository {
                             otherProps[key] = arg.properties[key]
                         }
                     }
+
+                    whereParams.push(argName);
                     
                     return { context, otherProps };
                 });
@@ -404,12 +495,11 @@ export class VSRepository {
                 }
 
             }
-
-            if(!VSRepositoryCache[className]) {
-                VSRepositoryCache[className] = {};
+            if(existsMode) {
+                select = { [this.pkName]: true };
             }
 
-            VSRepositoryCache[className][originalKey] = (args) => {
+            this.vsrepocache.set(originalKey, (args) => {
                 const prismaArgs = {};
 
                 if(select) {
@@ -423,6 +513,7 @@ export class VSRepository {
                     const paginate = args.at(paginationPosition);
                     prismaArgs.skip = paginate.skip;
                     prismaArgs.take = paginate.take;
+                    prismaArgs.cursor = paginate.cursor;
                 }
 
                 if(skipDuplicates!==undefined){
@@ -492,20 +583,21 @@ export class VSRepository {
                 }
 
                 return prismaArgs;
-            }
+            }) 
 
             this[originalKey] = async (...args) => {
                 
                 let db = this.prisma;
                 if(args.length < argsCount) {
-                    throw new Error(`[VSRepository] (${className}: runtime) Missing parameters.`);
+                    const missingParams = whereParams.concat(otherParams).slice(args.length);
+                    throw new Error(`[VSRepository] (${className}: runtime) Missing parameters: ${missingParams.join(', ')}`);
                 } else if(args.length > argsCount) {
                     db = args[args.length - 1];
                 } else {
                     args.push('1')
                 }
 
-                const prismaArgs = VSRepositoryCache[className][originalKey](args);
+                const prismaArgs = this.vsrepocache.get(originalKey)(args);
 
                 let start;
                 if(this.showWorking){
@@ -535,6 +627,7 @@ export class VSRepository {
             }
 
         }
+        if(freeze) Object.freeze(this)
         return this;
     }
 
