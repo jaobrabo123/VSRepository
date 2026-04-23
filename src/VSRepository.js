@@ -1,156 +1,26 @@
 export class VSRepository {
 
     tableName;
-    prisma;
     showWorking = false;
     pkName;
     vsrepocache = new Map();
 
-    constructor(prisma) {
-        this.prisma = prisma;
-    }
-
-    async get(pk, db) {
-        if(db===undefined) db = this.prisma;
-
-        const prismaArgs = {};
-
-        const where = { [this.pkName]: pk };
-        if(this.requiredWhere) {
-            Object.assign(where, this.requiredWhere);
-        }
-        prismaArgs.where = where;
-
-        if(this.defaultSelectModel) {
-            prismaArgs.select = this.selectModels[this.defaultSelectModel];
-        }
-
-        let start;
-        if(this.showWorking){
-            console.log(`[VSRepository] (${this.constructor.name}: runtime) Executing get on ${this.tableName}.`);
-            console.log(`[VSRepository] (${this.constructor.name}: runtime) Built arguments to get on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
-            start = performance.now();
-        }
-
-        try {
-            const result = await db[this.tableName].findUniqueOrThrow(prismaArgs);
-
-            if(this.showWorking) {
-                const end = performance.now();
-                const duration = (end - start).toFixed(2);
-                console.log(`[VSRepository] (${this.constructor.name}: runtime) Executed get on ${this.tableName} (took: ${duration}ms).`);
-            }
-
-            return result;
-        } catch (err) {
-            console.log(`[VSRepository] (${this.constructor.name}: runtime) Fatal error when trying to get on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
-            throw err;
-        }
-    }
-
-    async remove(pk, db) {
-        if(db===undefined) db = this.prisma;
-
-        const prismaArgs = {};
-
-        const where = { [this.pkName]: pk };
-        if(this.requiredWhere) {
-            Object.assign(where, this.requiredWhere);
-        }
-        prismaArgs.where = where;
-
-        if(this.defaultSelectModel) {
-            prismaArgs.select = this.selectModels[this.defaultSelectModel];
-        }
-        
-        let start;
-        if(this.showWorking){
-            console.log(`[VSRepository] (${this.constructor.name}: runtime) Executing remove on ${this.tableName}.`);
-            console.log(`[VSRepository] (${this.constructor.name}: runtime) Built arguments to remove on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
-            start = performance.now();
-        }
-        try {
-            const result = await db[this.tableName].delete(prismaArgs);
-
-            if(this.showWorking) {
-                const end = performance.now();
-                const duration = (end - start).toFixed(2);
-                console.log(`[VSRepository] (${this.constructor.name}: runtime) Executed remove on ${this.tableName} (took: ${duration}ms).`);
-            }
-
-            return result;
-        } catch (err) {
-            console.log(`[VSRepository] (${this.constructor.name}: runtime) Fatal error when trying to remove on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
-            throw err;
-        }
-    }
-
-    async save(obj, db) {
-        if(db===undefined) db = this.prisma;
-
-        const prismaArgs = {};
-        if(this.defaultSelectModel) {
-            prismaArgs.select = this.selectModels[this.defaultSelectModel];
-        }
-
-        let start;
-        if(this.showWorking){
-            console.log(`[VSRepository] (${this.constructor.name}: runtime) Executing save on ${this.tableName}.`);
-            start = performance.now();
-        }
-
-        try {
-            let result;
-            if(obj[this.pkName] !== undefined){
-                const update = {...obj};
-                delete update[this.pkName]
-
-                prismaArgs.create = obj;
-                prismaArgs.update = update;
-
-                const where = { [this.pkName]: obj[this.pkName] };
-                if(this.requiredWhere) {
-                    Object.assign(where, this.requiredWhere);
-                }
-                prismaArgs.where = where;
-
-                if(this.showWorking) {
-                    console.log(`[VSRepository] (${this.constructor.name}: runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
-                }
-
-                result = await db[this.tableName].upsert(prismaArgs);
-            } else {
-                prismaArgs.data = obj;
-
-                if(this.showWorking) {
-                    console.log(`[VSRepository] (${this.constructor.name}: runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
-                }
-
-                result = await db[this.tableName].create(prismaArgs);
-            }
-
-            if(this.showWorking) {
-                const end = performance.now();
-                const duration = (end - start).toFixed(2);
-                console.log(`[VSRepository] (${this.constructor.name}: runtime) Executed save on ${this.tableName} (took: ${duration}ms).`);
-            }
-
-            return result;
-        } catch (err) {
-            console.log(`[VSRepository] (${this.constructor.name}: runtime) Fatal error when trying to save on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
-            throw err;
-        }
-    }
-
-    build(freeze = true) {
+    build(prisma, config = {}) {
         const className = this.constructor.name;
+
+        if(typeof config !== 'object' || config === null) {
+            throw new Error(`[VSRepository] (${className}: build) Config must be a valid object: ${keyToMap}.`);
+        }
+        if(config.freeze === undefined) {
+            config.freeze = true;
+        }
 
         const whereTypes = ['extending', 'overwrite'];
 
         const repositoryKeys = Object.keys(this);
 
         const [repositoryKeysToMap, repositoryUnmappedKeys] = repositoryKeys.reduce((acc, key)=>{
-            if(['tableName', 'selectModels', 'requiredWhere', 'prisma', 'showWorking'].includes(key) || typeof this[key] !== 'object' || this[key] === null || !this[key].map) {
+            if(['tableName', 'selectModels', 'requiredWhere', 'showWorking', 'get', 'remove', 'save'].includes(key) || typeof this[key] !== 'object' || this[key] === null || !this[key].map) {
                 acc[1].push(key)
             } else {
                 acc[0].push(key)
@@ -587,7 +457,7 @@ export class VSRepository {
 
             this[originalKey] = async (...args) => {
                 
-                let db = this.prisma;
+                let db = prisma;
                 if(args.length < argsCount) {
                     const missingParams = whereParams.concat(otherParams).slice(args.length);
                     throw new Error(`[VSRepository] (${className}: runtime) Missing parameters: ${missingParams.join(', ')}`);
@@ -627,7 +497,144 @@ export class VSRepository {
             }
 
         }
-        if(freeze) Object.freeze(this)
+
+        if(config.baseMethods?.get !== false) {
+            this.get = async(pk, db) => {
+                if(db===undefined) db = prisma;
+
+                const prismaArgs = {};
+
+                const where = { [this.pkName]: pk };
+                if(this.requiredWhere) {
+                    Object.assign(where, this.requiredWhere);
+                }
+                prismaArgs.where = where;
+
+                if(this.defaultSelectModel) {
+                    prismaArgs.select = this.selectModels[this.defaultSelectModel];
+                }
+
+                let start;
+                if(this.showWorking){
+                    console.log(`[VSRepository] (${className}: runtime) Executing get on ${this.tableName}.`);
+                    console.log(`[VSRepository] (${className}: runtime) Built arguments to get on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    start = performance.now();
+                }
+
+                try {
+                    const result = await db[this.tableName].findUniqueOrThrow(prismaArgs);
+
+                    if(this.showWorking) {
+                        const end = performance.now();
+                        const duration = (end - start).toFixed(2);
+                        console.log(`[VSRepository] (${className}: runtime) Executed get on ${this.tableName} (took: ${duration}ms).`);
+                    }
+
+                    return result;
+                } catch (err) {
+                    console.log(`[VSRepository] (${className}: runtime) Fatal error when trying to get on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    throw err;
+                }
+            }
+        }
+        if(config.baseMethods?.remove !== false) {
+            this.remove = async (pk, db) => {
+                if(db===undefined) db = prisma;
+
+                const prismaArgs = {};
+
+                const where = { [this.pkName]: pk };
+                if(this.requiredWhere) {
+                    Object.assign(where, this.requiredWhere);
+                }
+                prismaArgs.where = where;
+
+                if(this.defaultSelectModel) {
+                    prismaArgs.select = this.selectModels[this.defaultSelectModel];
+                }
+                
+                let start;
+                if(this.showWorking){
+                    console.log(`[VSRepository] (${className}: runtime) Executing remove on ${this.tableName}.`);
+                    console.log(`[VSRepository] (${className}: runtime) Built arguments to remove on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    start = performance.now();
+                }
+                try {
+                    const result = await db[this.tableName].delete(prismaArgs);
+
+                    if(this.showWorking) {
+                        const end = performance.now();
+                        const duration = (end - start).toFixed(2);
+                        console.log(`[VSRepository] (${className}: runtime) Executed remove on ${this.tableName} (took: ${duration}ms).`);
+                    }
+
+                    return result;
+                } catch (err) {
+                    console.log(`[VSRepository] (${className}: runtime) Fatal error when trying to remove on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    throw err;
+                }
+            }
+        }
+        if(config.baseMethods?.save !== false) {
+            this.save = async (obj, db) => {
+                if(db===undefined) db = prisma;
+
+                const prismaArgs = {};
+                if(this.defaultSelectModel) {
+                    prismaArgs.select = this.selectModels[this.defaultSelectModel];
+                }
+
+                let start;
+                if(this.showWorking){
+                    console.log(`[VSRepository] (${className}: runtime) Executing save on ${this.tableName}.`);
+                    start = performance.now();
+                }
+
+                try {
+                    let result;
+                    if(obj[this.pkName] !== undefined){
+                        const update = {...obj};
+                        delete update[this.pkName]
+
+                        prismaArgs.create = obj;
+                        prismaArgs.update = update;
+
+                        const where = { [this.pkName]: obj[this.pkName] };
+                        if(this.requiredWhere) {
+                            Object.assign(where, this.requiredWhere);
+                        }
+                        prismaArgs.where = where;
+
+                        if(this.showWorking) {
+                            console.log(`[VSRepository] (${className}: runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                        }
+
+                        result = await db[this.tableName].upsert(prismaArgs);
+                    } else {
+                        prismaArgs.data = obj;
+
+                        if(this.showWorking) {
+                            console.log(`[VSRepository] (${className}: runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                        }
+
+                        result = await db[this.tableName].create(prismaArgs);
+                    }
+
+                    if(this.showWorking) {
+                        const end = performance.now();
+                        const duration = (end - start).toFixed(2);
+                        console.log(`[VSRepository] (${className}: runtime) Executed save on ${this.tableName} (took: ${duration}ms).`);
+                    }
+
+                    return result;
+                } catch (err) {
+                    console.log(`[VSRepository] (${className}: runtime) Fatal error when trying to save on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    throw err;
+                }
+            }
+        }
+
+        if(config.freeze) Object.freeze(this)
         return this;
     }
 
