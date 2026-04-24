@@ -57,6 +57,7 @@ export class VSRepository {
 
         for (let keyToMap of repositoryKeysToMap) {
             
+            let onlyBaseWheres = false;
             let ignoreWhere = false;
             let ignoreOrderByAndPagination = true;
             let ignoreSelect = false;
@@ -85,6 +86,7 @@ export class VSRepository {
                 keyToMapReplaced = keyToMap.replace('findFirst', '');
                 ignoreOrderByAndPagination = false;
                 ignoreWhere = true;
+                onlyBaseWheres = true;
                 method = 'findFirst';
             } else if(keyToMap.startsWith('countBy')) {
                 keyToMapReplaced = keyToMap.replace('countBy', '');
@@ -96,6 +98,7 @@ export class VSRepository {
                 ignoreOrderByAndPagination = false;
                 ignoreSelect = true;
                 ignoreWhere = true;
+                onlyBaseWheres = true;
                 method = 'count';
             } else if(keyToMap.startsWith('existsBy')) {
                 keyToMapReplaced = keyToMap.replace('existsBy', '');
@@ -110,6 +113,7 @@ export class VSRepository {
                 keyToMapReplaced = keyToMap.replace('findMany', '');
                 ignoreOrderByAndPagination = false;
                 ignoreWhere = true;
+                onlyBaseWheres = true;
                 method = 'findMany';
             } else if(keyToMap.startsWith('createManyAndReturn')) {
                 keyToMapReplaced = keyToMap.replace('createManyAndReturn', '')
@@ -227,18 +231,15 @@ export class VSRepository {
             }
 
             const whereArgs = [];
-            let whereType;
-            let pushWhere;
+            let whereType = this[originalKey].whereType ?? 'extending';
+            let pushWhere = this[originalKey].pushWhere;
             let whereResolved;
 
             if(!ignoreWhere) {
 
-                whereType = this[originalKey].whereType ?? 'extending';
                 if(!whereTypes.includes(whereType)){
                     throw new Error(`[VSRepository] (${className}: build) Invalid whereType: ${whereType}`);
                 }
-
-                pushWhere = this[originalKey].pushWhere;
 
                 let orMode = false;
                 let keysSplitedOr = keyToMapReplaced.split('Or');
@@ -450,17 +451,31 @@ export class VSRepository {
                     }
 
                     if(OR) where.OR = OR;
-                    if(pushWhere !== undefined) {
-                        let safePushWhere = { ...pushWhere };
-                        if(where.OR && safePushWhere.OR) safePushWhere.OR = safePushWhere.OR.concat(where.OR)
-                        Object.assign(where, safePushWhere);
-                    }
                     if(whereType==='extending') {
                         let requiredWhere = { ...this.requiredWhere };
                         if(where.OR && requiredWhere.OR) requiredWhere.OR = requiredWhere.OR.concat(where.OR)
                         Object.assign(where, requiredWhere);
                     }
+                    if(pushWhere !== undefined) {
+                        let safePushWhere = { ...pushWhere };
+                        if(where.OR && safePushWhere.OR) safePushWhere.OR = safePushWhere.OR.concat(where.OR)
+                        Object.assign(where, safePushWhere);
+                    }
                     
+                    prismaArgs.where = where;
+                } else if(onlyBaseWheres) {
+                    const where = {};
+
+                    if(whereType==='extending') {
+                        let requiredWhere = { ...this.requiredWhere };
+                        Object.assign(where, requiredWhere);
+                    }
+                    if(pushWhere !== undefined) {
+                        let safePushWhere = { ...pushWhere };
+                        if(where.OR && safePushWhere.OR) safePushWhere.OR = safePushWhere.OR.concat(where.OR)
+                        Object.assign(where, safePushWhere);
+                    }
+
                     prismaArgs.where = where;
                 }
 

@@ -158,6 +158,28 @@ async function test(){
 
     console.log(`Foram inseridos ${novosUsuarios.length} novos usuários com sucesso!`);
 
-    await usuarioRepositoryTest.deleteManyByIdIn(novosUsuarios.map(user=>user.id))
+    const usuariosAtivos = await usuarioRepositoryTest.count();
+    console.log('Usuarios ativos:', usuariosAtivos);
+
+    const cincoUsuarios = await usuarioRepositoryTest.findManyPaginated({
+        take: 5
+    });
+    console.log("Cinco usuarios:", cincoUsuarios);
+
+    const usuariosComGmailOuOutlook = await usuarioRepositoryTest.buscarComGmailOuOutlookOuHotmail();
+    console.log("Usuarios com gmail, outlook ou hotmail:", usuariosComGmailOuOutlook);
+
+    const buscandoUnique = await usuarioRepositoryTest.findUniqueByIdAndEmail(usuariosComGmailOuOutlook[0]!.id, usuariosComGmailOuOutlook[0]!.email);
+    console.log("Buscando Unique:", buscandoUnique)
+
+    console.log("Deixando ele desativado");
+    await usuarioRepositoryTest.updateById(buscandoUnique!.id, { ativo: false });
+
+    const buscandoDenovo = await usuarioRepositoryTest.findUniqueByIdAndEmail(buscandoUnique!.id, buscandoUnique!.email);
+    console.log("Buscando Denovo:", buscandoDenovo);
+
+    console.log("\nRemovendo todos.")
+    await usuarioRepositoryTest.deleteManyByIdIn(novosUsuarios.map(_=>_.id));
+
 }
 test()

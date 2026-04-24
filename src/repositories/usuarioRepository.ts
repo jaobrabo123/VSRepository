@@ -73,15 +73,41 @@ export class UsuarioRepository extends VSRepository<Usuario, 'usuario'>{
     readonly defaultSelectModel = 'public';
     readonly requiredWhere = {
         ativo: true
-    } satisfies ModelWhere<'usuario'>
+    } satisfies ModelWhere<'usuario'>;
 
-    readonly createManyAndReturn = {
-        map: true, selectModel: 'minimal'
+    createManyAndReturn = {
+        map: true,
+        selectModel: 'minimal'
     } satisfies ThisMethodConfig;
 
-    readonly deleteManyByIdIn = {
+    deleteManyByIdIn = {
         map: true,
         whereType: 'overwrite',
+    } satisfies ThisMethodConfig;
+
+    findManyPaginated = { map: true } as const;
+
+    count = { map: true } as const;
+
+    buscarComGmailOuOutlookOuHotmail = {
+        map: true,
+        proxyTo: 'findMany',
+        pushWhere: {
+            OR: [
+                { email: { endsWith: '@gmail.com' } },
+                { email: { endsWith: '@outlook.com' } },
+                { email: { endsWith: '@hotmail.com' } }
+            ]
+        },
+        whereType: 'extending'
+    } satisfies ThisMethodConfig;
+
+    findUniqueByIdAndEmail = {
+        map: true,
+    } satisfies ThisMethodConfig;
+
+    updateById = {
+        map: true
     } satisfies ThisMethodConfig;
 }
 
