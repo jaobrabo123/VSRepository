@@ -1,0 +1,92 @@
+import prisma from "../db";
+import type { Prisma } from "../generated/prisma/client";
+import { VSRepository, type MethodConfig, type ModelWhere, type RepositoryRelations, type SelectModels } from "../VSRepository/VSRepository";
+
+type Usuario = Prisma.usuarioGetPayload<{
+    include: {
+        perfil: true,
+        postagens: true
+    }
+}>;
+
+type ThisMethodConfig = MethodConfig<{
+    tableName: 'usuario',
+    selectModels: typeof usuarioSelectModels
+}>
+
+export const usuarioSelectModels = {
+    public: {
+        id: true,
+        nome: true,
+        email: true,
+        perfil: {
+            select: {
+                id: true,
+                avatarUrl: true,
+                biografia: true,
+                telefone: true
+            }
+        }
+    },
+    comPosts: {
+        id: true,
+        nome: true,
+        email: true,
+        perfil: {
+            select: {
+                id: true,
+                avatarUrl: true,
+                biografia: true,
+                telefone: true
+            }
+        },
+        postagens: {
+            select: {
+                id: true,
+                titulo: true,
+                conteudo: true,
+                publicado: true
+            }
+        }
+    },
+    minimal: {
+        id: true
+    }
+} satisfies SelectModels<'usuario'>
+
+export class UsuarioRepository extends VSRepository<Usuario, 'usuario'>{
+    readonly tableName = "usuario";
+    readonly pkName = "id";
+    readonly relations = {
+        perfil: {
+            pk: 'id',
+            mode: 'oto',
+            restriction: 'set',
+        },
+        postagens: {
+            pk: 'id',
+            mode: 'otm',
+            restriction: 'set'
+        }
+    } satisfies RepositoryRelations<Usuario>;
+    readonly selectModels = usuarioSelectModels;
+    readonly defaultSelectModel = 'public';
+    readonly requiredWhere = {
+        ativo: true
+    } satisfies ModelWhere<'usuario'>
+
+    readonly createManyAndReturn = {
+        map: true, selectModel: 'minimal'
+    } satisfies ThisMethodConfig;
+
+    readonly deleteManyByIdIn = {
+        map: true,
+        whereType: 'overwrite',
+    } satisfies ThisMethodConfig;
+}
+
+const usuarioRepository = new UsuarioRepository().build(prisma);
+
+export { usuarioRepository };
+export default usuarioRepository;
+

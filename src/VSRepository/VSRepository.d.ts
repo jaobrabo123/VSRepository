@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from './generated/prisma/client';
+import { PrismaClient, Prisma } from '@generated/prisma/client';
 
 export type DbClient = PrismaClient;
 export type DbTransaction = Prisma.TransactionClient;
@@ -133,23 +133,23 @@ type ExtraArgs<M extends string, R extends string, I> = [
        M extends "updateBy" 
         ? [data: I extends { updateInput: infer U } ? U : unknown] :
        M extends "createMany" | "createManyAndReturn" 
-        ? [data: I extends { createManyInput: infer CM } ? CM | CM[] : unknown] :
+        ? [data: I extends { createManyInput: infer CM } ? CM : unknown] :
        M extends "updateManyBy" | "updateManyAndReturnBy" 
-        ? [data: I extends { updateManyInput: infer UM } ? UM | UM[] : unknown] : 
+        ? [data: I extends { updateManyInput: infer UM } ? UM : unknown] : 
        []),
     ...(R extends `${string}PaginatedAndOrdered` ? [
         pagination: PaginationOptions<I extends { cursorInput: infer C } ? C : unknown>, 
-        order: I extends { orderByInput: infer OB } ? OB | OB[] : OrderOptions
+        order: I extends { orderByInput: infer OB } ? OB : OrderOptions
     ] :
        R extends `${string}OrderedAndPaginated` ? [
-        order: I extends { orderByInput: infer OB } ? OB | OB[] : OrderOptions, 
+        order: I extends { orderByInput: infer OB } ? OB : OrderOptions, 
         pagination: PaginationOptions<I extends { cursorInput: infer C } ? C : unknown>
     ] :
        R extends `${string}Paginated` ? [
         pagination: PaginationOptions<I extends { cursorInput: infer C } ? C : unknown>
     ] :
        R extends `${string}Ordered` ? [
-        order: I extends { orderByInput: infer OB } ? OB | OB[] : OrderOptions
+        order: I extends { orderByInput: infer OB } ? OB : OrderOptions
     ] : [])
 ];
 
@@ -306,65 +306,97 @@ export type MethodConfig<M extends { tableName: Prisma.ModelName; selectModels?:
  *
  * @template M Metadados contendo o `tableName` do modelo Prisma.
  */
-export type SelectModels<M extends {tableName: Prisma.ModelName}> = Record<string, ModelSelect<M["tableName"]>>;
+export type SelectModels<M extends Prisma.ModelName> = Record<string, ModelSelect<M>>;
 
 export type ModelUpsertInput<M extends Prisma.ModelName> = 
     PrismaModelInputs<M>['upsertCreateInput'] | PrismaModelInputs<M>['upsertUpdateInput'];
 
-type ResolveDefaultReturn<T, DefaultModel, Models> = 
-    DefaultModel extends keyof Models
-        ? SelectedModel<T, DefaultModel, Models>
-        : T;
+type ResolveCurrentReturn<T, Models, S, D> = 
+    S extends keyof Models
+        ? SelectedModel<T, S, Models>
+        : D extends keyof Models
+            ? SelectedModel<T, D, Models>
+            : T;
 
 // --- Configuração e Injeção Condicional de Métodos Base ---
 
-export type BuildConfig = {
+export type BuildConfig<TSelectKeys extends PropertyKey = string> = {
     freeze?: boolean;
+    showWorking?: boolean;
     baseMethods?: {
-        get?: boolean;
-        remove?: boolean;
-        save?: boolean;
+        get?: {
+            active?: boolean;
+            defaultSelect?: TSelectKeys;
+        };
+        remove?: {
+            active?: boolean;
+            defaultSelect?: TSelectKeys;
+        };
+        save?: {
+            active?: boolean;
+            defaultSelect?: TSelectKeys;
+        };
     }
 };
 
-type InjectedGet<T, Instance extends { pkName: keyof T, defaultSelectModel?: any, selectModels?: any }, C extends BuildConfig | undefined> =
-    C extends { baseMethods: { get: false } } ? {} : {
-        /**
-         * Busca um registro diretamente pela Primary Key.
-         * @param pk Valor da chave primária do registro.
-         * @param db (Opcional) Cliente Prisma ou contexto de transação ativa.
-         */
-        get(pk: T[Instance['pkName']], db?: ClientOrTransaction): Promise<ResolveDefaultReturn<T, Instance['defaultSelectModel'], Instance['selectModels']>>;
+/**
+ * Extrai a configuração específica de um método do BuildConfig.
+ */
+type GetMethodConfig<C, Method extends 'get' | 'remove' | 'save'> = 
+    C extends { baseMethods: Record<Method, infer MConfig> } ? MConfig : {};
+
+/**
+ * Resolve o fallback do selectModel (Config do Método -> Default da Classe).
+ */
+type ResolveMethodDefaultSelect<
+    Instance extends { selectModels?: any, defaultSelectModel?: any }, 
+    C, 
+    Method extends 'get' | 'remove' | 'save'
+> = GetMethodConfig<C, Method> extends { defaultSelect: infer D }
+    ? D extends keyof Instance['selectModels']
+        ? D
+        : Instance['defaultSelectModel']
+    : Instance['defaultSelectModel'];
+
+type InjectedGet<T, Instance extends { pkName: keyof T, defaultSelectModel?: any, selectModels?: any }, C extends BuildConfig<any> | undefined> =
+    C extends { baseMethods: { get: { active: false } } } ? {} : {
+        get<S extends keyof Instance['selectModels'] = ResolveMethodDefaultSelect<Instance, C, 'get'>>(
+            pk: T[Instance['pkName']], 
+            options?: { selectModel?: S, db?: ClientOrTransaction }
+        ): Promise<ResolveCurrentReturn<T, Instance['selectModels'], S, Instance['defaultSelectModel']>>;
     };
 
-type InjectedRemove<T, Instance extends { pkName: keyof T, defaultSelectModel?: any, selectModels?: any }, C extends BuildConfig | undefined> =
-    C extends { baseMethods: { remove: false } } ? {} : {
-        /**
-         * Remove fisicamente um registro do banco pela sua Primary Key.
-         * @param pk Valor da chave primária do registro a ser deletado.
-         * @param db (Opcional) Cliente Prisma ou contexto de transação ativa.
-         */
-        remove(pk: T[Instance['pkName']], db?: ClientOrTransaction): Promise<ResolveDefaultReturn<T, Instance['defaultSelectModel'], Instance['selectModels']>>;
+type InjectedRemove<T, Instance extends { pkName: keyof T, defaultSelectModel?: any, selectModels?: any }, C extends BuildConfig<any> | undefined> =
+    C extends { baseMethods: { remove: { active: false } } } ? {} : {
+        remove<S extends keyof Instance['selectModels'] = ResolveMethodDefaultSelect<Instance, C, 'remove'>>(
+            pk: T[Instance['pkName']], 
+            options?: { selectModel?: S, db?: ClientOrTransaction }
+        ): Promise<ResolveCurrentReturn<T, Instance['selectModels'], S, Instance['defaultSelectModel']>>;
     };
+
+/**
+ * Pega o retorno padrão (R) e verifica se as chaves presentes no input (O) 
+ * foram enviadas com valor. Se sim, remove o 'null' do tipo de retorno naquela chave.
+ */
+type RefineSaveResult<R, O> = {
+    [K in keyof R]: K extends keyof O 
+        ? (O[K] extends null ? R[K] : NonNullable<R[K]>) 
+        : R[K];
+};
 
 type InjectedSave<
     T, 
     M extends Prisma.ModelName, 
     Instance extends { defaultSelectModel?: any, selectModels?: any, relations?: any }, 
-    C extends BuildConfig | undefined
-> = C extends { baseMethods: { save: false } } ? {} : {
-    /**
-     * Salva um registro. Se o objeto possuir a propriedade definida em `pkName`, executa um `upsert`. 
-     * Caso contrário, executa um `create`.
-     * Campos mapeados em `relations` aceitam apenas o objeto literal ou array de literais 
-     * no lugar dos operadores do Prisma (create/connect).
-     * @param obj Objeto contendo os dados a serem salvos.
-     * @param db (Opcional) Cliente Prisma ou contexto de transação ativa.
-     */
-    save(
-        obj: UpsertWithRelations<T, M, NonNullable<Instance['relations']>>, 
-        db?: ClientOrTransaction
-    ): Promise<ResolveDefaultReturn<T, Instance['defaultSelectModel'], Instance['selectModels']>>;
+    C extends BuildConfig<any> | undefined
+> = C extends { baseMethods: { save: { active: false } } } ? {} : {
+    save<
+        O extends UpsertWithRelations<T, M, NonNullable<Instance['relations']>>,
+        S extends keyof Instance['selectModels'] = ResolveMethodDefaultSelect<Instance, C, 'save'>
+    >(
+        obj: O, 
+        options?: { selectModel?: S, db?: ClientOrTransaction }
+    ): Promise<RefineSaveResult<ResolveCurrentReturn<T, Instance['selectModels'], S, Instance['defaultSelectModel']>, O>>;
 };
 
 // --- Utilitários para Override de Relações no Save ---
@@ -376,12 +408,19 @@ type DistributiveOmit<TObj, K extends keyof any> = TObj extends any ? Omit<TObj,
 
 /**
  * Converte o tipo do contrato original (TField) em uma versão Literal e Partial, 
- * respeitando se é Array (otm/mtm) ou Objeto único (mto).
+ * respeitando se é Array (otm/mtm) ou Objeto único (mto/oto).
+ * Libera o uso de `null` estritamente de acordo com a configuração da relação:
+ * - 'oto' com restriction 'set'
+ * - 'mto' com nullAble: true
  */
-type RelationLiteral<TField> = NonNullable<TField> extends (infer U)[] 
+type RelationPayload<TField, TRelationConfig> = NonNullable<TField> extends (infer U)[] 
     ? Partial<U>[] 
     : NonNullable<TField> extends object 
-        ? Partial<NonNullable<TField>> 
+        ? Partial<NonNullable<TField>> | (
+            TRelationConfig extends { mode: 'oto', restriction: 'set' } ? null :
+            TRelationConfig extends { mode: 'mto', nullAble: true } ? null : 
+            never
+        )
         : never;
 
 /**
@@ -390,9 +429,10 @@ type RelationLiteral<TField> = NonNullable<TField> extends (infer U)[]
  */
 export type UpsertWithRelations<T, M extends Prisma.ModelName, TRelations> = 
     DistributiveOmit<ModelUpsertInput<M>, keyof TRelations> & {
-        [K in Extract<keyof TRelations, keyof T>]?: RelationLiteral<T[K]>;
+        [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K]>;
     };
 
+// ... (Omiti o meio para economizar espaço, mantenha o InjectedBaseMethods normal) ...
 type InjectedBaseMethods<T, M extends Prisma.ModelName, Instance extends { pkName: keyof T, defaultSelectModel?: any, selectModels?: any }, C extends BuildConfig | undefined> =
     InjectedGet<T, Instance, C> & InjectedRemove<T, Instance, C> & InjectedSave<T, M, Instance, C>;
 
@@ -405,6 +445,7 @@ type IsPrismaScalarObject<TType> = TType extends Date | Buffer | Uint8Array ? tr
 
 /**
  * Extrai e impõe regras de mode/pk baseadas no tipo da propriedade (Objeto Único vs Array de Objetos).
+ * Regras adicionadas: `nullAble` é exclusivo do modo `mto`.
  */
 export type ExtractRelationConfig<TField> = NonNullable<TField> extends (infer U)[]
     ? IsPrismaScalarObject<U> extends true ? never
@@ -413,7 +454,9 @@ export type ExtractRelationConfig<TField> = NonNullable<TField> extends (infer U
         : never
     : IsPrismaScalarObject<NonNullable<TField>> extends true ? never
     : NonNullable<TField> extends object
-        ? { pk: keyof NonNullable<TField>; mode: 'mto'; restriction: 'set' | 'add' }
+        ? 
+            | { pk: keyof NonNullable<TField>; mode: 'oto'; restriction: 'set' | 'add' }
+            | { pk: keyof NonNullable<TField>; mode: 'mto'; restriction: 'set' | 'add'; nullAble?: boolean }
         : never;
 
 /**
@@ -470,7 +513,7 @@ export abstract class VSRepository<
      *
      * @example { basico: { id: true, nome: true }, completo: { id: true, perfil: true } }
      */
-    readonly selectModels?: SelectModels<{ tableName: M }>;
+    readonly selectModels?: SelectModels<M>;
 
     /**
      * Chave de `selectModels` usada como projeção padrão do repositório.
@@ -500,13 +543,6 @@ export abstract class VSRepository<
     readonly relations?: RepositoryRelations<T>;
 
     /**
-     * Quando habilitado, permite exibir logs de funcionamento do repositório.
-     *
-     * Útil para depuração das assinaturas resolvidas e do processo de build.
-     */
-    readonly showWorking?: boolean;
-
-    /**
      * Cria a instância base do repositório.
      */
     constructor();
@@ -516,10 +552,10 @@ export abstract class VSRepository<
      * Além disso, injeta opcionalmente os métodos padrão (get, remove, save).
      *
      * @param prisma Instância raiz do Prisma Client usada para resolver delegates.
-     * @param config Objeto de configuração para inibir métodos base ou mutação. `freeze: false` permite mutações.
+     * @param config Objeto de configuração. `freeze: false` permite mutações após o build.
      * @returns A instância atual enriquecida com os métodos.
      */
-    build<C extends BuildConfig>(
+    build<C extends BuildConfig<keyof this['selectModels']>>(
         prisma: DbClient,
         config: C & { freeze: false }
     ): this & DynamicMethods<T, this, this['selectModels'], PrismaModelInputs<M>> & InjectedBaseMethods<T, M, this, C>;
@@ -529,10 +565,10 @@ export abstract class VSRepository<
      * Além disso, injeta opcionalmente os métodos padrão (get, remove, save).
      *
      * @param prisma Instância raiz do Prisma Client usada para resolver delegates.
-     * @param config Objeto de configuração para inibir métodos base ou mutação. Se `freeze` for `true` (ou omitido), retorna como Readonly.
+     * @param config Objeto de configuração. Se `freeze` for `true` (ou omitido), retorna como Readonly após o build.
      * @returns A instância atual enriquecida com os métodos.
      */
-    build<C extends BuildConfig>(
+    build<C extends BuildConfig<keyof this['selectModels']>>(
         prisma: DbClient,
         config?: C
     ): Readonly<this & DynamicMethods<T, this, this['selectModels'], PrismaModelInputs<M>> & InjectedBaseMethods<T, M, this, C>>;

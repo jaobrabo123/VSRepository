@@ -1,18 +1,40 @@
 export class VSRepository {
 
     tableName;
-    showWorking = false;
     pkName;
     vsrepocache = new Map();
 
     build(prisma, config = {}) {
         const className = this.constructor.name;
+        const showWorking = config.showWorking;
 
         if(typeof config !== 'object' || config === null) {
-            throw new Error(`[VSRepository] (${className}: build) Config must be a valid object: ${keyToMap}.`);
+            throw new Error(`[VSRepository] (${className}: build) Config must be a valid object.`);
         }
         if(config.freeze === undefined) {
             config.freeze = true;
+        }
+
+        const relationsKeys = [];
+        if(this.relations !== undefined) {
+            const relations = this.relations;
+            if(typeof relations !== 'object' || relations === null){
+                throw new Error(`[VSRepository] (${className}: build) 'relations' must be a valid object.`);
+            }
+
+            for (const key of Object.keys(relations)) {
+                const relation = relations[key];
+                if(typeof relation.pk !== 'string'){
+                    throw new Error(`[VSRepository] (${className}: build) The property 'pk' of relation '${key}' must be a string.`);
+                }
+                if(typeof relation.mode !== 'string'){
+                    throw new Error(`[VSRepository] (${className}: build) The property 'mode' of relation '${key}' must be 'otm', 'mtm', 'mto' or 'oto'.`);
+                }
+                if(typeof relation.restriction !== 'string'){
+                    throw new Error(`[VSRepository] (${className}: build) The property 'restriction' of relation '${key}' must be 'set' or 'add'.`);
+                }
+                relationsKeys.push(key);
+            }
         }
 
         const whereTypes = ['extending', 'overwrite'];
@@ -20,7 +42,7 @@ export class VSRepository {
         const repositoryKeys = Object.keys(this);
 
         const [repositoryKeysToMap, repositoryUnmappedKeys] = repositoryKeys.reduce((acc, key)=>{
-            if(['tableName', 'selectModels', 'requiredWhere', 'showWorking', 'get', 'remove', 'save'].includes(key) || typeof this[key] !== 'object' || this[key] === null || !this[key].map) {
+            if(['tableName', 'selectModels', 'requiredWhere', 'get', 'remove', 'save', 'relations'].includes(key) || typeof this[key] !== 'object' || this[key] === null || !this[key].map) {
                 acc[1].push(key)
             } else {
                 acc[0].push(key)
@@ -28,7 +50,7 @@ export class VSRepository {
             return acc
         }, [[],[]]);
 
-        if(this.showWorking) {
+        if(showWorking) {
             console.log(`[VSRepository] (${className}: build) Keys to map:`, JSON.stringify(repositoryKeysToMap, null, 2))
             console.log(`[VSRepository] (${className}: build) Keys to ignore:`, JSON.stringify(repositoryUnmappedKeys, null, 2))
         }
@@ -300,7 +322,7 @@ export class VSRepository {
                             whereArgs.push(buildedWhere)
                         }
 
-                        if(this.showWorking) {
+                        if(showWorking) {
                             console.log(`[VSRepository] (${className}: build) Where object builded to ${keyToMap}:\n`, JSON.stringify(buildedWhere, null, 2));
                         }
 
@@ -342,7 +364,7 @@ export class VSRepository {
                     
                     return { context, otherProps };
                 });
-                if(this.showWorking) {
+                if(showWorking) {
                     console.log(`[VSRepository] (${className}: build) Where object resolved to ${keyToMap}:\n`, JSON.stringify(whereResolved, null, 2));
                 }
             }
@@ -470,7 +492,7 @@ export class VSRepository {
                 const prismaArgs = this.vsrepocache.get(originalKey)(args);
 
                 let start;
-                if(this.showWorking){
+                if(showWorking){
                     console.log(`[VSRepository] (${className}: runtime) Executing ${method} on ${this.tableName}.`);
                     console.log(`[VSRepository] (${className}: runtime) Built arguments to ${method} on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
@@ -479,7 +501,7 @@ export class VSRepository {
                 try {
                     const result = await db[this.tableName][method](prismaArgs);
 
-                    if(this.showWorking) {
+                    if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
                         console.log(`[VSRepository] (${className}: runtime) Executed ${method} on ${this.tableName} (took: ${duration}ms).`);
@@ -498,9 +520,11 @@ export class VSRepository {
 
         }
 
-        if(config.baseMethods?.get !== false) {
-            this.get = async(pk, db) => {
-                if(db===undefined) db = prisma;
+        if(config.baseMethods?.get?.active !== false) {
+            this.get = async(pk, options = {}) => {
+                let db;
+                if(options?.db) db = options.db;
+                else db = prisma;
 
                 const prismaArgs = {};
 
@@ -510,21 +534,22 @@ export class VSRepository {
                 }
                 prismaArgs.where = where;
 
-                if(this.defaultSelectModel) {
-                    prismaArgs.select = this.selectModels[this.defaultSelectModel];
+                let selectModelKey = options?.selectModel ?? config.baseMethods?.get?.defaultSelect ?? this.defaultSelectModel;
+                if(selectModelKey){
+                    prismaArgs.select = this.selectModels[selectModelKey];
                 }
 
                 let start;
-                if(this.showWorking){
+                if(showWorking){
                     console.log(`[VSRepository] (${className}: runtime) Executing get on ${this.tableName}.`);
                     console.log(`[VSRepository] (${className}: runtime) Built arguments to get on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
 
                 try {
-                    const result = await db[this.tableName].findUniqueOrThrow(prismaArgs);
+                    const result = await db[this.tableName].findUnique(prismaArgs);
 
-                    if(this.showWorking) {
+                    if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
                         console.log(`[VSRepository] (${className}: runtime) Executed get on ${this.tableName} (took: ${duration}ms).`);
@@ -537,9 +562,11 @@ export class VSRepository {
                 }
             }
         }
-        if(config.baseMethods?.remove !== false) {
-            this.remove = async (pk, db) => {
-                if(db===undefined) db = prisma;
+        if(config.baseMethods?.remove?.active !== false) {
+            this.remove = async (pk, options = {}) => {
+                let db;
+                if(options?.db) db = options.db;
+                else db = prisma;
 
                 const prismaArgs = {};
 
@@ -549,12 +576,13 @@ export class VSRepository {
                 }
                 prismaArgs.where = where;
 
-                if(this.defaultSelectModel) {
-                    prismaArgs.select = this.selectModels[this.defaultSelectModel];
+                let selectModelKey = options?.selectModel ?? config.baseMethods?.remove?.defaultSelect ?? this.defaultSelectModel;
+                if(selectModelKey){
+                    prismaArgs.select = this.selectModels[selectModelKey];
                 }
                 
                 let start;
-                if(this.showWorking){
+                if(showWorking){
                     console.log(`[VSRepository] (${className}: runtime) Executing remove on ${this.tableName}.`);
                     console.log(`[VSRepository] (${className}: runtime) Built arguments to remove on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
@@ -562,7 +590,7 @@ export class VSRepository {
                 try {
                     const result = await db[this.tableName].delete(prismaArgs);
 
-                    if(this.showWorking) {
+                    if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
                         console.log(`[VSRepository] (${className}: runtime) Executed remove on ${this.tableName} (took: ${duration}ms).`);
@@ -575,17 +603,21 @@ export class VSRepository {
                 }
             }
         }
-        if(config.baseMethods?.save !== false) {
-            this.save = async (obj, db) => {
-                if(db===undefined) db = prisma;
+        if(config.baseMethods?.save?.active !== false) {
+            this.save = async (obj, options = {}) => {
+                let db;
+                if(options?.db) db = options.db;
+                else db = prisma;
 
                 const prismaArgs = {};
-                if(this.defaultSelectModel) {
-                    prismaArgs.select = this.selectModels[this.defaultSelectModel];
+
+                let selectModelKey = options?.selectModel ?? config.baseMethods?.save?.defaultSelect ?? this.defaultSelectModel;
+                if(selectModelKey){
+                    prismaArgs.select = this.selectModels[selectModelKey];
                 }
 
                 let start;
-                if(this.showWorking){
+                if(showWorking){
                     console.log(`[VSRepository] (${className}: runtime) Executing save on ${this.tableName}.`);
                     start = performance.now();
                 }
@@ -593,11 +625,121 @@ export class VSRepository {
                 try {
                     let result;
                     if(obj[this.pkName] !== undefined){
-                        const update = {...obj};
-                        delete update[this.pkName]
+                        prismaArgs.create = {};
+                        prismaArgs.update = {};
 
-                        prismaArgs.create = obj;
-                        prismaArgs.update = update;
+                        const keys = Object.keys(obj);
+                        for (let i = 0; i < keys.length; i++) {
+                            const key = keys[i];
+                            const field = obj[key];
+
+                            if(field === undefined) continue;
+
+                            if(relationsKeys.includes(key)){
+                                const relation = this.relations[key];
+                                const relationMode = relation.mode;
+                                const relationRestriction = relation.restriction;
+                                const relationPk = relation.pk;
+
+                                if(relationMode === 'oto' || relationMode === 'mto') {
+                                    if(field === null) {
+                                        if(relationMode === 'oto' && relationRestriction === 'set') {
+                                            prismaArgs.update[key] = { delete: true };
+                                        } else if(relationMode === 'mto' && relation.nullAble) {
+                                            prismaArgs.update[key] = { disconnect: true };
+                                        }
+                                    } else if (field !== undefined) {
+                                        const relationFieldPk = field[relationPk];
+                                        if(relationFieldPk){
+                                            const connectOrCreate = {
+                                                where: { [relationPk]: relationFieldPk },
+                                                create: field
+                                            };
+
+                                            prismaArgs.create[key] = { connectOrCreate };
+
+                                            if(relationRestriction === 'add') {
+                                                prismaArgs.update[key] = { connectOrCreate };
+                                            } else {
+                                                const update = {...field};
+                                                delete update[relationPk];
+
+                                                prismaArgs.update[key] = {
+                                                    upsert: {
+                                                        where: { [relationPk]: relationFieldPk },
+                                                        create: field,
+                                                        update: update
+                                                    }
+                                                };
+                                            }
+                                        } else {
+                                            prismaArgs.create[key] = { create: field };
+                                            prismaArgs.update[key] = { create: field };
+                                        }
+                                    }
+                                } else if(Array.isArray(field)) {
+                                    const dataWithPk = field.filter(data=>data[relationPk]!==undefined);
+                                    const dataWithoutPk = field.filter(data=>data[relationPk]===undefined);
+
+                                    const connectOrCreate = dataWithPk.map(data=>({
+                                        where: { [relationPk]: data[relationPk] },
+                                        create: data
+                                    }));
+
+                                    prismaArgs.create[key] = {
+                                        create: dataWithoutPk,
+                                        connectOrCreate
+                                    };
+
+                                    if(relationRestriction === 'add') {
+                                        if(relationMode === 'mtm') {
+                                            prismaArgs.update[key] = {
+                                                create: dataWithoutPk,
+                                                connectOrCreate
+                                            }
+                                        } else {
+                                            prismaArgs.update[key] = {
+                                                create: dataWithoutPk,
+                                                upsert: dataWithPk.map(data=>{
+                                                    const update = { ...data };
+                                                    delete update[relationPk];
+                                                    return {
+                                                        where: { [relationPk]: data[relationPk] },
+                                                        create: data, update
+                                                    }
+                                                })
+                                            }
+                                        }
+                                    } else {
+                                        if(relationMode === 'mtm') {
+                                            prismaArgs.update[key] = {
+                                                set: [],
+                                                create: dataWithoutPk,
+                                                connectOrCreate
+                                            }
+                                        } else {
+                                            prismaArgs.update[key] = {
+                                                deleteMany: { [relationPk]: { notIn: dataWithPk.map(data=>data[relationPk]) } },
+                                                create: dataWithoutPk,
+                                                upsert: dataWithPk.map(data=>{
+                                                    const update = { ...data };
+                                                    delete update[relationPk];
+                                                    return {
+                                                        where: { [relationPk]: data[relationPk] },
+                                                        create: data, update
+                                                    }
+                                                })
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                prismaArgs.create[key] = field;
+                                if(key !== this.pkName) {
+                                    prismaArgs.update[key] = field;
+                                }
+                            }
+                        }
 
                         const where = { [this.pkName]: obj[this.pkName] };
                         if(this.requiredWhere) {
@@ -605,22 +747,65 @@ export class VSRepository {
                         }
                         prismaArgs.where = where;
 
-                        if(this.showWorking) {
+                        if(showWorking) {
                             console.log(`[VSRepository] (${className}: runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                         }
 
                         result = await db[this.tableName].upsert(prismaArgs);
                     } else {
-                        prismaArgs.data = obj;
+                        prismaArgs.data = {};
 
-                        if(this.showWorking) {
+                        const keys = Object.keys(obj);
+                        for (let i = 0; i < keys.length; i++) {
+                            const key = keys[i];
+                            const field = obj[key];
+
+                            if(field == null) continue;
+
+                            if(relationsKeys.includes(key)){
+                                const relation = this.relations[key];
+                                const relationMode = relation.mode;
+                                const relationPk = relation.pk;
+
+                                if(relationMode === 'otm' || relationMode === 'mtm') {
+                                    const dataWithPk = field.filter(data=>data[relationPk]!==undefined);
+                                    const dataWithoutPk = field.filter(data=>data[relationPk]===undefined);
+
+                                    prismaArgs.data[key] = {
+                                        create: dataWithoutPk,
+                                        connectOrCreate: dataWithPk.map(data=>({
+                                            where: { [relationPk]: data[relationPk] },
+                                            create: data
+                                        }))
+                                    }
+                                } else {
+                                    const relationFieldPk = field[relationPk];
+                                    if(relationFieldPk !== undefined) {
+                                        prismaArgs.data[key] = {
+                                            connectOrCreate: {
+                                                where: { [relationPk]: relationFieldPk },
+                                                create: field
+                                            }
+                                        }
+                                    } else {
+                                        prismaArgs.data[key] = {
+                                            create: field
+                                        }
+                                    }
+                                }
+                            } else {
+                                prismaArgs.data[key] = field;
+                            }
+                        }
+
+                        if(showWorking) {
                             console.log(`[VSRepository] (${className}: runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                         }
 
                         result = await db[this.tableName].create(prismaArgs);
                     }
 
-                    if(this.showWorking) {
+                    if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
                         console.log(`[VSRepository] (${className}: runtime) Executed save on ${this.tableName} (took: ${duration}ms).`);

@@ -12,11 +12,16 @@
   "packageManager": "pnpm@10.33.0",
   "type": "module",
   "dependencies": {
-    "@prisma/adapter-pg": "^7.7.0",
-    "@prisma/client": "^7.7.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "dotenv": "^17.4.2"
   },
   "devDependencies": {
-    "prisma": "^7.7.0"
+    "@types/node": "^25.6.0",
+    "prisma": "^7.8.0",
+    "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
   }
 }
