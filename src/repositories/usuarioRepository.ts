@@ -52,7 +52,11 @@ export const usuarioSelectModels = {
     minimal: {
         id: true
     }
-} satisfies SelectModels<'usuario'>
+} satisfies SelectModels<'usuario'>;
+
+export const usuarioRequiredWhere = {
+    ativo: true
+} satisfies ModelWhere<'usuario'>;
 
 export class UsuarioRepository extends VSRepository<Usuario, 'usuario'>{
     readonly tableName = "usuario";
@@ -71,9 +75,7 @@ export class UsuarioRepository extends VSRepository<Usuario, 'usuario'>{
     } satisfies RepositoryRelations<Usuario>;
     readonly selectModels = usuarioSelectModels;
     readonly defaultSelectModel = 'public';
-    readonly requiredWhere = {
-        ativo: true
-    } satisfies ModelWhere<'usuario'>;
+    readonly requiredWhere = usuarioRequiredWhere;
 
     createManyAndReturn = {
         map: true,
@@ -109,10 +111,15 @@ export class UsuarioRepository extends VSRepository<Usuario, 'usuario'>{
     updateById = {
         map: true
     } satisfies ThisMethodConfig;
+
+    deleteByEmail = {
+        map: true
+    } satisfies ThisMethodConfig;
+
+    countByPerfil = {
+        map: true
+    } satisfies ThisMethodConfig;
 }
 
 const usuarioRepository = new UsuarioRepository().build(prisma);
-
-export { usuarioRepository };
 export default usuarioRepository;
-

@@ -176,10 +176,11 @@ async function test(){
     await usuarioRepositoryTest.updateById(buscandoUnique!.id, { ativo: false });
 
     const buscandoDenovo = await usuarioRepositoryTest.findUniqueByIdAndEmail(buscandoUnique!.id, buscandoUnique!.email);
-    console.log("Buscando Denovo:", buscandoDenovo);
+    console.log("Buscando de novo:", buscandoDenovo);
 
     console.log("\nRemovendo todos.")
     await usuarioRepositoryTest.deleteManyByIdIn(novosUsuarios.map(_=>_.id));
 
+    process.exit(0)
 }
 test()

@@ -2,28 +2,30 @@ import prisma from "../db";
 import type { Prisma } from "../generated/prisma/client";
 import { VSRepository, type MethodConfig, type ModelWhere, type RepositoryRelations, type SelectModels } from "../VSRepository/VSRepository";
 
-type Usuario = Prisma.usuarioGetPayload<{
+type Foo = Prisma.fooGetPayload<{
     include: {}
 }>;
 
-export const usuarioSelectModels = {
-    public: {},
-} satisfies SelectModels<'usuario'>;
-
 type ThisMethodConfig = MethodConfig<{
-    tableName: 'usuario',
-    selectModels: typeof usuarioSelectModels
+    tableName: 'foo',
+    selectModels: typeof fooSelectModels
 }>;
 
-export class UsuarioRepository extends VSRepository<Usuario, 'usuario'> {
+export const fooSelectModels = {
+    public: {},
+} satisfies SelectModels<'foo'>;
+
+export const fooRequiredWhere = {} satisfies ModelWhere<'foo'>;
+
+export class FooRepository extends VSRepository<Foo, 'foo'> {
     readonly pkName = "id";
-    readonly tableName = "usuario";
-    readonly selectModels = usuarioSelectModels;
+    readonly tableName = "foo";
+    readonly selectModels = fooSelectModels;
     readonly defaultSelectModel = 'public';
-    readonly relations = {} satisfies RepositoryRelations<Usuario>;
-    readonly requiredWhere = {} satisfies ModelWhere<'usuario'>;
+    readonly relations = {} satisfies RepositoryRelations<Foo>;
+    readonly requiredWhere = fooRequiredWhere;
 
 }
 
-const usuarioRepository = new UsuarioRepository().build(prisma);
-export default usuarioRepository;
+const fooRepository = new FooRepository().build(prisma);
+export default fooRepository;

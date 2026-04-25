@@ -92,27 +92,42 @@ type IsArrayFilter<S extends string> =
             ? (Rest extends `sensitive${string}` ? false : (Rest extends "" ? false : true)) 
             : false;
 
-type GetFieldType<T, S extends string> = 
+type GetFieldType<T, S extends string, I> = 
     ExtractFieldName<S, T> extends infer FieldName 
         ? FieldName extends keyof T
-            ? (IsArrayFilter<S> extends true ? T[FieldName][] : T[FieldName])
+            ? IsArrayFilter<S> extends true 
+                ? T[FieldName][] 
+                // Se a propriedade for um Array (relação MTM ou OTM)
+                : NonNullable<T[FieldName]> extends any[]
+                    ? I extends { whereInput: infer W }
+                        ? FieldName extends keyof NonNullable<W> // <-- Correção 1: NonNullable
+                            ? NonNullable<W>[FieldName]          // <-- Correção 2: NonNullable
+                            : T[FieldName]
+                        : T[FieldName]
+                    : NonNullable<T[FieldName]> extends object
+                        ? I extends { whereInput: infer W }
+                            ? FieldName extends keyof NonNullable<W>
+                                ? NonNullable<W>[FieldName]
+                                : T[FieldName]
+                            : T[FieldName]
+                        : T[FieldName]
             : unknown 
         : any;
 
-type MapToContractTypes<T, Arr extends any[]> = 
+type MapToContractTypes<T, Arr extends any[], I> = 
     Arr extends [infer First extends string, ...infer Rest]
-        ? [GetFieldType<T, First>, ...MapToContractTypes<T, Rest>]
+        ? [GetFieldType<T, First, I>, ...MapToContractTypes<T, Rest, I>]
         : [];
 
-type ExtractAnds<T, S extends string> = MapToContractTypes<T, Split<S, 'And'>>;
+type ExtractAnds<T, S extends string, I> = MapToContractTypes<T, Split<S, 'And'>, I>;
 
-type ExtractOrsTuple<T, Arr extends string[]> =
+type ExtractOrsTuple<T, Arr extends string[], I> =
     Arr extends [infer First extends string, ...infer Rest extends string[]]
-    ? [...ExtractAnds<T, First>, ...ExtractOrsTuple<T, Rest>]
+    ? [...ExtractAnds<T, First, I>, ...ExtractOrsTuple<T, Rest, I>]
     : [];
 
-type ExtractFields<T, R extends string> = 
-    R extends "" ? [] : ExtractOrsTuple<T, Split<R, 'Or'>>;
+type ExtractFields<T, R extends string, I> = 
+    R extends "" ? [] : ExtractOrsTuple<T, Split<R, 'Or'>, I>;
 
 // --- Lógica de Retorno ---
 
@@ -165,7 +180,7 @@ type CleanFields<R extends string> =
 
 type MethodFn<M extends string, T, R extends string, SelectModels, DefaultSelect extends keyof SelectModels, I> = 
     <S extends keyof SelectModels = DefaultSelect>(...args: [
-        ...ExtractFields<T, CleanFields<R>>, 
+        ...ExtractFields<T, CleanFields<R>, I>, // <-- Adicione 'I' aqui
         ...ExtraArgs<M, R, I>,
         db?: ClientOrTransaction
     ]) => Promise<ResolveReturnType<M, SelectedModel<T, S, SelectModels>>>;

@@ -16,16 +16,16 @@ datasource db {
 // - 1:N com postagem (otm)
 // ---------------------------------------------------------
 model usuario {
-  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nome            String     @db.VarChar(150)
-  email           String     @unique @db.VarChar(254)
-  senha           String?     @db.VarChar(255)
-  ativo           Boolean    @default(true)
-  dataCriacao     DateTime   @default(now()) @map("data_criacao") @db.Timestamptz(6)
-  dataAtualizacao DateTime   @updatedAt @map("data_atualizacao") @db.Timestamptz(6)
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome            String   @db.VarChar(150)
+  email           String   @unique @db.VarChar(254)
+  senha           String?  @db.VarChar(255)
+  ativo           Boolean  @default(true)
+  dataCriacao     DateTime @default(now()) @map("data_criacao") @db.Timestamptz(6)
+  dataAtualizacao DateTime @updatedAt @map("data_atualizacao") @db.Timestamptz(6)
 
-  perfil          perfil?
-  postagens       postagem[]
+  perfil    perfil?
+  postagens postagem[]
 
   @@index([email])
 }
@@ -36,13 +36,13 @@ model usuario {
 // - 1:1 com usuario (mto)
 // ---------------------------------------------------------
 model perfil {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  biografia       String?  @db.VarChar(500)
-  avatarUrl       String?  @map("avatar_url") @db.VarChar(255)
-  telefone        String?  @db.VarChar(20)
-  
-  usuarioId       String   @unique @map("usuario_id") @db.Uuid
-  usuario         usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  biografia String? @db.VarChar(500)
+  avatarUrl String? @map("avatar_url") @db.VarChar(255)
+  telefone  String? @db.VarChar(20)
+
+  usuarioId String  @unique @map("usuario_id") @db.Uuid
+  usuario   usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@map("perfil_usuario")
 }
@@ -54,17 +54,17 @@ model perfil {
 // - M:N com categoria (mtm)
 // ---------------------------------------------------------
 model postagem {
-  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  titulo          String      @db.VarChar(200)
-  conteudo        String      @db.Text
-  publicado       Boolean     @default(false)
-  dataCriacao     DateTime    @default(now()) @map("data_criacao") @db.Timestamptz(6)
-  dataAtualizacao DateTime    @updatedAt @map("data_atualizacao") @db.Timestamptz(6)
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titulo          String   @db.VarChar(200)
+  conteudo        String   @db.Text
+  publicado       Boolean  @default(false)
+  dataCriacao     DateTime @default(now()) @map("data_criacao") @db.Timestamptz(6)
+  dataAtualizacao DateTime @updatedAt @map("data_atualizacao") @db.Timestamptz(6)
 
-  autorId         String      @map("autor_id") @db.Uuid
-  autor           usuario     @relation(fields: [autorId], references: [id], onDelete: Cascade)
-  
-  categorias      categoria[] // Relação Many-to-Many implícita do Prisma
+  autorId String  @map("autor_id") @db.Uuid
+  autor   usuario @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  categorias categoria[] // Relação Many-to-Many implícita do Prisma
 
   @@index([autorId, publicado])
 }
@@ -75,11 +75,11 @@ model postagem {
 // - M:N com postagem (mtm)
 // ---------------------------------------------------------
 model categoria {
-  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nome            String     @unique @db.VarChar(50)
-  descricao       String?    @db.VarChar(200)
-  
-  postagens       postagem[] // Relação Many-to-Many implícita do Prisma
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome      String  @unique @db.VarChar(50)
+  descricao String? @db.VarChar(200)
+
+  postagens postagem[] // Relação Many-to-Many implícita do Prisma
 
   @@index([nome])
 }
