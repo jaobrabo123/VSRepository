@@ -1,6 +1,6 @@
 import prisma from "../db";
 import type { Prisma } from "../generated/prisma/client";
-import { VSRepository, type ModelWhere, type RepositoryRelations, type SelectModels } from "../VSRepository/VSRepository";
+import { setupVSRepo, type WhereModel, type SelectModels } from "../VSRepository/VSRepository";
 import { categoriaSelectModels } from "./categoriaRepository";
 import { usuarioRequiredWhere } from "./usuarioRepository";
 
@@ -32,14 +32,14 @@ export const postagemSelectModels = {
 
 export const postagemRequiredWhere = {
     autor: usuarioRequiredWhere
-} satisfies ModelWhere<"postagem">;
+} satisfies WhereModel<"postagem">;
 
-export class PostagemRepository extends VSRepository<Postagem, 'postagem'> {
-    readonly tableName = "postagem";
-    readonly pkName = "id";
-    readonly selectModels = postagemSelectModels;
-    readonly defaultSelectModel = 'public';
-    readonly relations = {
+export const postagemVSRepo = setupVSRepo<Postagem, 'postagem'>()({
+    tableName: 'postagem',
+    pkName: 'id',
+    selectModels: postagemSelectModels,
+    defaultSelectModel: 'public',
+    relations: {
         autor: {
             pk: "id",
             mode: "mto",
@@ -51,10 +51,12 @@ export class PostagemRepository extends VSRepository<Postagem, 'postagem'> {
             mode: 'mtm',
             restriction: 'set'
         }
-    } satisfies RepositoryRelations<Postagem>;
-    readonly requiredWhere = postagemRequiredWhere;
+    },
+    requiredWhere: postagemRequiredWhere,
+    methods: {
+        
+    }
+});
 
-}
-
-const postagemRepository = new PostagemRepository().build(prisma);
+const postagemRepository = postagemVSRepo.build(prisma);
 export default postagemRepository;

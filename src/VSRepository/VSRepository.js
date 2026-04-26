@@ -1,8 +1,94 @@
 export class VSRepository {
 
+    vsrepocache;
     tableName;
     pkName;
-    vsrepocache = new Map();
+    selectModels;
+    relations;
+    requiredWhere;
+    methods;
+
+    constructor(config) {
+        if(typeof config !== 'object' || config === null){
+            throw new Error(`[VSRepository] (config) 'config' must be a valid object.`);
+        }
+        if(typeof config.tableName !== 'string') {
+            throw new Error(`[VSRepository] (config) 'tableName' must be a valid string.`);
+        }
+        if(typeof config.pkName !== 'string') {
+            throw new Error(`[VSRepository] (config) 'pkName' must be a valid string.`);
+        }
+        if(config.selectModels !== undefined && typeof config.selectModels !== 'object' || config.selectModels === null) {
+            throw new Error(`[VSRepository] (config) 'selectModels' must be a valid object.`);
+        }
+        if(config.defaultSelectModel !== undefined) {
+            if(!config.selectModels) {
+                throw new Error(`[VSRepository] (config) 'defaultSelectModel' can only be passed with 'selectModels'.`);
+            }
+            if(typeof config.defaultSelectModel !== 'string') {
+                throw new Error(`[VSRepository] (config) 'defaultSelectModel' must be a valid string.`);
+            }
+            if(!Object.keys(config.selectModels).includes(config.defaultSelectModel)){
+                throw new Error(`[VSRepository] (config) Invalid 'defaultSelectModel': ${config.defaultSelectModel}`);
+            }
+        }
+        if(config.relations !== undefined) {
+            const relations = config.relations;
+            if(typeof relations !== 'object' || relations === null){
+                throw new Error(`[VSRepository] (config) 'relations' must be a valid object.`);
+            }
+
+            for (const key of Object.keys(relations)) {
+                const relation = relations[key];
+                if(typeof relation.pk !== 'string'){
+                    throw new Error(`[VSRepository] (config) The property 'pk' of relation '${key}' must be a string.`);
+                }
+                if(typeof relation.mode !== 'string'){
+                    throw new Error(`[VSRepository] (config) The property 'mode' of relation '${key}' must be 'otm', 'mtm', 'mto' or 'oto'.`);
+                }
+                if(typeof relation.restriction !== 'string'){
+                    throw new Error(`[VSRepository] (config) The property 'restriction' of relation '${key}' must be 'set' or 'add'.`);
+                }
+            }
+        }
+        if(config.requiredWhere !== undefined && typeof config.requiredWhere !== 'object' || config.requiredWhere === null) {
+            throw new Error(`[VSRepository] (config) 'requiredWhere' must be a valid object.`);
+        }
+        if(config.methods !== undefined) {
+            if(typeof config.methods !== 'object' || config.methods === null){
+                throw new Error(`[VSRepository] (config) 'methods' must be a valid object.`);
+            } else {
+                for (const [key, value] of Object.entries(config.methods)) {
+
+                    if(value.whereType !== undefined && !['extending', 'overwrite'].includes(value.whereType)){
+                        throw new Error(`[VSRepository] (config) Invalid 'whereType' on ${key}: ${value.whereType}`);
+                    }
+
+                    if(value.selectModel !== undefined && (!config.selectModels || !Object.keys(config.selectModels).includes(value.selectModel))){
+                        throw new Error(`[VSRepository] (config) Invalid 'selectModel' on ${key}: ${value.selectModel}`);
+                    }
+
+                }
+            }
+        }
+
+        this.vsrepocache = new Map();
+        this.tableName = config.tableName;
+        this.pkName = config.pkName;
+        this.selectModels = config.selectModels;
+        this.defaultSelectModel = config.defaultSelectModel;
+        this.relations = config.relations;
+        this.requiredWhere = config.requiredWhere;
+        this.methods = config.methods ?? {};
+    }
+
+    extend(extensionFunc) {
+        if(typeof extensionFunc !== 'function'){
+            throw new Error(`[VSRepository] (extend) 'extension' must be a valid funcion.`);
+        }
+        const extension = extensionFunc(this);
+        return Object.assign(Object.create(this), extension);
+    }
 
     build(prisma, config = {}) {
         const className = this.constructor.name;
@@ -15,44 +101,13 @@ export class VSRepository {
             config.freeze = true;
         }
 
-        const relationsKeys = [];
-        if(this.relations !== undefined) {
-            const relations = this.relations;
-            if(typeof relations !== 'object' || relations === null){
-                throw new Error(`[VSRepository] (${className}: build) 'relations' must be a valid object.`);
-            }
+        const relationsKeys = this.relations ? Object.keys(this.relations) : [];
 
-            for (const key of Object.keys(relations)) {
-                const relation = relations[key];
-                if(typeof relation.pk !== 'string'){
-                    throw new Error(`[VSRepository] (${className}: build) The property 'pk' of relation '${key}' must be a string.`);
-                }
-                if(typeof relation.mode !== 'string'){
-                    throw new Error(`[VSRepository] (${className}: build) The property 'mode' of relation '${key}' must be 'otm', 'mtm', 'mto' or 'oto'.`);
-                }
-                if(typeof relation.restriction !== 'string'){
-                    throw new Error(`[VSRepository] (${className}: build) The property 'restriction' of relation '${key}' must be 'set' or 'add'.`);
-                }
-                relationsKeys.push(key);
-            }
-        }
-
-        const whereTypes = ['extending', 'overwrite'];
-
-        const repositoryKeys = Object.keys(this);
-
-        const [repositoryKeysToMap, repositoryUnmappedKeys] = repositoryKeys.reduce((acc, key)=>{
-            if(['tableName', 'selectModels', 'requiredWhere', 'get', 'remove', 'save', 'relations'].includes(key) || typeof this[key] !== 'object' || this[key] === null || !this[key].map) {
-                acc[1].push(key)
-            } else {
-                acc[0].push(key)
-            }
-            return acc
-        }, [[],[]]);
+        const methods = this.methods;
+        const repositoryKeysToMap = Object.keys(methods);
 
         if(showWorking) {
-            console.log(`[VSRepository] (${className}: build) Keys to map:`, JSON.stringify(repositoryKeysToMap, null, 2))
-            console.log(`[VSRepository] (${className}: build) Keys to ignore:`, JSON.stringify(repositoryUnmappedKeys, null, 2))
+            console.log(`[VSRepository] (${className}: build) Keys to map:`, JSON.stringify(repositoryKeysToMap, null, 2));
         }
 
         for (let keyToMap of repositoryKeysToMap) {
@@ -68,10 +123,11 @@ export class VSRepository {
             let updateIndex;
             let createIndex;
             let originalKey = keyToMap;
-            keyToMap = this[originalKey].proxyTo ?? keyToMap;
+            keyToMap = methods[originalKey].proxyTo ?? keyToMap;
             let existsMode = false;
             let skipDuplicates;
             let ignoreSkipDuplicates = true;
+            let whereIndex
             const whereParams = [];
             const otherParams = [];
 
@@ -173,6 +229,24 @@ export class VSRepository {
             } else if(keyToMap.startsWith('deleteBy')) {
                 keyToMapReplaced = keyToMap.replace('deleteBy', '')
                 method = 'delete';
+            } else if(keyToMap.startsWith('findWhere')) {
+                keyToMapReplaced = keyToMap.replace('findWhere', '');
+                ignoreOrderByAndPagination = false;
+                ignoreWhere = true;
+                onlyBaseWheres = true;
+                method = 'findFirst';
+                whereIndex = 0;
+                otherParams.push('where');
+                argsCount += 1;
+            } else if(keyToMap.startsWith('findListWhere')) {
+                keyToMapReplaced = keyToMap.replace('findListWhere', '');
+                ignoreOrderByAndPagination = false;
+                ignoreWhere = true;
+                onlyBaseWheres = true;
+                method = 'findMany';
+                whereIndex = 0;
+                otherParams.push('where');
+                argsCount += 1;
             } else {
                 throw new Error(`[VSRepository] (${className}: build) Unknown method: ${keyToMap}.`);
             }
@@ -231,15 +305,11 @@ export class VSRepository {
             }
 
             const whereArgs = [];
-            let whereType = this[originalKey].whereType ?? 'extending';
-            let pushWhere = this[originalKey].pushWhere;
+            let whereType = methods[originalKey].whereType ?? 'extending';
+            let pushWhere = methods[originalKey].pushWhere;
             let whereResolved;
 
             if(!ignoreWhere) {
-
-                if(!whereTypes.includes(whereType)){
-                    throw new Error(`[VSRepository] (${className}: build) Invalid whereType: ${whereType}`);
-                }
 
                 let orMode = false;
                 let keysSplitedOr = keyToMapReplaced.split('Or');
@@ -373,17 +443,11 @@ export class VSRepository {
             let select;
             if(!ignoreSelect) {
 
-                const providedSelectModel = this[originalKey].selectModel;
+                const providedSelectModel = methods[originalKey].selectModel;
 
                 if(providedSelectModel) {
-                    if(!this.selectModels || !Object.keys(this.selectModels).includes(providedSelectModel)){
-                        throw new Error(`[VSRepository] (${className}: build) Invalid selectModel: ${providedSelectModel}`);
-                    }
                     select = this.selectModels[providedSelectModel];
                 } else if(this.defaultSelectModel) {
-                    if(!Object.keys(this.selectModels).includes(this.defaultSelectModel)){
-                        throw new Error(`[VSRepository] (${className}: build) Invalid defaultSelectModel: ${this.defaultSelectModel}`);
-                    }
                     select = this.selectModels[this.defaultSelectModel];
                 }
 
@@ -411,6 +475,19 @@ export class VSRepository {
 
                 if(skipDuplicates!==undefined){
                     prismaArgs.skipDuplicates = skipDuplicates;
+                }
+
+                const assignWhere = (where) => {
+                    if(whereType==='extending' && this.requiredWhere) {
+                        let safeRequiredWhere = structuredClone(this.requiredWhere);
+                        if(where.OR && safeRequiredWhere.OR) safeRequiredWhere.OR = safeRequiredWhere.OR.concat(where.OR)
+                        Object.assign(where, safeRequiredWhere);
+                    }
+                    if(pushWhere !== undefined) {
+                        let safePushWhere = structuredClone(pushWhere);
+                        if(where.OR && safePushWhere.OR) safePushWhere.OR = safePushWhere.OR.concat(where.OR)
+                        Object.assign(where, safePushWhere);
+                    }
                 }
 
                 if(!ignoreWhere) {
@@ -451,30 +528,14 @@ export class VSRepository {
                     }
 
                     if(OR) where.OR = OR;
-                    if(whereType==='extending') {
-                        let requiredWhere = { ...this.requiredWhere };
-                        if(where.OR && requiredWhere.OR) requiredWhere.OR = requiredWhere.OR.concat(where.OR)
-                        Object.assign(where, requiredWhere);
-                    }
-                    if(pushWhere !== undefined) {
-                        let safePushWhere = { ...pushWhere };
-                        if(where.OR && safePushWhere.OR) safePushWhere.OR = safePushWhere.OR.concat(where.OR)
-                        Object.assign(where, safePushWhere);
-                    }
+                    
+                    assignWhere(where);
                     
                     prismaArgs.where = where;
                 } else if(onlyBaseWheres) {
-                    const where = {};
+                    const where = whereIndex !== undefined ? args.at(whereIndex) : {};
 
-                    if(whereType==='extending') {
-                        let requiredWhere = { ...this.requiredWhere };
-                        Object.assign(where, requiredWhere);
-                    }
-                    if(pushWhere !== undefined) {
-                        let safePushWhere = { ...pushWhere };
-                        if(where.OR && safePushWhere.OR) safePushWhere.OR = safePushWhere.OR.concat(where.OR)
-                        Object.assign(where, safePushWhere);
-                    }
+                    assignWhere(where);
 
                     prismaArgs.where = where;
                 }
@@ -544,7 +605,7 @@ export class VSRepository {
                 const prismaArgs = {};
 
                 const where = { [this.pkName]: pk };
-                if(this.requiredWhere) {
+                if(this.requiredWhere && !config.baseMethods?.get?.ignoreRequiredWhere) {
                     Object.assign(where, this.requiredWhere);
                 }
                 prismaArgs.where = where;
@@ -586,7 +647,7 @@ export class VSRepository {
                 const prismaArgs = {};
 
                 const where = { [this.pkName]: pk };
-                if(this.requiredWhere) {
+                if(this.requiredWhere && !config.baseMethods?.remove?.ignoreRequiredWhere) {
                     Object.assign(where, this.requiredWhere);
                 }
                 prismaArgs.where = where;
@@ -757,7 +818,7 @@ export class VSRepository {
                         }
 
                         const where = { [this.pkName]: obj[this.pkName] };
-                        if(this.requiredWhere) {
+                        if(this.requiredWhere && !config.baseMethods?.save?.ignoreRequiredWhere) {
                             Object.assign(where, this.requiredWhere);
                         }
                         prismaArgs.where = where;
@@ -839,3 +900,5 @@ export class VSRepository {
     }
 
 }
+
+export const setupVSRepo = () => (config) => new VSRepository(config);

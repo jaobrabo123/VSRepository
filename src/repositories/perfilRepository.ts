@@ -1,6 +1,6 @@
 import prisma from "../db";
 import type { Prisma } from "../generated/prisma/client";
-import { VSRepository, type SelectModels } from "../VSRepository/VSRepository";
+import { setupVSRepo, type SelectModels } from "../VSRepository/VSRepository";
 
 type Perfil = Prisma.perfilGetPayload<{
     include: {
@@ -16,14 +16,14 @@ export const perfilSelectModels = {
         telefone: true,
         usuarioId: true
     },
-} satisfies SelectModels<'perfil'>
+} satisfies SelectModels<'perfil'>;
 
-export class PerfilRepository extends VSRepository<Perfil, 'perfil'> {
-    readonly pkName = "id";
-    readonly tableName = "perfil";
-    readonly selectModels = perfilSelectModels;
-    readonly defaultSelectModel = 'public';
-}
+export const perfilVSRepo = setupVSRepo<Perfil, 'perfil'>()({
+    tableName: 'perfil',
+    pkName: 'id',
+    selectModels: perfilSelectModels,
+    defaultSelectModel: 'public',
+});
 
-const perfilRepository = new PerfilRepository().build(prisma);
+const perfilRepository = perfilVSRepo.build(prisma);
 export default perfilRepository;

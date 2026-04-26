@@ -1,34 +1,20 @@
-import prisma from "../db";
-import { UsuarioRepository } from "../repositories/usuarioRepository";
+import usuarioRepository from "../repositories/usuarioRepository";
 
 async function test(){
-    const usuarioRepositoryTest = new UsuarioRepository().build(prisma, {
-        showWorking: false,
-        baseMethods: {
-            get: {
-                active: true,
-                defaultSelect: 'public'
-            },
-            remove: {
-                defaultSelect: 'minimal'
-            }
-        }
-    });
-
-    const novoUsuario = await usuarioRepositoryTest.save({
+    const novoUsuario = await usuarioRepository.save({
         nome: "João",
         email: "joao@email.com",
         senha: "password",
     })
     console.log("Novo usuário:", novoUsuario);
 
-    await usuarioRepositoryTest.remove(novoUsuario.id);
-    const usuarioAindaExiste = await usuarioRepositoryTest.get(novoUsuario.id);
+    await usuarioRepository.remove(novoUsuario.id);
+    const usuarioAindaExiste = await usuarioRepository.get(novoUsuario.id);
     if(usuarioAindaExiste === null){
         console.log("Usuário removido com sucesso");
     }
 
-    const usuarioComPerfil = await usuarioRepositoryTest.save({
+    const usuarioComPerfil = await usuarioRepository.save({
         nome: "João",
         email: "joao@email.com",
         senha: "password",
@@ -44,18 +30,18 @@ async function test(){
     usuarioComPerfil.perfil.biografia = "Não sou um programador";
     usuarioComPerfil.perfil.telefone = "12345678"
 
-    const usuarioComPerfilAtualizado = await usuarioRepositoryTest.save(usuarioComPerfil);
+    const usuarioComPerfilAtualizado = await usuarioRepository.save(usuarioComPerfil);
     console.log("Novo usuário com perfil perfil atualzado:",usuarioComPerfilAtualizado);
 
-    const usuarioSemPerfil = await usuarioRepositoryTest.save({
+    const usuarioSemPerfil = await usuarioRepository.save({
         ...usuarioComPerfilAtualizado,
         perfil: null
     });
     console.log("Usuário sem o perfil:", usuarioSemPerfil)
 
-    await usuarioRepositoryTest.remove(usuarioComPerfil.id);
+    await usuarioRepository.remove(usuarioComPerfil.id);
 
-    const usuarioComPosts = await usuarioRepositoryTest.save({
+    const usuarioComPosts = await usuarioRepository.save({
         nome: "João",
         email: "joao@email.com",
         senha: "password",
@@ -85,15 +71,15 @@ async function test(){
 
     usuarioComPosts.postagens = usuarioComPosts.postagens.slice(0, 2);
 
-    const usuarioComPostsAtualizado = await usuarioRepositoryTest.save(usuarioComPosts, {selectModel: "comPosts"});
+    const usuarioComPostsAtualizado = await usuarioRepository.save(usuarioComPosts, {selectModel: "comPosts"});
     console.log("Usuário com posts atualizados:", usuarioComPostsAtualizado);
 
-    const usuarioGet = await usuarioRepositoryTest.get(usuarioComPostsAtualizado.id, {selectModel: 'comPosts'});
+    const usuarioGet = await usuarioRepository.get(usuarioComPostsAtualizado.id, {selectModel: 'comPosts'});
     console.log("Usuario:", usuarioGet);
 
-    await usuarioRepositoryTest.remove(usuarioComPosts.id);
+    await usuarioRepository.remove(usuarioComPosts.id);
 
-    const novosUsuarios = await usuarioRepositoryTest.createManyAndReturn([
+    const novosUsuarios = await usuarioRepository.createManyAndReturn([
         {
             nome: "Pedro Silva",
             email: "pedrin@gmail.com",
@@ -158,28 +144,42 @@ async function test(){
 
     console.log(`Foram inseridos ${novosUsuarios.length} novos usuários com sucesso!`);
 
-    const usuariosAtivos = await usuarioRepositoryTest.count();
+    const usuariosAtivos = await usuarioRepository.count();
     console.log('Usuarios ativos:', usuariosAtivos);
 
-    const cincoUsuarios = await usuarioRepositoryTest.findManyPaginated({
+    const cincoUsuarios = await usuarioRepository.findManyPaginated({
         take: 5
     });
-    console.log("Cinco usuarios:", cincoUsuarios);
+    console.log("Cinco usuarios:", cincoUsuarios[0]);
 
-    const usuariosComGmailOuOutlook = await usuarioRepositoryTest.buscarComGmailOuOutlookOuHotmail();
+    const usuariosComGmailOuOutlook = await usuarioRepository.buscarComGmailOuOutlookOuHotmail();
     console.log("Usuarios com gmail, outlook ou hotmail:", usuariosComGmailOuOutlook);
 
-    const buscandoUnique = await usuarioRepositoryTest.findUniqueByIdAndEmail(usuariosComGmailOuOutlook[0]!.id, usuariosComGmailOuOutlook[0]!.email);
+    const buscandoUnique = await usuarioRepository.findUniqueByIdAndEmail(usuariosComGmailOuOutlook[0]!.id, usuariosComGmailOuOutlook[0]!.email);
     console.log("Buscando Unique:", buscandoUnique)
 
     console.log("Deixando ele desativado");
-    await usuarioRepositoryTest.updateById(buscandoUnique!.id, { ativo: false });
+    await usuarioRepository.updateById(buscandoUnique!.id, { ativo: false });
 
-    const buscandoDenovo = await usuarioRepositoryTest.findUniqueByIdAndEmail(buscandoUnique!.id, buscandoUnique!.email);
+    const buscandoDenovo = await usuarioRepository.get(buscandoUnique!.id);
     console.log("Buscando de novo:", buscandoDenovo);
 
+    const testeFindListWhere = await usuarioRepository.findListWhereOrderedAndPaginated({
+        nome: {
+            startsWith: "Vanessa"
+        }
+    }, {dataCriacao: "desc"}, {take: 10});
+    console.log("Testando findListWhere:",testeFindListWhere[0])
+
+    const testeFindWhere = await usuarioRepository.findListWhereOrderedAndPaginated({
+        nome: {
+            startsWith: "Vanessa"
+        }
+    }, {dataCriacao: "desc"}, {take: 10});
+    console.log("Testando findListWhere:",testeFindWhere)
+
     console.log("\nRemovendo todos.")
-    await usuarioRepositoryTest.deleteManyByIdIn(novosUsuarios.map(_=>_.id));
+    await usuarioRepository.deleteManyByIdIn(novosUsuarios.map(_=>_.id));
 
     process.exit(0)
 }

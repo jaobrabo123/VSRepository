@@ -1,15 +1,10 @@
 import prisma from "../db"
-import { CategoriaRepository } from "../repositories/categoriaRepository";
-import { PostagemRepository } from "../repositories/postagemRepository"
+import categoriaRepository from "../repositories/categoriaRepository";
+import postagemRepository from "../repositories/postagemRepository";
 import usuarioRepository from "../repositories/usuarioRepository";
 
 async function test() {
-    const postagemRepositoryTest = new PostagemRepository().build(prisma, {
-        showWorking: false
-    });
-    const categoriaRepositoryTest = new CategoriaRepository().build(prisma);
-
-    const categoriasBase = await categoriaRepositoryTest.createManyAndReturn([
+    const categoriasBase = await categoriaRepository.createManyAndReturn([
         {
             nome: "TI",
             descricao: "Tecnologia da informação"
@@ -95,7 +90,7 @@ async function test() {
         }
     ]);
 
-    let novaPostagem = await postagemRepositoryTest.save({
+    let novaPostagem = await postagemRepository.save({
         titulo: "Projeto em Assembly",
         conteudo: "Um projeto muito brabo em assembly",
         autor: {
@@ -112,22 +107,22 @@ async function test() {
         }, ...categoriasBase]
     });
     console.log("Nova postagem:", novaPostagem);
-    console.log("Quantidade de categorias da postagem:", await categoriaRepositoryTest.countByPostagens({some: {id: novaPostagem.id}}))
+    console.log("Quantidade de categorias da postagem:", await categoriaRepository.countByPostagens({some: {id: novaPostagem.id}}))
 
     const novaCategoria = {id: crypto.randomUUID(), nome: "Home office", descricao: null};
     const categoriasPraRemover = [...novaPostagem.categorias, novaCategoria];
 
     novaPostagem.categorias = [...categoriasBase.slice(0, 4), novaCategoria];
 
-    novaPostagem = await postagemRepositoryTest.save(novaPostagem);
+    novaPostagem = await postagemRepository.save(novaPostagem);
 
     console.log("Postagem atualizada:", novaPostagem)
-    console.log("Quantidade de categorias da postagem:", await categoriaRepositoryTest.countByPostagens({some: {id: novaPostagem.id}}))
+    console.log("Quantidade de categorias da postagem:", await categoriaRepository.countByPostagens({some: {id: novaPostagem.id}}))
 
     // * Testando Transaction
     await prisma.$transaction(async (tx)=>{
-        await postagemRepositoryTest.remove(novaPostagem.id, {db: tx});
-        await categoriaRepositoryTest.deleteManyByIdIn(categoriasPraRemover.map(cat=>cat.id), tx);
+        await postagemRepository.remove(novaPostagem.id, {db: tx});
+        await categoriaRepository.deleteManyByIdIn(categoriasPraRemover.map(cat=>cat.id), tx);
         await usuarioRepository.deleteByEmail("gabrieldev@outlook.com", tx);
     });
     process.exit(0)

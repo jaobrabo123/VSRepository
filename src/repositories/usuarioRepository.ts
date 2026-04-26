@@ -1,6 +1,6 @@
 import prisma from "../db";
 import type { Prisma } from "../generated/prisma/client";
-import { VSRepository, type MethodConfig, type ModelWhere, type RepositoryRelations, type SelectModels } from "../VSRepository/VSRepository";
+import { setupVSRepo, type WhereModel, type SelectModels } from "../VSRepository/VSRepository";
 
 type Usuario = Prisma.usuarioGetPayload<{
     include: {
@@ -8,11 +8,6 @@ type Usuario = Prisma.usuarioGetPayload<{
         postagens: true
     }
 }>;
-
-type ThisMethodConfig = MethodConfig<{
-    tableName: 'usuario',
-    selectModels: typeof usuarioSelectModels
-}>
 
 export const usuarioSelectModels = {
     public: {
@@ -52,16 +47,19 @@ export const usuarioSelectModels = {
     minimal: {
         id: true
     }
-} satisfies SelectModels<'usuario'>;
+} as const satisfies SelectModels<'usuario'>;
 
 export const usuarioRequiredWhere = {
     ativo: true
-} satisfies ModelWhere<'usuario'>;
+} satisfies WhereModel<'usuario'>;
 
-export class UsuarioRepository extends VSRepository<Usuario, 'usuario'>{
-    readonly tableName = "usuario";
-    readonly pkName = "id";
-    readonly relations = {
+export const usuarioVSRepo = setupVSRepo<Usuario, 'usuario'>()({
+    tableName: 'usuario',
+    pkName: 'id',
+    selectModels: usuarioSelectModels,
+    defaultSelectModel: 'public',
+    requiredWhere: usuarioRequiredWhere,
+    relations: {
         perfil: {
             pk: 'id',
             mode: 'oto',
@@ -72,54 +70,51 @@ export class UsuarioRepository extends VSRepository<Usuario, 'usuario'>{
             mode: 'otm',
             restriction: 'set'
         }
-    } satisfies RepositoryRelations<Usuario>;
-    readonly selectModels = usuarioSelectModels;
-    readonly defaultSelectModel = 'public';
-    readonly requiredWhere = usuarioRequiredWhere;
-
-    createManyAndReturn = {
-        map: true,
-        selectModel: 'minimal'
-    } satisfies ThisMethodConfig;
-
-    deleteManyByIdIn = {
-        map: true,
-        whereType: 'overwrite',
-    } satisfies ThisMethodConfig;
-
-    findManyPaginated = { map: true } as const;
-
-    count = { map: true } as const;
-
-    buscarComGmailOuOutlookOuHotmail = {
-        map: true,
-        proxyTo: 'findMany',
-        pushWhere: {
-            OR: [
-                { email: { endsWith: '@gmail.com' } },
-                { email: { endsWith: '@outlook.com' } },
-                { email: { endsWith: '@hotmail.com' } }
-            ]
+    },
+    methods: {
+        createManyAndReturn: {
+            map: true,
+            selectModel: 'minimal'
         },
-        whereType: 'extending'
-    } satisfies ThisMethodConfig;
+        deleteManyByIdIn: {
+            map: true,
+            whereType: 'overwrite',
+        },
+        findManyPaginated: { map: true },
+        count: { map: true },
+        buscarComGmailOuOutlookOuHotmail: {
+            map: true,
+            proxyTo: 'findMany',
+            pushWhere: {
+                OR: [
+                    { email: { endsWith: '@gmail.com' } },
+                    { email: { endsWith: '@outlook.com' } },
+                    { email: { endsWith: '@hotmail.com' } }
+                ]
+            },
+            whereType: 'extending'
+        },
+        findUniqueByIdAndEmail: { map: true },
+        updateById: { map: true },
+        deleteByEmail: { map: true },
+        countByPerfil: { map: true },
+        findListWhereOrderedAndPaginated: {
+            map: true,
+            whereType: "overwrite"
+        }
+    }
+});
 
-    findUniqueByIdAndEmail = {
-        map: true,
-    } satisfies ThisMethodConfig;
-
-    updateById = {
-        map: true
-    } satisfies ThisMethodConfig;
-
-    deleteByEmail = {
-        map: true
-    } satisfies ThisMethodConfig;
-
-    countByPerfil = {
-        map: true
-    } satisfies ThisMethodConfig;
-}
-
-const usuarioRepository = new UsuarioRepository().build(prisma);
+const usuarioRepository = usuarioVSRepo.build(prisma, {
+    showWorking: true,
+    baseMethods: {
+        get: {
+            active: true,
+            defaultSelect: 'public'
+        },
+        remove: {
+            defaultSelect: 'minimal'
+        }
+    }
+});
 export default usuarioRepository;
