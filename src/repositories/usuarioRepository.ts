@@ -101,6 +101,9 @@ export const usuarioVSRepo = setupVSRepo<Usuario, 'usuario'>()({
         findListWhereOrderedAndPaginated: {
             map: true,
             whereType: "overwrite"
+        },
+        findManyByPostagens: {
+            map: true
         }
     }
 });
