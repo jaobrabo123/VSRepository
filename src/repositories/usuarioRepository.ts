@@ -104,6 +104,13 @@ export const usuarioVSRepo = setupVSRepo<Usuario, 'usuario'>()({
         },
         findManyByPostagens: {
             map: true
+        },
+        findWhere: {
+            map: true
+        },
+        findById: {
+            map: true,
+            fbMode: 'one'
         }
     }
 });

@@ -1,3 +1,35 @@
+export class VSRepoError extends Error {
+    constructor(message, type){
+        super(message);
+        this.name = this.constructor.name;
+        this.type = type;
+    }
+}
+
+export class VSRepoConfigError extends VSRepoError {
+    constructor(message){
+        super(message, "VSREPO_CONFIG");
+    }
+}
+
+export class VSRepoBuildError extends VSRepoError {
+    constructor(message){
+        super(message, "VSREPO_BUILD");
+    }
+}
+
+export class VSRepoExtendError extends VSRepoError {
+    constructor(message){
+        super(message, "VSREPO_EXTEND");
+    }
+}
+
+export class VSRepoRuntimeError extends VSRepoError {
+    constructor(message){
+        super(message, "VSREPO_RUNTIME");
+    }
+}
+
 export class VSRepository {
 
     vsrepocache;
@@ -10,62 +42,62 @@ export class VSRepository {
 
     constructor(config) {
         if(typeof config !== 'object' || config === null){
-            throw new Error(`[VSRepository] (config) 'config' must be a valid object.`);
+            throw new VSRepoConfigError(`[VSRepository] (config) 'config' must be a valid object.`);
         }
         if(typeof config.tableName !== 'string') {
-            throw new Error(`[VSRepository] (config) 'tableName' must be a valid string.`);
+            throw new VSRepoConfigError(`[VSRepository] (config) 'tableName' must be a valid string.`);
         }
         if(typeof config.pkName !== 'string') {
-            throw new Error(`[VSRepository] (config) 'pkName' must be a valid string.`);
+            throw new VSRepoConfigError(`[VSRepository] (config) 'pkName' must be a valid string.`);
         }
         if(config.selectModels !== undefined && typeof config.selectModels !== 'object' || config.selectModels === null) {
-            throw new Error(`[VSRepository] (config) 'selectModels' must be a valid object.`);
+            throw new VSRepoConfigError(`[VSRepository] (config) 'selectModels' must be a valid object.`);
         }
         if(config.defaultSelectModel !== undefined) {
             if(!config.selectModels) {
-                throw new Error(`[VSRepository] (config) 'defaultSelectModel' can only be passed with 'selectModels'.`);
+                throw new VSRepoConfigError(`[VSRepository] (config) 'defaultSelectModel' can only be passed with 'selectModels'.`);
             }
             if(typeof config.defaultSelectModel !== 'string') {
-                throw new Error(`[VSRepository] (config) 'defaultSelectModel' must be a valid string.`);
+                throw new VSRepoConfigError(`[VSRepository] (config) 'defaultSelectModel' must be a valid string.`);
             }
             if(!Object.keys(config.selectModels).includes(config.defaultSelectModel)){
-                throw new Error(`[VSRepository] (config) Invalid 'defaultSelectModel': ${config.defaultSelectModel}`);
+                throw new VSRepoConfigError(`[VSRepository] (config) Invalid 'defaultSelectModel': ${config.defaultSelectModel}`);
             }
         }
         if(config.relations !== undefined) {
             const relations = config.relations;
             if(typeof relations !== 'object' || relations === null){
-                throw new Error(`[VSRepository] (config) 'relations' must be a valid object.`);
+                throw new VSRepoConfigError(`[VSRepository] (config) 'relations' must be a valid object.`);
             }
 
             for (const key of Object.keys(relations)) {
                 const relation = relations[key];
                 if(typeof relation.pk !== 'string'){
-                    throw new Error(`[VSRepository] (config) The property 'pk' of relation '${key}' must be a string.`);
+                    throw new VSRepoConfigError(`[VSRepository] (config) The property 'pk' of relation '${key}' must be a string.`);
                 }
                 if(typeof relation.mode !== 'string'){
-                    throw new Error(`[VSRepository] (config) The property 'mode' of relation '${key}' must be 'otm', 'mtm', 'mto' or 'oto'.`);
+                    throw new VSRepoConfigError(`[VSRepository] (config) The property 'mode' of relation '${key}' must be 'otm', 'mtm', 'mto' or 'oto'.`);
                 }
                 if(typeof relation.restriction !== 'string'){
-                    throw new Error(`[VSRepository] (config) The property 'restriction' of relation '${key}' must be 'set' or 'add'.`);
+                    throw new VSRepoConfigError(`[VSRepository] (config) The property 'restriction' of relation '${key}' must be 'set' or 'add'.`);
                 }
             }
         }
         if(config.requiredWhere !== undefined && typeof config.requiredWhere !== 'object' || config.requiredWhere === null) {
-            throw new Error(`[VSRepository] (config) 'requiredWhere' must be a valid object.`);
+            throw new VSRepoConfigError(`[VSRepository] (config) 'requiredWhere' must be a valid object.`);
         }
         if(config.methods !== undefined) {
             if(typeof config.methods !== 'object' || config.methods === null){
-                throw new Error(`[VSRepository] (config) 'methods' must be a valid object.`);
+                throw new VSRepoConfigError(`[VSRepository] (config) 'methods' must be a valid object.`);
             } else {
                 for (const [key, value] of Object.entries(config.methods)) {
 
                     if(value.whereType !== undefined && !['extending', 'overwrite'].includes(value.whereType)){
-                        throw new Error(`[VSRepository] (config) Invalid 'whereType' on ${key}: ${value.whereType}`);
+                        throw new VSRepoConfigError(`[VSRepository] (config) Invalid 'whereType' on ${key}: ${value.whereType}`);
                     }
 
                     if(value.selectModel !== undefined && (!config.selectModels || !Object.keys(config.selectModels).includes(value.selectModel))){
-                        throw new Error(`[VSRepository] (config) Invalid 'selectModel' on ${key}: ${value.selectModel}`);
+                        throw new VSRepoConfigError(`[VSRepository] (config) Invalid 'selectModel' on ${key}: ${value.selectModel}`);
                     }
 
                 }
@@ -84,18 +116,20 @@ export class VSRepository {
 
     extend(extensionFunc) {
         if(typeof extensionFunc !== 'function'){
-            throw new Error(`[VSRepository] (extend) 'extension' must be a valid funcion.`);
+            throw new VSRepoExtendError(`[VSRepository] (extend) 'extensionFunc' must be a valid funcion.`);
         }
         const extension = extensionFunc(this);
+        if(typeof extension !== 'object' || extension === null){
+            throw new VSRepoExtendError(`[VSRepository] (extend) The return of the 'extensionFunc' must be a valid object.`)
+        }
         return Object.assign(Object.create(this), extension);
     }
 
     build(prisma, config = {}) {
-        const className = this.constructor.name;
         const showWorking = config.showWorking;
 
         if(typeof config !== 'object' || config === null) {
-            throw new Error(`[VSRepository] (${className}: build) Config must be a valid object.`);
+            throw new VSRepoBuildError(`[VSRepository] (build) 'config' must be a valid object.`);
         }
         if(config.freeze === undefined) {
             config.freeze = true;
@@ -107,7 +141,7 @@ export class VSRepository {
         const repositoryKeysToMap = Object.keys(methods);
 
         if(showWorking) {
-            console.log(`[VSRepository] (${className}: build) Keys to map:`, JSON.stringify(repositoryKeysToMap, null, 2));
+            console.log(`[VSRepository] (build) Keys to map:`, JSON.stringify(repositoryKeysToMap, null, 2));
         }
 
         for (let keyToMap of repositoryKeysToMap) {
@@ -247,8 +281,12 @@ export class VSRepository {
                 whereIndex = 0;
                 otherParams.push('where');
                 argsCount += 1;
+            } else if(keyToMap.startsWith('findBy')) {
+                keyToMapReplaced = keyToMap.replace('findBy', '');
+                ignoreOrderByAndPagination = false;
+                method = methods[originalKey].fbMode === 'one' ? 'findFirst' : 'findMany';
             } else {
-                throw new Error(`[VSRepository] (${className}: build) Unknown method: ${keyToMap}.`);
+                throw new VSRepoBuildError(`[VSRepository] (build) Unknown method: ${keyToMap}.`);
             }
 
 
@@ -394,7 +432,7 @@ export class VSRepository {
                         }
 
                         if(showWorking) {
-                            console.log(`[VSRepository] (${className}: build) Where object builded to ${keyToMap}:\n`, JSON.stringify(buildedWhere, null, 2));
+                            console.log(`[VSRepository] (build) Where object builded to ${keyToMap}:\n`, JSON.stringify(buildedWhere, null, 2));
                         }
 
                         argsCount++
@@ -436,7 +474,7 @@ export class VSRepository {
                     return { context, otherProps };
                 });
                 if(showWorking) {
-                    console.log(`[VSRepository] (${className}: build) Where object resolved to ${keyToMap}:\n`, JSON.stringify(whereResolved, null, 2));
+                    console.log(`[VSRepository] (build) Where object resolved to ${keyToMap}:\n`, JSON.stringify(whereResolved, null, 2));
                 }
             }
 
@@ -558,7 +596,7 @@ export class VSRepository {
                 let db = prisma;
                 if(args.length < argsCount) {
                     const missingParams = whereParams.concat(otherParams).slice(args.length);
-                    throw new Error(`[VSRepository] (${className}: runtime) Missing parameters: ${missingParams.join(', ')}`);
+                    throw new VSRepoRuntimeError(`[VSRepository] (runtime) Missing parameters: ${missingParams.join(', ')}`);
                 } else if(args.length > argsCount) {
                     db = args[args.length - 1];
                 } else {
@@ -569,8 +607,8 @@ export class VSRepository {
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (${className}: runtime) Executing ${method} on ${this.tableName}.`);
-                    console.log(`[VSRepository] (${className}: runtime) Built arguments to ${method} on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (runtime) Executing ${method} on ${this.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Built arguments to ${method} on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
 
@@ -580,7 +618,7 @@ export class VSRepository {
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (${className}: runtime) Executed ${method} on ${this.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (runtime) Executed ${method} on ${this.tableName} (took: ${duration}ms).`);
                     }
 
                     if(existsMode) {
@@ -588,7 +626,7 @@ export class VSRepository {
                     }
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (${className}: runtime) Fatal error when executing ${method} on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (runtime) Fatal error when executing ${method} on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
                 
@@ -617,8 +655,8 @@ export class VSRepository {
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (${className}: runtime) Executing get on ${this.tableName}.`);
-                    console.log(`[VSRepository] (${className}: runtime) Built arguments to get on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (runtime) Executing get on ${this.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Built arguments to get on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
 
@@ -628,12 +666,12 @@ export class VSRepository {
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (${className}: runtime) Executed get on ${this.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (runtime) Executed get on ${this.tableName} (took: ${duration}ms).`);
                     }
 
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (${className}: runtime) Fatal error when trying to get on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (runtime) Fatal error when trying to get on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }
@@ -659,8 +697,8 @@ export class VSRepository {
                 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (${className}: runtime) Executing remove on ${this.tableName}.`);
-                    console.log(`[VSRepository] (${className}: runtime) Built arguments to remove on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (runtime) Executing remove on ${this.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Built arguments to remove on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
                 try {
@@ -669,12 +707,12 @@ export class VSRepository {
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (${className}: runtime) Executed remove on ${this.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (runtime) Executed remove on ${this.tableName} (took: ${duration}ms).`);
                     }
 
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (${className}: runtime) Fatal error when trying to remove on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (runtime) Fatal error when trying to remove on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }
@@ -694,7 +732,7 @@ export class VSRepository {
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (${className}: runtime) Executing save on ${this.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Executing save on ${this.tableName}.`);
                     start = performance.now();
                 }
 
@@ -824,7 +862,7 @@ export class VSRepository {
                         prismaArgs.where = where;
 
                         if(showWorking) {
-                            console.log(`[VSRepository] (${className}: runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                            console.log(`[VSRepository] (runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                         }
 
                         result = await db[this.tableName].upsert(prismaArgs);
@@ -875,7 +913,7 @@ export class VSRepository {
                         }
 
                         if(showWorking) {
-                            console.log(`[VSRepository] (${className}: runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                            console.log(`[VSRepository] (runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                         }
 
                         result = await db[this.tableName].create(prismaArgs);
@@ -884,12 +922,12 @@ export class VSRepository {
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (${className}: runtime) Executed save on ${this.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (runtime) Executed save on ${this.tableName} (took: ${duration}ms).`);
                     }
 
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (${className}: runtime) Fatal error when trying to save on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (runtime) Fatal error when trying to save on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }

@@ -171,12 +171,15 @@ async function test(){
     }, {dataCriacao: "desc"}, {take: 10});
     console.log("Testando findListWhere:",testeFindListWhere[0])
 
-    const testeFindWhere = await usuarioRepository.findListWhereOrderedAndPaginated({
+    const testeFindWhere = await usuarioRepository.findWhere({
         nome: {
             startsWith: "Vanessa"
         }
-    }, {dataCriacao: "desc"}, {take: 10});
-    console.log("Testando findListWhere:",testeFindWhere)
+    });
+    console.log("Testando findWhere:",testeFindWhere)
+
+    const testeFindBy = await usuarioRepository.findById(testeFindWhere!.id);
+    console.log("Teste findBy:", testeFindBy)
 
     console.log("\nRemovendo todos.")
     await usuarioRepository.deleteManyByIdIn(novosUsuarios.map(_=>_.id));
