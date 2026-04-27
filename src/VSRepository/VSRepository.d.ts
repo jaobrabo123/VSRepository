@@ -803,12 +803,12 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
  * @template T - The Prisma generated entity type (e.g., `User`).
  * @template M - The literal string of the Prisma ModelName (e.g., `'User'`).
  * @example
- * const UserRepository = setupVSRepo<User, 'User'>()({
- * tableName: 'user',
- * pkName: 'id',
- * methods: {
- * findUniqueByEmail: { map: true }
- * }
+ * const userVSRepo = setupVSRepo<User, 'User'>()({
+ *  tableName: 'user',
+ *  pkName: 'id',
+ *  methods: {
+ *      findUniqueByEmail: { map: true }
+ *  }
  * });
  */
 export declare function setupVSRepo<T extends object, M extends Prisma.ModelName>(): <

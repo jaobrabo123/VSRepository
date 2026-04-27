@@ -58,5 +58,5 @@ export const postagemVSRepo = setupVSRepo<Postagem, 'postagem'>()({
     }
 });
 
-const postagemRepository = postagemVSRepo.build(prisma);
+const postagemRepository = postagemVSRepo.build(prisma, {showWorking: true});
 export default postagemRepository;

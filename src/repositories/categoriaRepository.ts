@@ -1,5 +1,5 @@
 import type { Prisma } from "@generated/prisma/client";
-import { setupVSRepo, type SelectModels } from "../VSRepository/VSRepository";
+import { setupVSRepo, type ClientOrTransaction, type SelectModels } from "../VSRepository/VSRepository";
 import prisma from "../db";
 
 type Categoria = Prisma.categoriaGetPayload<{
@@ -42,10 +42,10 @@ export const categoriaVSRepo = setupVSRepo<Categoria, 'categoria'>()({
 });
 
 const categoriaRepository = categoriaVSRepo
-    .build(prisma)
+    .build(prisma, {showWorking: true})
     .extend((vsrepo)=>({
-        deletarNormalizandoIds: async (ids: string[]) => {
-            return vsrepo.deleteManyByIdIn(ids.map(id=>id.toLowerCase()))
+        deletarNormalizandoIds: async (ids: string[], db: ClientOrTransaction) => {
+            return await vsrepo.deleteManyByIdIn(ids.map(id=>id.toLowerCase()), {db});
         }
     }));
 export default categoriaRepository;
