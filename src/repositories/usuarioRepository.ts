@@ -96,7 +96,7 @@ export const usuarioVSRepo = setupVSRepo<Usuario, 'usuario'>()({
         },
         findUniqueByIdAndEmail: { map: true },
         updateById: { map: true },
-        deleteByEmail: { map: true },
+        deleteByEmail: { map: true, selectModel: 'minimal' },
         countByPerfil: { map: true },
         findListWhereOrderedAndPaginated: {
             map: true,

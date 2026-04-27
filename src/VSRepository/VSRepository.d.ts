@@ -342,7 +342,11 @@ type MethodFn<
     DefaultSelect extends keyof SelectModels,
     I,
 > = <S extends keyof SelectModels = DefaultSelect>(
-    ...args: [...ExtractFields<T, CleanFields<R>, I>, ...ExtraArgs<M, R, I>, db?: ClientOrTransaction]
+    ...args: [
+        ...ExtractFields<T, CleanFields<R>, I>,
+        ...ExtraArgs<M, R, I>,
+        options?: { selectModel?: S; db?: ClientOrTransaction },
+    ]
 ) => Promise<ResolveReturnType<M, SelectedModel<T, S, SelectModels>>>;
 
 type MethodFactory<

@@ -494,11 +494,11 @@ export class VSRepository {
                 select = { [this.pkName]: true };
             }
 
-            this.vsrepocache.set(originalKey, (args) => {
+            this.vsrepocache.set(originalKey, (args, optionsSelectModel) => {
                 const prismaArgs = {};
 
                 if(select) {
-                    prismaArgs.select = select;
+                    prismaArgs.select = optionsSelectModel && !existsMode ? this.selectModels[optionsSelectModel] : select;
                 }
 
                 if(orderPosition !== undefined) {
@@ -594,16 +594,19 @@ export class VSRepository {
             this[originalKey] = async (...args) => {
                 
                 let db = prisma;
+                let optionsSelectModel;
                 if(args.length < argsCount) {
                     const missingParams = whereParams.concat(otherParams).slice(args.length);
                     throw new VSRepoRuntimeError(`[VSRepository] (runtime) Missing parameters: ${missingParams.join(', ')}`);
                 } else if(args.length > argsCount) {
-                    db = args[args.length - 1];
+                    const optionsArg = args[args.length - 1]
+                    db = optionsArg.db;
+                    optionsSelectModel = optionsArg.selectModel
                 } else {
                     args.push('1')
                 }
 
-                const prismaArgs = this.vsrepocache.get(originalKey)(args);
+                const prismaArgs = this.vsrepocache.get(originalKey)(args, optionsSelectModel);
 
                 let start;
                 if(showWorking){

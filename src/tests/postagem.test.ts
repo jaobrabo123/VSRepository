@@ -122,8 +122,8 @@ async function test() {
     // * Testando Transaction
     await prisma.$transaction(async (tx)=>{
         await postagemRepository.remove(novaPostagem.id, {db: tx});
-        await categoriaRepository.deleteManyByIdIn(categoriasPraRemover.map(cat=>cat.id), tx);
-        await usuarioRepository.deleteByEmail("gabrieldev@outlook.com", tx);
+        await categoriaRepository.deleteManyByIdIn(categoriasPraRemover.map(cat=>cat.id), {db: tx});
+        await usuarioRepository.deleteByEmail("gabrieldev@outlook.com", {db: tx});
     });
     process.exit(0)
 }
