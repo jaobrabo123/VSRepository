@@ -37,6 +37,9 @@ export const categoriaVSRepo = setupVSRepo<Categoria, 'categoria'>()({
         },
         countByPostagens: {
             map: true
+        },
+        findByDescricaoOrDescricaoANDNome: {
+            map: true,
         }
     }
 });

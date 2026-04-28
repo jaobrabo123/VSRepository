@@ -349,12 +349,6 @@ export class VSRepository {
 
             if(!ignoreWhere) {
 
-                let orMode = false;
-                let keysSplitedOr = keyToMapReplaced.split('Or');
-                if(keysSplitedOr.length > 1){
-                    orMode = true;
-                }
-
                 function buildWhere(keySplitedAnd) {
 
                     const buildedWhere = {}
@@ -415,30 +409,49 @@ export class VSRepository {
                     return buildedWhere;
 
                 }
+                
+                let ANDMode = false
+                let keysSplitedAND = keyToMapReplaced.split("AND");
+                if(keysSplitedAND.length > 1) {
+                    ANDMode = true;
+                }
+                
+                keysSplitedAND.forEach((keySplitedAND, idx)=>{
 
-                for (let i = 0; i < keysSplitedOr.length; i++) {
-
-                    const keysSplitedAnd = keysSplitedOr[i].split('And')
-
-                    for (const keySplitedAnd of keysSplitedAnd) {
-                        
-                        const buildedWhere = buildWhere(keySplitedAnd);
-
-                        if(!orMode) {
-                            whereArgs.push(buildedWhere)
-                        } else {
-                            buildedWhere.name = `OR.${i}idx.${buildedWhere.name}`;
-                            whereArgs.push(buildedWhere)
-                        }
-
-                        if(showWorking) {
-                            console.log(`[VSRepository] (build) Where object builded to ${keyToMap}:\n`, JSON.stringify(buildedWhere, null, 2));
-                        }
-
-                        argsCount++
+                    let orMode = false;
+                    let keysSplitedOr = idx === 0 ? keySplitedAND.split('Or') : [keySplitedAND];
+                    if(keysSplitedOr.length > 1){
+                        orMode = true;
                     }
 
-                }
+                    for (let i = 0; i < keysSplitedOr.length; i++) {
+
+                        const keysSplitedAnd = keysSplitedOr[i].split('And')
+
+                        for (const keySplitedAnd of keysSplitedAnd) {
+                            
+                            const buildedWhere = buildWhere(keySplitedAnd);
+
+                            if(!orMode) {
+                                if(idx === 1 && ANDMode){
+                                    buildedWhere.name = `AND.${i}idx.${buildedWhere.name}`;
+                                }
+                                whereArgs.push(buildedWhere);
+                            } else {
+                                buildedWhere.name = `OR.${i}idx.${buildedWhere.name}`;
+                                whereArgs.push(buildedWhere);
+                            }
+
+                            if(showWorking) {
+                                console.log(`[VSRepository] (build) Where object builded to ${keyToMap}:\n`, JSON.stringify(buildedWhere, null, 2));
+                            }
+
+                            argsCount++
+                        }
+
+                    }
+
+                });
 
                 whereResolved = whereArgs.map(arg=>{
                     let context = [];
@@ -451,6 +464,14 @@ export class VSRepository {
                         context.push('OR')
                         context.push(Number(agrNameSplitedOrIdx[0]))
                         argName = agrNameSplitedOrIdx[1]
+                    } else {
+                        const agrNameSplitedAND = argName.split('AND.');
+                        if(agrNameSplitedAND.length > 1) {
+                            const agrNameSplitedANDIdx = agrNameSplitedAND[1].split('idx.')
+                            context.push('AND')
+                            context.push(Number(agrNameSplitedANDIdx[0]))
+                            argName = agrNameSplitedANDIdx[1];
+                        }
                     }
 
                     context.push(argName)

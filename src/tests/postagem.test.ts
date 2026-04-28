@@ -90,6 +90,9 @@ async function test() {
         }
     ]);
 
+    const testeAND = await categoriaRepository.findByDescricaoOrDescricaoANDNome("teste", null, "Desenvolvimento de Jogos");
+    console.log("Teste de AND:", testeAND)
+
     let novaPostagem = await postagemRepository.save({
         titulo: "Projeto em Assembly",
         conteudo: "Um projeto muito brabo em assembly",

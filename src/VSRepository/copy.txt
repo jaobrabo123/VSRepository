@@ -249,15 +249,6 @@ type MapToContractTypes<T, Arr extends any[], I> = Arr extends [
     ? [GetFieldType<T, First, I>, ...MapToContractTypes<T, Rest, I>]
     : [];
 
-/**
- * Detecta se uma string possui o separador 'AND' mais de uma vez.
- */
-type HasMultipleANDs<S extends string> = string extends S 
-    ? false 
-    : S extends `${string}AND${string}AND${string}` 
-        ? true 
-        : false;
-
 type ExtractAnds<T, S extends string, I> = MapToContractTypes<T, Split<S, 'And'>, I>;
 
 type ExtractOrsTuple<T, Arr extends string[], I> = Arr extends [
@@ -267,20 +258,9 @@ type ExtractOrsTuple<T, Arr extends string[], I> = Arr extends [
     ? [...ExtractAnds<T, First, I>, ...ExtractOrsTuple<T, Rest, I>]
     : [];
 
-type ExtractOrs<T, S extends string, I> = S extends ''
-    ? []
-    : ExtractOrsTuple<T, Split<S, 'Or'>, I>;
-
-type ExtractANDsTuple<T, Arr extends string[], I> = Arr extends [
-    infer First extends string,
-    ...infer Rest extends string[],
-]
-    ? [...ExtractOrs<T, First, I>, ...ExtractANDsTuple<T, Rest, I>]
-    : [];
-
 type ExtractFields<T, R extends string, I> = R extends ''
     ? []
-    : ExtractANDsTuple<T, Split<R, 'AND'>, I>;
+    : ExtractOrsTuple<T, Split<R, 'Or'>, I>;
 
 type ResolveReturnType<M extends string, TSelected> =
     M extends 'existsBy'
@@ -808,19 +788,11 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
     requiredWhere?: WhereModel<M>;
     relations?: RepositoryRelations<T>;
     methods?: {
-        [K in keyof (Config extends { methods: infer Meth } ? Meth : {})]: K extends string
-            ? HasMultipleANDs<K> extends true
-                // Se tem múltiplos 'AND', exige proxyTo obrigatoriamente
-                ? MethodConfig<M, Config extends { selectModels: infer SM } ? SM : any> & {
-                      proxyTo: ValidMethodPatterns;
-                  }
-                // Se tiver 1 ou 0 'AND', segue a regra original (valida padrão mágico)
-                : K extends ValidMethodPatterns
-                  ? MethodConfig<M, Config extends { selectModels: infer SM } ? SM : any>
-                  : MethodConfig<M, Config extends { selectModels: infer SM } ? SM : any> & {
-                        proxyTo: ValidMethodPatterns;
-                    }
-            : never;
+        [K in keyof (Config extends { methods: infer Meth } ? Meth : {})]: K extends ValidMethodPatterns
+            ? MethodConfig<M, Config extends { selectModels: infer SM } ? SM : any>
+            : MethodConfig<M, Config extends { selectModels: infer SM } ? SM : any> & {
+                  proxyTo: ValidMethodPatterns;
+              };
     };
 };
 
