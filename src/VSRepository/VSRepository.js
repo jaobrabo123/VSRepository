@@ -540,11 +540,13 @@ export class VSRepository {
                     if(whereType==='extending' && this.requiredWhere) {
                         let safeRequiredWhere = structuredClone(this.requiredWhere);
                         if(where.OR && safeRequiredWhere.OR) safeRequiredWhere.OR = safeRequiredWhere.OR.concat(where.OR)
+                        if(where.AND && safeRequiredWhere.AND) safeRequiredWhere.AND = safeRequiredWhere.AND.concat(where.AND)
                         Object.assign(where, safeRequiredWhere);
                     }
                     if(pushWhere !== undefined) {
                         let safePushWhere = structuredClone(pushWhere);
                         if(where.OR && safePushWhere.OR) safePushWhere.OR = safePushWhere.OR.concat(where.OR)
+                        if(where.AND && safePushWhere.AND) safePushWhere.AND = safePushWhere.AND.concat(where.AND)
                         Object.assign(where, safePushWhere);
                     }
                 }
@@ -553,12 +555,14 @@ export class VSRepository {
 
                     const where = {};
                     let OR;
+                    let AND;
                     
                     for (let j = 0; j < whereResolved.length; j++) {
                         let path = {}
                         let current = path
                         let ormode = false;
-                        let oridx;
+                        let andmode = false;
+                        let modeIdx;
                         const context = whereResolved[j].context
                         const contextLength = context.length;
                         const contextLengthM1 = contextLength-1;
@@ -566,8 +570,10 @@ export class VSRepository {
                             if(i<contextLengthM1){
                                 if(context[i]==='OR'){
                                     ormode = true;
+                                } else if(context[i]==='AND'){
+                                    andmode = true;
                                 } else if(typeof context[i] === 'number'){
-                                    oridx = context[i];
+                                    modeIdx = context[i];
                                 } else {
                                     if(!current[context[i]]) current[context[i]] = {};
                                     current = current[context[i]];
@@ -579,14 +585,19 @@ export class VSRepository {
 
                         if (ormode) {
                             if(!OR) OR = [];
-                            if(!OR[oridx]) OR[oridx] = {}
-                            Object.assign(OR[oridx], path)
+                            if(!OR[modeIdx]) OR[modeIdx] = {}
+                            Object.assign(OR[modeIdx], path)
+                        } else if(andmode) {
+                            if(!AND) AND = [];
+                            if(!AND[modeIdx]) AND[modeIdx] = {}
+                            Object.assign(AND[modeIdx], path)
                         } else {
                             Object.assign(where, path);
                         }
                     }
 
                     if(OR) where.OR = OR;
+                    if(AND) where.AND = AND;
                     
                     assignWhere(where);
                     
