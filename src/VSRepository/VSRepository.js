@@ -484,15 +484,22 @@ export class VSRepository {
                         } else {
                             context.push(pushProperty);
                         }
+                    }
+
+                    if(arg.properties !== undefined) {
+                        const propertiesKeys = Object.keys(arg.properties);
                         otherProps = {}
-                        for (const key in arg.properties) {
+                        for (let i = 0; i < propertiesKeys.length; i++) {
+                            const key = propertiesKeys[i]
                             otherProps[key] = arg.properties[key]
+                        }
+                        if(arg.pushProperty === '$$$'){
+                            context.push('equals');
                         }
                     }
 
                     whereParams.push(argName);
-                    
-                    return { context, otherProps };
+                    return { context, otherProps, argName };
                 });
                 if(showWorking) {
                     console.log(`[VSRepository] (build) Where object resolved to ${keyToMap}:\n`, JSON.stringify(whereResolved, null, 2));
@@ -563,7 +570,8 @@ export class VSRepository {
                         let ormode = false;
                         let andmode = false;
                         let modeIdx;
-                        const context = whereResolved[j].context
+                        const currentWhereRslvd = whereResolved[j];
+                        const context = currentWhereRslvd.context
                         const contextLength = context.length;
                         const contextLengthM1 = contextLength-1;
                         for (let i = 0; i < contextLength; i++) {
@@ -586,12 +594,21 @@ export class VSRepository {
                         if (ormode) {
                             if(!OR) OR = [];
                             if(!OR[modeIdx]) OR[modeIdx] = {}
+                            if(currentWhereRslvd.otherProps !== undefined) {
+                                Object.assign(path[currentWhereRslvd.argName], currentWhereRslvd.otherProps)
+                            }
                             Object.assign(OR[modeIdx], path)
                         } else if(andmode) {
                             if(!AND) AND = [];
                             if(!AND[modeIdx]) AND[modeIdx] = {}
+                            if(currentWhereRslvd.otherProps !== undefined) {
+                                Object.assign(path[currentWhereRslvd.argName], currentWhereRslvd.otherProps)
+                            }
                             Object.assign(AND[modeIdx], path)
                         } else {
+                            if(currentWhereRslvd.otherProps !== undefined) {
+                                Object.assign(path[currentWhereRslvd.argName], currentWhereRslvd.otherProps)
+                            }
                             Object.assign(where, path);
                         }
                     }

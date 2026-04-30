@@ -112,6 +112,13 @@ async function test() {
     console.log("Nova postagem:", novaPostagem);
     console.log("Quantidade de categorias da postagem:", await categoriaRepository.countByPostagens({some: {id: novaPostagem.id}}))
 
+    const testeInsensitive = await postagemRepository.findByTituloInsensitive('projeto em assembly');
+    console.log("Teste Insensitive:", testeInsensitive)
+    const testeFindById = await postagemRepository.findById(novaPostagem.id);
+    console.log("Teste findById:", testeFindById);
+    const testeVariosInsentive = await postagemRepository.findByTituloInsensitiveOrConteudoStartsWithInsensitiveANDPublicado('projeto em assembly', 'um projeto', false);
+    console.log("Teste com vários Insensitive:", testeVariosInsentive);
+
     const novaCategoria = {id: crypto.randomUUID(), nome: "Home office", descricao: null};
     const categoriasPraRemover = [...novaPostagem.categorias, novaCategoria];
 

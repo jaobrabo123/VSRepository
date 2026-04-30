@@ -116,7 +116,7 @@ export const usuarioVSRepo = setupVSRepo<Usuario, 'usuario'>()({
 });
 
 const usuarioRepository = usuarioVSRepo.build(prisma, {
-    showWorking: true,
+    showWorking: false,
     baseMethods: {
         get: {
             active: true,

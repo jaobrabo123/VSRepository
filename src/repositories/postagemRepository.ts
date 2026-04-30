@@ -54,9 +54,18 @@ export const postagemVSRepo = setupVSRepo<Postagem, 'postagem'>()({
     },
     requiredWhere: postagemRequiredWhere,
     methods: {
-        
+        findByTituloInsensitive: {
+            map: true
+        },
+        findById: {
+            map: true,
+            fbMode: 'one'
+        },
+        findByTituloInsensitiveOrConteudoStartsWithInsensitiveANDPublicado: {
+            map: true,
+        }
     }
 });
 
-const postagemRepository = postagemVSRepo.build(prisma, {showWorking: true});
+const postagemRepository = postagemVSRepo.build(prisma, {showWorking: false});
 export default postagemRepository;

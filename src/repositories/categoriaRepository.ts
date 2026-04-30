@@ -45,7 +45,7 @@ export const categoriaVSRepo = setupVSRepo<Categoria, 'categoria'>()({
 });
 
 const categoriaRepository = categoriaVSRepo
-    .build(prisma, {showWorking: true})
+    .build(prisma, {showWorking: false})
     .extend((vsrepo)=>({
         deletarNormalizandoIds: async (ids: string[], db: ClientOrTransaction) => {
             return await vsrepo.deleteManyByIdIn(ids.map(id=>id.toLowerCase()), {db});
