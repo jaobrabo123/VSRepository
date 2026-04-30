@@ -1,3 +1,11 @@
+/*
+* BEM VINDO AO CÓDIGO DO VSREPOSITORY!!!
+* Bom, esse código foi totalmente desenvolvido apenas por João Pedro Azevedo
+* Código totalmente autoral sem uso de IA (usei apenas para tirar dúvidas sobre conceitos mais complexos do JS, como por exemplo a forma como os objetos são tratados internamente pelo JS)
+* O código não tá muito organizado, dá pra melhorar muito, mas já ta funcionando bunitin
+*/
+
+// * Essa é a classe de erro base, pode ser usada em debug para saber se um erro lançado veio do VSRepository
 export class VSRepoError extends Error {
     constructor(message, type){
         super(message);
@@ -6,6 +14,7 @@ export class VSRepoError extends Error {
     }
 }
 
+// * Dessa em diante são classes de erros específicas que estendem da base para saber em qual estágio do VSRepository foi lançado o erro, não vou detalhar cada uma pq o nome é auto explicativo
 export class VSRepoConfigError extends VSRepoError {
     constructor(message){
         super(message, "VSREPO_CONFIG");
@@ -30,12 +39,19 @@ export class VSRepoRuntimeError extends VSRepoError {
     }
 }
 
+// * Essa é a classe pincipal, é a partir dela que serão criados os objetos dos repositories
 export class VSRepository {
 
+    // * O vsrepocache é um Map que serve para cachear onde os argumentos dos métodos gerados dinamicamente devem ser injetados, retornando todos os argumentos do Prisma já organizados
     vsrepocache;
+    // * tableName serve para saber qual o nome da tabela que deverá ser injetado na função do prisma q será chamada
     tableName;
+    // * Nome da primary key da tabela para o get, o remove e o save funcionarem corretamente
     pkName;
+    // * Aqui são os modelos de select que poderão ser usados no seu repository
     selectModels;
+    // * Aqui é onde você define qual é o modelo principal que deve ser injetado nos métodos, porém você pode escolher outro ao criar ou ao chamar o método (OBS: se o defaultSelectModel não for fornecido e não passar um model no método o select será undefined e o prisma retornará as colunas padrão)
+    defaultSelectModel;
     relations;
     requiredWhere;
     methods;
@@ -591,24 +607,18 @@ export class VSRepository {
                             }
                         }
 
+                        if(currentWhereRslvd.otherProps !== undefined) {
+                            Object.assign(path[currentWhereRslvd.argName], currentWhereRslvd.otherProps)
+                        }
                         if (ormode) {
                             if(!OR) OR = [];
                             if(!OR[modeIdx]) OR[modeIdx] = {}
-                            if(currentWhereRslvd.otherProps !== undefined) {
-                                Object.assign(path[currentWhereRslvd.argName], currentWhereRslvd.otherProps)
-                            }
                             Object.assign(OR[modeIdx], path)
                         } else if(andmode) {
                             if(!AND) AND = [];
                             if(!AND[modeIdx]) AND[modeIdx] = {}
-                            if(currentWhereRslvd.otherProps !== undefined) {
-                                Object.assign(path[currentWhereRslvd.argName], currentWhereRslvd.otherProps)
-                            }
                             Object.assign(AND[modeIdx], path)
                         } else {
-                            if(currentWhereRslvd.otherProps !== undefined) {
-                                Object.assign(path[currentWhereRslvd.argName], currentWhereRslvd.otherProps)
-                            }
                             Object.assign(where, path);
                         }
                     }
