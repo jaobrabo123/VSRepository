@@ -583,11 +583,13 @@ type ResolveMethodDefaultSelect<Config, C, Method extends 'get' | 'remove' | 'sa
             : ExtractDefaultSelect<Config>
         : ExtractDefaultSelect<Config>;
 
-type ResolveCurrentReturn<T, Models, S, D> = S extends keyof Models
-    ? SelectedModel<T, S, Models>
-    : D extends keyof Models
-      ? SelectedModel<T, D, Models>
-      : T;
+type ResolveCurrentReturn<T, Models, S, D> = [S] extends [never]
+        ? T
+        : S extends keyof Models
+            ? SelectedModel<T, S, Models>
+            : D extends keyof Models
+                ? SelectedModel<T, D, Models>
+                : T;
 
 type RefineSaveResult<R, O> = {
     [K in keyof R]: K extends keyof O ? (O[K] extends null ? R[K] : NonNullable<R[K]>) : R[K];

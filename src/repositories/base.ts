@@ -1,3 +1,4 @@
+/*
 import prisma from "../db";
 import type { Prisma } from "../generated/prisma/client";
 import { setupVSRepo, type WhereModel, type SelectModels } from "../VSRepository/VSRepository";
@@ -34,3 +35,4 @@ export const fooVSRepo = setupVSRepo<Foo, 'foo'>()({
 
 const fooRepository = fooVSRepo.build(prisma);
 export default fooRepository;
+*/
