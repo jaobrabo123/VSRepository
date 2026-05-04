@@ -315,8 +315,12 @@ export class VSRepository {
 
             let orderPosition;
             let paginationPosition;
+            let injectOrdenation;
+            let injectPagination;
 
             if(!ignoreOrderByAndPagination) {
+                injectOrdenation = methods[originalKey].injectOrdenation;
+                injectPagination = methods[originalKey].injectPagination;
 
                 if(keyToMapReplaced.endsWith('PaginatedAndOrdered')) {
                     orderPosition = -2;
@@ -442,9 +446,13 @@ export class VSRepository {
 
                     for (let i = 0; i < keysSplitedOr.length; i++) {
 
+                        if(keysSplitedOr[i]==='') continue;
+
                         const keysSplitedAnd = keysSplitedOr[i].split('And')
 
                         for (const keySplitedAnd of keysSplitedAnd) {
+
+                            if(keySplitedAnd==='') continue;
                             
                             const buildedWhere = buildWhere(keySplitedAnd);
 
@@ -547,12 +555,19 @@ export class VSRepository {
 
                 if(orderPosition !== undefined) {
                     prismaArgs.orderBy = args.at(orderPosition);
+                } else if(injectOrdenation !== undefined) {
+                    prismaArgs.orderBy = injectOrdenation;
                 }
+
                 if(paginationPosition !== undefined) {
                     const paginate = args.at(paginationPosition);
                     prismaArgs.skip = paginate.skip;
                     prismaArgs.take = paginate.take;
                     prismaArgs.cursor = paginate.cursor;
+                } else if(injectPagination !== undefined) {
+                    prismaArgs.skip = injectPagination.skip;
+                    prismaArgs.take = injectPagination.take;
+                    prismaArgs.cursor = injectPagination.cursor;
                 }
 
                 if(skipDuplicates!==undefined){

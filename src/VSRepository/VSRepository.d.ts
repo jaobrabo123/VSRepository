@@ -354,6 +354,8 @@ type CleanFields<R extends string> =
                 ? F
                 : R;
 
+export type MethodOptions<S> = { selectModel?: S; db?: ClientOrTransaction };
+
 type MethodFn<
     M extends string,
     T,
@@ -365,7 +367,7 @@ type MethodFn<
     ...args: [
         ...ExtractFields<T, CleanFields<R>, I>,
         ...ExtraArgs<M, R, I>,
-        options?: { selectModel?: S; db?: ClientOrTransaction },
+        options?: MethodOptions<S>,
     ]
 ) => Promise<ResolveReturnType<M, SelectedModel<T, S, SelectModels>>>;
 
@@ -499,15 +501,19 @@ export type PrismaModelInputs<M extends Prisma.ModelName> = {
 export type SelectModel<M extends Prisma.ModelName> = PrismaModelInputs<M>['select'];
 
 /**
- * Represents the native Prisma `where` clause object for filtering a specific model.
- */
-export type WhereModel<M extends Prisma.ModelName> = PrismaModelInputs<M>['whereInput'];
-
-/**
  * A dictionary of pre-defined selection models (views) for a repository.
  * Keys are alias names (e.g., 'basic', 'withRelations') and values are the Prisma `select` objects.
  */
 export type SelectModels<M extends Prisma.ModelName> = Record<string, SelectModel<M>>;
+
+/**
+ * Represents the native Prisma `where` clause object for filtering a specific model.
+ */
+export type WhereModel<M extends Prisma.ModelName> = PrismaModelInputs<M>['whereInput'];
+
+export type OrderByModel<M extends Prisma.ModelName> = PrismaModelInputs<M>['orderByInput'];
+
+export type PaginationModel<M extends Prisma.ModelName> = PaginationOptions<PrismaModelInputs<M>['cursorInput']>;
 
 /**
  * Valid data input to execute an `upsert` operation for a specific Prisma model.
@@ -542,6 +548,10 @@ export type MethodConfig<M extends Prisma.ModelName, SelectModels = any> = {
      * Defaults to 'list' if omitted.
      */
     readonly fbMode?: 'one' | 'list';
+    /** Ordenation that will always be injected when this method is called. */
+    readonly injectOrdenation?: OrderByModel<M>;
+    /** Pagination config that will always be injected when this method is called. */
+    readonly injectPagination?: PaginationModel<M>;
 };
 
 type BaseMethodConfig<TSelectKeys extends PropertyKey = string> = {
@@ -607,7 +617,7 @@ type InjectedGet<T, Config, C extends BuildConfig<any> | undefined> = C extends 
            */
           get<S extends keyof ExtractSelectModels<Config> = ResolveMethodDefaultSelect<Config, C, 'get'>>(
               pk: T[ExtractPkName<T, Config>],
-              options?: { selectModel?: S; db?: ClientOrTransaction },
+              options?: MethodOptions<S>,
           ): Promise<ResolveCurrentReturn<T, ExtractSelectModels<Config>, S, ExtractDefaultSelect<Config>>>;
       };
 
@@ -625,7 +635,7 @@ type InjectedRemove<T, Config, C extends BuildConfig<any> | undefined> = C exten
               S extends keyof ExtractSelectModels<Config> = ResolveMethodDefaultSelect<Config, C, 'remove'>,
           >(
               pk: T[ExtractPkName<T, Config>],
-              options?: { selectModel?: S; db?: ClientOrTransaction },
+              options?: MethodOptions<S>,
           ): Promise<ResolveCurrentReturn<T, ExtractSelectModels<Config>, S, ExtractDefaultSelect<Config>>>;
       };
 
@@ -645,7 +655,7 @@ type InjectedSave<T, M extends Prisma.ModelName, Config, C extends BuildConfig<a
               S extends keyof ExtractSelectModels<Config> = ResolveMethodDefaultSelect<Config, C, 'save'>,
           >(
               obj: O,
-              options?: { selectModel?: S; db?: ClientOrTransaction },
+              options?: MethodOptions<S>,
           ): Promise<
               RefineSaveResult<
                   ResolveCurrentReturn<T, ExtractSelectModels<Config>, S, ExtractDefaultSelect<Config>>,
