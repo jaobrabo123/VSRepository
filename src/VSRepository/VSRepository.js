@@ -1,15 +1,14 @@
 /*
 * BEM VINDO AO CÓDIGO DO VSREPOSITORY!!!
-* Bom, esse código foi totalmente desenvolvido apenas por João Pedro Azevedo
-* Código totalmente autoral sem uso de IA (usei apenas para tirar dúvidas sobre conceitos mais complexos do JS, como por exemplo a forma como os objetos são tratados internamente pelo JS)
+* Esse código foi totalmente desenvolvido apenas por João Pedro Azevedo
 * O código não tá muito organizado, dá pra melhorar muito, mas já ta funcionando bunitin
 */
 
-// * Importando classes de erro
-import { VSRepoConfigError, VSRepoBuildError, VSRepoExtendError, VSRepoRuntimeError, VSRepoError } from "./VSRepoError.js";
+// * Exportando classes de erro
+export * from "./VSRepoError.js";
 
-// * Reexportando para se quiser importar os erros pelo arquivo principal
-export { VSRepoConfigError, VSRepoBuildError, VSRepoExtendError, VSRepoRuntimeError, VSRepoError };
+// * Importando classes de erro
+import { VSRepoConfigError, VSRepoBuildError, VSRepoExtendError, VSRepoRuntimeError } from "./VSRepoError.js";
 
 // * Essa é a classe pincipal, é a partir dela que serão criados os objetos dos repositories
 export class VSRepository {
