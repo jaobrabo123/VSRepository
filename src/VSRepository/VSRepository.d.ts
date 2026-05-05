@@ -284,9 +284,41 @@ type ExtraArgs<M extends string, R extends string, I> = [
     ),
 ];
 
-type SelectedModel<T, S extends keyof SelectModels, SelectModels> = {
-    [K in keyof T as K extends keyof SelectModels[S] ? K : never]: T[K];
+/**
+ * Utilitário recursivo que percorre o objeto "select" do Prisma.
+ * Suporta relacionamentos aninhados e contagem (_count) de relações.
+ */
+type ApplyPrismaSelect<T, S> = {
+    [K in keyof S as S[K] extends false | undefined | null ? never : K]: 
+        K extends keyof T
+            ? S[K] extends true
+                ? T[K] // Retorna o campo base
+                : S[K] extends { select: infer NestedSelect }
+                    ? NonNullable<T[K]> extends any[]
+                        // Se for array (One-to-Many / Many-to-Many)
+                        ? ApplyPrismaSelect<NonNullable<T[K]>[number], NestedSelect>[]
+                        // Se for objeto único (One-to-One / Many-to-One)
+                        : null extends T[K]
+                            ? ApplyPrismaSelect<NonNullable<T[K]>, NestedSelect> | null
+                            : undefined extends T[K]
+                                ? ApplyPrismaSelect<NonNullable<T[K]>, NestedSelect> | undefined
+                                : ApplyPrismaSelect<NonNullable<T[K]>, NestedSelect>
+                    : S[K] extends { include: infer NestedInclude }
+                        ? T[K] 
+                        : T[K]
+            // --- NOVA REGRA PARA DETECTAR O _count ---
+            : K extends '_count'
+                ? S[K] extends { select: infer CountSelect }
+                    // Lê o que foi pedido dentro de select e tipa como number
+                    ? { [CK in keyof CountSelect as CountSelect[CK] extends true ? CK : never]: number }
+                    : S[K] extends true
+                        // Fallback: se passar só _count: true, assume um objeto de contagens genérico
+                        ? Record<string, number>
+                        : never
+            : unknown;
 };
+
+type SelectedModel<T, S extends keyof SelectModels, SelectModels> = ApplyPrismaSelect<T, SelectModels[S]>;
 
 type CleanFields<R extends string> =
     R extends `${infer F}PaginatedAndOrdered`
