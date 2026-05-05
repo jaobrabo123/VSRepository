@@ -609,8 +609,8 @@ export class VSRepository {
                         }
                     }
 
-                    if(OR) where.OR = OR;
-                    if(AND) where.AND = AND;
+                    if(OR) where.OR = OR.filter(x=>x!==undefined);
+                    if(AND) where.AND = AND.filter(x=>x!==undefined);
                     
                     assignWhere(where);
                     
