@@ -47,7 +47,7 @@ export const usuarioSelectModels = {
     minimal: {
         id: true
     }
-} as const satisfies SelectModels<'usuario'>;
+} satisfies SelectModels<'usuario'>;
 
 export const usuarioRequiredWhere = {
     ativo: true
@@ -111,6 +111,9 @@ export const usuarioVSRepo = setupVSRepo<Usuario, 'usuario'>()({
         findById: {
             map: true,
             fbMode: 'one'
+        },
+        findBySenhaIsNull: {
+            map: true
         }
     }
 });

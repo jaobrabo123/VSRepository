@@ -193,7 +193,12 @@ type MapToContractTypes<T, Arr extends any[], I> = Arr extends [
     infer First extends string,
     ...infer Rest,
 ]
-    ? [GetFieldType<T, First, I>, ...MapToContractTypes<T, Rest, I>]
+    // Verifica se a condição atual é um IsNull ou IsNotNull
+    ? First extends `${string}IsNull` | `${string}IsNotNull`
+        // Se for, ignora este argumento e continua a recursão para o resto
+        ? MapToContractTypes<T, Rest, I>
+        // Caso contrário, resolve o tipo do campo e adiciona à tupla de argumentos
+        : [GetFieldType<T, First, I>, ...MapToContractTypes<T, Rest, I>]
     : [];
 
 /**
@@ -289,15 +294,14 @@ type ExtraArgs<M extends string, R extends string, I> = [
  * Suporta relacionamentos aninhados e contagem (_count) de relações.
  */
 type ApplyPrismaSelect<T, S> = {
-    [K in keyof S as S[K] extends false | undefined | null ? never : K]: 
+    // Adicione o "-readonly" bem aqui ↓
+    -readonly [K in keyof S as S[K] extends false | undefined | null ? never : K]: 
         K extends keyof T
             ? S[K] extends true
-                ? T[K] // Retorna o campo base
+                ? T[K]
                 : S[K] extends { select: infer NestedSelect }
                     ? NonNullable<T[K]> extends any[]
-                        // Se for array (One-to-Many / Many-to-Many)
                         ? ApplyPrismaSelect<NonNullable<T[K]>[number], NestedSelect>[]
-                        // Se for objeto único (One-to-One / Many-to-One)
                         : null extends T[K]
                             ? ApplyPrismaSelect<NonNullable<T[K]>, NestedSelect> | null
                             : undefined extends T[K]
@@ -306,13 +310,11 @@ type ApplyPrismaSelect<T, S> = {
                     : S[K] extends { include: infer NestedInclude }
                         ? T[K] 
                         : T[K]
-            // --- NOVA REGRA PARA DETECTAR O _count ---
             : K extends '_count'
                 ? S[K] extends { select: infer CountSelect }
-                    // Lê o que foi pedido dentro de select e tipa como number
-                    ? { [CK in keyof CountSelect as CountSelect[CK] extends true ? CK : never]: number }
+                    // Adicione "-readonly" nas sub-consultas também ↓
+                    ? { -readonly [CK in keyof CountSelect as CountSelect[CK] extends true ? CK : never]: number }
                     : S[K] extends true
-                        // Fallback: se passar só _count: true, assume um objeto de contagens genérico
                         ? Record<string, number>
                         : never
             : unknown;
