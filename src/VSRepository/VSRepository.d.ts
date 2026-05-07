@@ -217,8 +217,7 @@ type MapToContractTypes<T, Arr extends any[], I> = Arr extends [
     infer First extends string,
     ...infer Rest,
 ]
-    // Verifica se a condição atual é um IsNull ou IsNotNull
-    ? First extends `${string}IsNull` | `${string}IsNotNull`
+    ? First extends `${string}IsNull${string}` | `${string}IsNotNull${string}` | `${string}IsTrue${string}` | `${string}IsFalse${string}`
         // Se for, ignora este argumento e continua a recursão para o resto
         ? MapToContractTypes<T, Rest, I>
         // Caso contrário, resolve o tipo do campo e adiciona à tupla de argumentos

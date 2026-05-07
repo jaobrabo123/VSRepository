@@ -118,6 +118,12 @@ export const usuarioVSRepo = setupVSRepo<Usuario, 'usuario'>()({
         findBySenhaIsNull: {map: true},
         findFirstByPerfil: {map: true},
         findByPerfilWithBiografiaIsNotNull: {map: true},
+        findByPerfilWithIsNull: {map: true},
+        findByPerfilWithoutIsNull: {map: true},
+        findByPostagensSomeIsNull: {map: true},
+        findByPostagensNoneIsNull: {map: true},
+        findByPostagensNoneIsNullAndEmailEndsWith: {map: true},
+        findByIsFalseAtivo: {map: true, whereType: 'overwrite'}
     }
 });
 

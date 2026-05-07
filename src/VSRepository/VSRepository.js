@@ -109,7 +109,14 @@ export class VSRepository {
         if(typeof extension !== 'object' || extension === null){
             throw new VSRepoExtendError(`[VSRepository] (extend) The return of the 'extensionFunc' must be a valid object.`)
         }
-        return Object.assign(Object.create(this), extension);
+
+        const extended = Object.assign(Object.create(this), extension);
+
+        if(Object.isFrozen(this)) {
+            Object.freeze(extended);
+        }
+
+        return extended;
     }
 
     build(prisma, config = {}) {
@@ -352,6 +359,14 @@ export class VSRepository {
                         buildedWhere.pushProperty = 'not';
                         buildedWhere.autoInjectVal = null;
                         keySplitedAnd = keySplitedAnd.replace('IsNotNull', '')
+                    } else if(keySplitedAnd.includes('IsTrue')){
+                        buildedWhere.pushProperty = '$$$';
+                        buildedWhere.autoInjectVal = true;
+                        keySplitedAnd = keySplitedAnd.replace('IsTrue', '')
+                    } else if(keySplitedAnd.includes('IsFalse')){
+                        buildedWhere.pushProperty = '$$$';
+                        buildedWhere.autoInjectVal = false;
+                        keySplitedAnd = keySplitedAnd.replace('IsFalse', '')
                     } else {
                         if(keySplitedAnd.includes('Insensitive')){
                             buildedWhere.properties = {}
@@ -409,23 +424,35 @@ export class VSRepository {
 
                     if(keySplitedAnd.includes('Without')){
                         const keySplitedConector = keySplitedAnd.split('Without');
-                        buildedWhere.pushProperty = `isNot.${uncaptalize(keySplitedConector[1])}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        buildedWhere.pushProperty = `isNot${keySplitedConector[1] !== '' ? `.${uncaptalize(keySplitedConector[1])}` : ''}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
                         keySplitedAnd = keySplitedConector[0];
                     } else if(keySplitedAnd.includes('With')){
                         const keySplitedConector = keySplitedAnd.split('With');
-                        buildedWhere.pushProperty = `is.${uncaptalize(keySplitedConector[1])}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        buildedWhere.pushProperty = `is${keySplitedConector[1] !== '' ? `.${uncaptalize(keySplitedConector[1])}` : ''}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
                         keySplitedAnd = keySplitedConector[0];
                     } else if(keySplitedAnd.includes('Some')){
                         const keySplitedConector = keySplitedAnd.split('Some');
-                        buildedWhere.pushProperty = `some.${uncaptalize(keySplitedConector[1])}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        const specificField = keySplitedConector[1];
+                        if(specificField === '' && buildedWhere.autoInjectVal === null) {
+                            buildedWhere.autoInjectVal = {};
+                        }
+                        buildedWhere.pushProperty = `some${specificField !== '' ? `.${uncaptalize(keySplitedConector[1])}` : ''}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
                         keySplitedAnd = keySplitedConector[0];
                     } else if(keySplitedAnd.includes('Every')){
                         const keySplitedConector = keySplitedAnd.split('Every');
-                        buildedWhere.pushProperty = `every.${uncaptalize(keySplitedConector[1])}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        const specificField = keySplitedConector[1];
+                        if(specificField === '' && buildedWhere.autoInjectVal === null) {
+                            buildedWhere.autoInjectVal = {};
+                        }
+                        buildedWhere.pushProperty = `every${specificField !== '' ? `.${uncaptalize(keySplitedConector[1])}` : ''}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
                         keySplitedAnd = keySplitedConector[0];
                     } else if(keySplitedAnd.includes('None')){
                         const keySplitedConector = keySplitedAnd.split('None');
-                        buildedWhere.pushProperty = `none.${uncaptalize(keySplitedConector[1])}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        const specificField = keySplitedConector[1];
+                        if(specificField === '' && buildedWhere.autoInjectVal === null) {
+                            buildedWhere.autoInjectVal = {};
+                        }
+                        buildedWhere.pushProperty = `none${specificField !== '' ? `.${uncaptalize(keySplitedConector[1])}` : ''}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
                         keySplitedAnd = keySplitedConector[0];
                     }
 
