@@ -344,53 +344,63 @@ export class VSRepository {
 
                     const buildedWhere = {}
 
-                    if(keySplitedAnd.includes('Insensitive')){
-                        buildedWhere.properties = {}
-                        buildedWhere.properties.mode = 'insensitive';
-                        keySplitedAnd = keySplitedAnd.replace('Insensitive', '')
-                    }
-
-                    if(keySplitedAnd.includes('NotStartsWith')){
-                        buildedWhere.pushProperty = 'not.startsWith';
-                        keySplitedAnd = keySplitedAnd.replace('NotStartsWith', '')
-                    } else if(keySplitedAnd.includes('StartsWith')){
-                        buildedWhere.pushProperty = 'startsWith';
-                        keySplitedAnd = keySplitedAnd.replace('StartsWith', '')
-                    } else if(keySplitedAnd.includes('NotEndsWith')){
-                        buildedWhere.pushProperty = 'not.endsWith';
-                        keySplitedAnd = keySplitedAnd.replace('NotEndsWith', '')
-                    } else if(keySplitedAnd.includes('EndsWith')){
-                        buildedWhere.pushProperty = 'endsWith';
-                        keySplitedAnd = keySplitedAnd.replace('EndsWith', '')
-                    } else if(keySplitedAnd.includes('NotContains')){
-                        buildedWhere.pushProperty = 'not.contains';
-                        keySplitedAnd = keySplitedAnd.replace('NotContains', '')
-                    } else if(keySplitedAnd.includes('Contains')){
-                        buildedWhere.pushProperty = 'contains';
-                        keySplitedAnd = keySplitedAnd.replace('Contains', '')
-                    } else if(keySplitedAnd.includes('LessThanEqual')){
-                        buildedWhere.pushProperty = 'lte';
-                        keySplitedAnd = keySplitedAnd.replace('LessThanEqual', '')
-                    } else if(keySplitedAnd.includes('LessThan')){
-                        buildedWhere.pushProperty = 'lt';
-                        keySplitedAnd = keySplitedAnd.replace('LessThan', '')
-                    } else if(keySplitedAnd.includes('GreaterThanEqual')){
-                        buildedWhere.pushProperty = 'gte';
-                        keySplitedAnd = keySplitedAnd.replace('GreaterThanEqual', '')
-                    } else if(keySplitedAnd.includes('GreaterThan')){
-                        buildedWhere.pushProperty = 'gt';
-                        keySplitedAnd = keySplitedAnd.replace('GreaterThan', '')
-                    } else if(keySplitedAnd.includes('NotIn')){
-                        buildedWhere.pushProperty = 'notIn';
-                        keySplitedAnd = keySplitedAnd.replace('NotIn', '')
-                    } else if(keySplitedAnd.includes('In')){
-                        buildedWhere.pushProperty = 'in';
-                        keySplitedAnd = keySplitedAnd.replace('In', '')
-                    } else if(keySplitedAnd.includes('Not')){
-                        buildedWhere.pushProperty = 'not';
-                        keySplitedAnd = keySplitedAnd.replace('Not', '')
-                    } else {
+                    if(keySplitedAnd.includes('IsNull')){
                         buildedWhere.pushProperty = '$$$';
+                        buildedWhere.autoInjectVal = null;
+                        keySplitedAnd = keySplitedAnd.replace('IsNull', '')
+                    } else if(keySplitedAnd.includes('IsNotNull')){
+                        buildedWhere.pushProperty = 'not';
+                        buildedWhere.autoInjectVal = null;
+                        keySplitedAnd = keySplitedAnd.replace('IsNotNull', '')
+                    } else {
+                        if(keySplitedAnd.includes('Insensitive')){
+                            buildedWhere.properties = {}
+                            buildedWhere.properties.mode = 'insensitive';
+                            keySplitedAnd = keySplitedAnd.replace('Insensitive', '')
+                        }
+
+                        if(keySplitedAnd.includes('NotStartsWith')){
+                            buildedWhere.pushProperty = 'not.startsWith';
+                            keySplitedAnd = keySplitedAnd.replace('NotStartsWith', '')
+                        } else if(keySplitedAnd.includes('StartsWith')){
+                            buildedWhere.pushProperty = 'startsWith';
+                            keySplitedAnd = keySplitedAnd.replace('StartsWith', '')
+                        } else if(keySplitedAnd.includes('NotEndsWith')){
+                            buildedWhere.pushProperty = 'not.endsWith';
+                            keySplitedAnd = keySplitedAnd.replace('NotEndsWith', '')
+                        } else if(keySplitedAnd.includes('EndsWith')){
+                            buildedWhere.pushProperty = 'endsWith';
+                            keySplitedAnd = keySplitedAnd.replace('EndsWith', '')
+                        } else if(keySplitedAnd.includes('NotContains')){
+                            buildedWhere.pushProperty = 'not.contains';
+                            keySplitedAnd = keySplitedAnd.replace('NotContains', '')
+                        } else if(keySplitedAnd.includes('Contains')){
+                            buildedWhere.pushProperty = 'contains';
+                            keySplitedAnd = keySplitedAnd.replace('Contains', '')
+                        } else if(keySplitedAnd.includes('LessThanEqual')){
+                            buildedWhere.pushProperty = 'lte';
+                            keySplitedAnd = keySplitedAnd.replace('LessThanEqual', '')
+                        } else if(keySplitedAnd.includes('LessThan')){
+                            buildedWhere.pushProperty = 'lt';
+                            keySplitedAnd = keySplitedAnd.replace('LessThan', '')
+                        } else if(keySplitedAnd.includes('GreaterThanEqual')){
+                            buildedWhere.pushProperty = 'gte';
+                            keySplitedAnd = keySplitedAnd.replace('GreaterThanEqual', '')
+                        } else if(keySplitedAnd.includes('GreaterThan')){
+                            buildedWhere.pushProperty = 'gt';
+                            keySplitedAnd = keySplitedAnd.replace('GreaterThan', '')
+                        } else if(keySplitedAnd.includes('NotIn')){
+                            buildedWhere.pushProperty = 'notIn';
+                            keySplitedAnd = keySplitedAnd.replace('NotIn', '')
+                        } else if(keySplitedAnd.includes('In')){
+                            buildedWhere.pushProperty = 'in';
+                            keySplitedAnd = keySplitedAnd.replace('In', '')
+                        } else if(keySplitedAnd.includes('Not')){
+                            buildedWhere.pushProperty = 'not';
+                            keySplitedAnd = keySplitedAnd.replace('Not', '')
+                        } else {
+                            buildedWhere.pushProperty = '$$$';
+                        }
                     }
 
                     keySplitedAnd = keySplitedAnd[0].toLowerCase() + keySplitedAnd.slice(1, keySplitedAnd.length)
@@ -441,7 +451,7 @@ export class VSRepository {
                                 console.log(`[VSRepository] (build) Where object builded to ${keyToMap}:\n`, JSON.stringify(buildedWhere, null, 2));
                             }
 
-                            argsCount++
+                            if(buildedWhere.autoInjectVal === undefined) argsCount++;
                         }
 
                     }
@@ -494,7 +504,7 @@ export class VSRepository {
                     }
 
                     whereParams.push(argName);
-                    return { context, otherProps, argName };
+                    return { context, otherProps, argName, autoVal: arg.autoInjectVal };
                 });
                 if(showWorking) {
                     console.log(`[VSRepository] (build) Where object resolved to ${keyToMap}:\n`, JSON.stringify(whereResolved, null, 2));
@@ -566,13 +576,14 @@ export class VSRepository {
                     let OR;
                     let AND;
                     
+                    let adjust = 0;
                     for (let j = 0; j < whereResolved.length; j++) {
                         let path = {}
                         let current = path
                         let ormode = false;
                         let andmode = false;
                         let modeIdx;
-                        const currentWhereRslvd = whereResolved[j];
+                        const currentWhereRslvd  = whereResolved[j];
                         const context = currentWhereRslvd.context
                         const contextLength = context.length;
                         const contextLengthM1 = contextLength-1;
@@ -589,7 +600,12 @@ export class VSRepository {
                                     current = current[context[i]];
                                 }
                             } else {
-                                current[context[i]] = args[j];
+                                if(currentWhereRslvd.autoVal !== undefined) {
+                                    current[context[i]] = currentWhereRslvd.autoVal;
+                                    adjust++
+                                } else {
+                                    current[context[i]] = args[j - adjust];
+                                }
                             }
                         }
 

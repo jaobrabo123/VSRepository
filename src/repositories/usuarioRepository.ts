@@ -112,14 +112,17 @@ export const usuarioVSRepo = setupVSRepo<Usuario, 'usuario'>()({
             map: true,
             fbMode: 'one'
         },
-        findBySenhaIsNull: {
+        findBySenhaIsNotNullAndIdOrNomeContainsInsensitive: {
             map: true
-        }
+        },
+        findBySenhaIsNull: {map: true},
+        findFirstByPerfil: {map: true},
+        findByPerfilWithBiografiaContains: {map: true}
     }
 });
 
 const usuarioRepository = usuarioVSRepo.build(prisma, {
-    showWorking: false,
+    showWorking: true,
     baseMethods: {
         get: {
             active: true,

@@ -181,8 +181,10 @@ async function test(){
     const testeFindBy = await usuarioRepository.findById(testeFindWhere!.id);
     console.log("Teste findBy:", testeFindBy)
 
-    const usuariosSemSenha = await usuarioRepository.findBySenhaIsNull();
-    console.log("Usuarios sem senha:", usuariosSemSenha)
+    const testeIsNull = await usuarioRepository.findBySenhaIsNotNullAndIdOrNomeContainsInsensitive(testeFindBy!.id, 'oliveira');
+    console.log("Test IsNull:", testeIsNull)
+
+    const testePerfil = await usuarioRepository.findByPerfilWithBiografiaContains('')
 
     console.log("\nRemovendo todos.")
     await usuarioRepository.deleteManyByIdIn(novosUsuarios.map(_=>_.id));

@@ -169,8 +169,21 @@ type IsArrayFilter<S extends string> = S extends `${string}NotIn`
                 : true
           : false;
 
+/**
+ * Quebra a string mágica para identificar travessias de relacionamento (Deep Queries).
+ * Retorna uma tupla: [NomeDaRelacao, Operador, RestoDaString]
+ */
+type ParseRelation<S extends string> = 
+    S extends `${infer Rel}With${infer Rest}` ? [Uncapitalize<Rel>, 'is', Rest] :
+    S extends `${infer Rel}Without${infer Rest}` ? [Uncapitalize<Rel>, 'isNot', Rest] :
+    S extends `${infer Rel}Some${infer Rest}` ? [Uncapitalize<Rel>, 'some', Rest] :
+    S extends `${infer Rel}Every${infer Rest}` ? [Uncapitalize<Rel>, 'every', Rest] :
+    S extends `${infer Rel}None${infer Rest}` ? [Uncapitalize<Rel>, 'none', Rest] :
+    null;
+
 type GetFieldType<T, S extends string, I> = ExtractFieldName<S, T> extends infer FieldName
     ? FieldName extends keyof T
+        // 1. MATCH DIRETO: O campo é um escalar nativo ou um relacionamento inteiro da entidade atual
         ? IsArrayFilter<S> extends true
             ? T[FieldName][]
             : NonNullable<T[FieldName]> extends any[]
@@ -186,8 +199,19 @@ type GetFieldType<T, S extends string, I> = ExtractFieldName<S, T> extends infer
                         : T[FieldName]
                     : T[FieldName]
                 : T[FieldName]
-        : unknown
-    : any;
+        
+        // 2. FALLBACK RELACIONAL (Deep Queries): Se não achou na raiz, tenta quebrar pelos operadores do Prisma
+        : ParseRelation<S> extends [infer Rel extends keyof T, infer Mod, infer Rest extends string]
+            ? GetFieldType<
+                  // Extrai o tipo do modelo relacionado (lidando com arrays caso seja 1:N / N:M)
+                  NonNullable<T[Rel]> extends any[] ? NonNullable<T[Rel]>[number] : NonNullable<T[Rel]>,
+                  Rest,
+                  // Passamos unknown porque o I nativo do Prisma não é facilmente inferido em profundidade dinâmica aqui, 
+                  // mas o fallback para T[FieldName] que deixamos acima garante o tipo escalar correto!
+                  unknown 
+              >
+            : unknown
+    : unknown;
 
 type MapToContractTypes<T, Arr extends any[], I> = Arr extends [
     infer First extends string,
