@@ -117,7 +117,7 @@ export const usuarioVSRepo = setupVSRepo<Usuario, 'usuario'>()({
         },
         findBySenhaIsNull: {map: true},
         findFirstByPerfil: {map: true},
-        findByPerfilWithBiografiaContains: {map: true}
+        findByPerfilWithBiografiaIsNotNull: {map: true},
     }
 });
 

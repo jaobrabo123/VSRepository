@@ -184,7 +184,8 @@ async function test(){
     const testeIsNull = await usuarioRepository.findBySenhaIsNotNullAndIdOrNomeContainsInsensitive(testeFindBy!.id, 'oliveira');
     console.log("Test IsNull:", testeIsNull)
 
-    const testePerfil = await usuarioRepository.findByPerfilWithBiografiaContains('')
+    const testeWith = await usuarioRepository.findByPerfilWithBiografiaIsNotNull();
+    console.log("Teste With:", testeWith)
 
     console.log("\nRemovendo todos.")
     await usuarioRepository.deleteManyByIdIn(novosUsuarios.map(_=>_.id));

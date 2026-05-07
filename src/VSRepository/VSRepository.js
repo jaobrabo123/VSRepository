@@ -403,7 +403,33 @@ export class VSRepository {
                         }
                     }
 
-                    keySplitedAnd = keySplitedAnd[0].toLowerCase() + keySplitedAnd.slice(1, keySplitedAnd.length)
+                    function uncaptalize(text) {
+                        return text[0].toLowerCase() + text.slice(1, text.length);
+                    }
+
+                    if(keySplitedAnd.includes('Without')){
+                        const keySplitedConector = keySplitedAnd.split('Without');
+                        buildedWhere.pushProperty = `isNot.${uncaptalize(keySplitedConector[1])}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        keySplitedAnd = keySplitedConector[0];
+                    } else if(keySplitedAnd.includes('With')){
+                        const keySplitedConector = keySplitedAnd.split('With');
+                        buildedWhere.pushProperty = `is.${uncaptalize(keySplitedConector[1])}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        keySplitedAnd = keySplitedConector[0];
+                    } else if(keySplitedAnd.includes('Some')){
+                        const keySplitedConector = keySplitedAnd.split('Some');
+                        buildedWhere.pushProperty = `some.${uncaptalize(keySplitedConector[1])}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        keySplitedAnd = keySplitedConector[0];
+                    } else if(keySplitedAnd.includes('Every')){
+                        const keySplitedConector = keySplitedAnd.split('Every');
+                        buildedWhere.pushProperty = `every.${uncaptalize(keySplitedConector[1])}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        keySplitedAnd = keySplitedConector[0];
+                    } else if(keySplitedAnd.includes('None')){
+                        const keySplitedConector = keySplitedAnd.split('None');
+                        buildedWhere.pushProperty = `none.${uncaptalize(keySplitedConector[1])}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        keySplitedAnd = keySplitedConector[0];
+                    }
+
+                    keySplitedAnd = uncaptalize(keySplitedAnd);
 
                     buildedWhere.name = keySplitedAnd;
 
@@ -482,13 +508,9 @@ export class VSRepository {
                     context.push(argName)
                     if(arg.pushProperty !== '$$$'){
                         const pushProperty = arg.pushProperty;
-                        const pushPropertySplitedNot = pushProperty.split('not.');
-                        if(pushPropertySplitedNot.length > 1) {
-                            context.push('not')
-                            context.push(pushPropertySplitedNot[1])
-                        } else {
-                            context.push(pushProperty);
-                        }
+                        const pushPropertySplitedDot = pushProperty.split('.');
+
+                        pushPropertySplitedDot.forEach(prop=>context.push(prop));
                     }
 
                     if(arg.properties !== undefined) {

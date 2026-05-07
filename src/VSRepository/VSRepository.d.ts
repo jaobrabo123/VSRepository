@@ -174,8 +174,8 @@ type IsArrayFilter<S extends string> = S extends `${string}NotIn`
  * Retorna uma tupla: [NomeDaRelacao, Operador, RestoDaString]
  */
 type ParseRelation<S extends string> = 
-    S extends `${infer Rel}With${infer Rest}` ? [Uncapitalize<Rel>, 'is', Rest] :
     S extends `${infer Rel}Without${infer Rest}` ? [Uncapitalize<Rel>, 'isNot', Rest] :
+    S extends `${infer Rel}With${infer Rest}` ? [Uncapitalize<Rel>, 'is', Rest] :
     S extends `${infer Rel}Some${infer Rest}` ? [Uncapitalize<Rel>, 'some', Rest] :
     S extends `${infer Rel}Every${infer Rest}` ? [Uncapitalize<Rel>, 'every', Rest] :
     S extends `${infer Rel}None${infer Rest}` ? [Uncapitalize<Rel>, 'none', Rest] :
@@ -360,6 +360,7 @@ type CleanFields<R extends string> =
                 : R;
 
 export type MethodOptions<S> = { selectModel?: S; db?: ClientOrTransaction };
+export type MethodOptionsModel<T> = MethodOptions<keyof T>;
 
 type MethodFn<
     M extends string,
@@ -516,7 +517,7 @@ export type SelectModels<M extends Prisma.ModelName> = Record<string, SelectMode
  */
 export type WhereModel<M extends Prisma.ModelName> = PrismaModelInputs<M>['whereInput'];
 
-export type OrderByModel<M extends Prisma.ModelName> = PrismaModelInputs<M>['orderByInput'];
+export type OrdenationModel<M extends Prisma.ModelName> = PrismaModelInputs<M>['orderByInput'];
 
 export type PaginationModel<M extends Prisma.ModelName> = PaginationOptions<PrismaModelInputs<M>['cursorInput']>;
 
@@ -554,7 +555,7 @@ export type MethodConfig<M extends Prisma.ModelName, SelectModels = any> = {
      */
     readonly fbMode?: 'one' | 'list';
     /** Ordenation that will always be injected when this method is called. */
-    readonly injectOrdenation?: OrderByModel<M>;
+    readonly injectOrdenation?: OrdenationModel<M>;
     /** Pagination config that will always be injected when this method is called. */
     readonly injectPagination?: PaginationModel<M>;
 };

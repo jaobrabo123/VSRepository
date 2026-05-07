@@ -1,5 +1,5 @@
 import type { Prisma } from "@generated/prisma/client";
-import { setupVSRepo, type ClientOrTransaction, type SelectModels } from "../VSRepository/VSRepository";
+import { type MethodOptionsModel, setupVSRepo, type SelectModels } from "../VSRepository/VSRepository";
 import prisma from "../db";
 
 type Categoria = Prisma.categoriaGetPayload<{
@@ -39,16 +39,18 @@ export const categoriaVSRepo = setupVSRepo<Categoria, 'categoria'>()({
             map: true
         },
         findByDescricaoOrDescricaoANDNome: {
-            map: true,
+            map: true
         }
     }
 });
 
+type CategoriaMethodOptions = MethodOptionsModel<typeof categoriaSelectModels>;
+
 const categoriaRepository = categoriaVSRepo
     .build(prisma, {showWorking: false})
     .extend((vsrepo)=>({
-        deletarNormalizandoIds: async (ids: string[], db: ClientOrTransaction) => {
-            return await vsrepo.deleteManyByIdIn(ids.map(id=>id.toLowerCase()), {db});
+        deletarNormalizandoIds: async (ids: string[], options: CategoriaMethodOptions) => {
+            return await vsrepo.deleteManyByIdIn(ids.map(id=>id.toLowerCase()), options);
         }
     }));
 export default categoriaRepository;
