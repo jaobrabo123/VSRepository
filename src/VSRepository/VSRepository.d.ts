@@ -220,6 +220,19 @@ type MapToContractTypes<T, Arr extends any[], I> = Arr extends [
     ? First extends `${string}IsNull${string}` | `${string}IsNotNull${string}` | `${string}IsTrue${string}` | `${string}IsFalse${string}`
         // Se for, ignora este argumento e continua a recursão para o resto
         ? MapToContractTypes<T, Rest, I>
+        
+        // Auto-injeção para relacionamentos puros (exceto o With que tem tratamento especial abaixo)
+        : First extends `${string}Without` | `${string}Some` | `${string}Every` | `${string}None`
+            ? MapToContractTypes<T, Rest, I>
+            
+        // Tratamento especial para o 'With': Evita colisão com 'StartsWith' e 'EndsWith'
+        : First extends `${string}With`
+            ? First extends `${string}StartsWith` | `${string}EndsWith`
+                // Se for StartsWith ou EndsWith (ou seus Nots), exige o argumento de string
+                ? [GetFieldType<T, First, I>, ...MapToContractTypes<T, Rest, I>]
+                // Se for apenas o conector relacional 'With' na raiz, auto-injeta e omite argumento
+                : MapToContractTypes<T, Rest, I>
+                
         // Caso contrário, resolve o tipo do campo e adiciona à tupla de argumentos
         : [GetFieldType<T, First, I>, ...MapToContractTypes<T, Rest, I>]
     : [];

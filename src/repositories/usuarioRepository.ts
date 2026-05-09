@@ -118,11 +118,12 @@ export const usuarioVSRepo = setupVSRepo<Usuario, 'usuario'>()({
         findBySenhaIsNull: {map: true},
         findFirstByPerfil: {map: true},
         findByPerfilWithBiografiaIsNotNull: {map: true},
-        findByPerfilWithIsNull: {map: true},
+        findByPerfilWith: {map: true},
+        findByPerfilWithoutPaginated: {map: true},
         findByPerfilWithoutIsNull: {map: true},
-        findByPostagensSomeIsNull: {map: true},
-        findByPostagensNoneIsNull: {map: true},
-        findByPostagensNoneIsNullAndEmailEndsWith: {map: true},
+        findByPostagensSomeConteudoContains: {map: true},
+        findByPostagensNone: {map: true},
+        findByPostagensNoneAndEndsWithEmail: {map: true},
         findByIsFalseAtivo: {map: true, whereType: 'overwrite'}
     }
 });
@@ -140,3 +141,11 @@ const usuarioRepository = usuarioVSRepo.build(prisma, {
     }
 });
 export default usuarioRepository;
+
+prisma.usuario.findFirst({
+    where: {
+        perfil: {
+            is: {}
+        }
+    }
+}).then(console.log)

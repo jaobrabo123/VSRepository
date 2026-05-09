@@ -79,12 +79,36 @@ export class VSRepository {
             } else {
                 for (const [key, value] of Object.entries(config.methods)) {
 
+                    if(typeof value.map !== "boolean") {
+                        throw new VSRepoConfigError(`[VSRepository] (config) 'map' on ${key} must be a valid boolean.`);
+                    }
+
                     if(value.whereType !== undefined && !['extending', 'overwrite'].includes(value.whereType)){
                         throw new VSRepoConfigError(`[VSRepository] (config) Invalid 'whereType' on ${key}: ${value.whereType}`);
                     }
 
                     if(value.selectModel !== undefined && (!config.selectModels || !Object.keys(config.selectModels).includes(value.selectModel))){
                         throw new VSRepoConfigError(`[VSRepository] (config) Invalid 'selectModel' on ${key}: ${value.selectModel}`);
+                    }
+
+                    if(value.proxyTo !== undefined && typeof value.proxyTo !== 'string') {
+                        throw new VSRepoConfigError(`[VSRepository] (config) 'proxyTo' on ${key} must be a valid string.`);
+                    }
+
+                    if(value.fbMode !== undefined && !['one', 'list'].includes(value.fbMode)) {
+                        throw new VSRepoConfigError(`[VSRepository] (config) Invalid 'fbMode' on ${key}: ${value.whereType}`);
+                    }
+
+                    if(value.pushWhere !== undefined && (typeof value.pushWhere !== 'object' || value.pushWhere === null)) {
+                        throw new VSRepoConfigError(`[VSRepository] (config) 'pushWhere' on ${key} must be a valid object.`);
+                    }
+
+                    if(value.injectOrdenation !== undefined && (typeof value.injectOrdenation !== 'object' || value.injectOrdenation === null)) {
+                        throw new VSRepoConfigError(`[VSRepository] (config) 'injectOrdenation' on ${key} must be a valid object or array.`);
+                    }
+
+                    if(value.injectPagination !== undefined && (typeof value.injectPagination !== 'object' || value.injectPagination === null)) {
+                        throw new VSRepoConfigError(`[VSRepository] (config) 'injectPagination' on ${key} must be a valid object.`);
                     }
 
                 }
@@ -350,14 +374,17 @@ export class VSRepository {
                 function buildWhere(keySplitedAnd) {
 
                     const buildedWhere = {}
+                    let nullMode;
 
                     if(keySplitedAnd.includes('IsNull')){
                         buildedWhere.pushProperty = '$$$';
                         buildedWhere.autoInjectVal = null;
+                        nullMode = 'is';
                         keySplitedAnd = keySplitedAnd.replace('IsNull', '')
                     } else if(keySplitedAnd.includes('IsNotNull')){
                         buildedWhere.pushProperty = 'not';
                         buildedWhere.autoInjectVal = null;
+                        nullMode = 'not';
                         keySplitedAnd = keySplitedAnd.replace('IsNotNull', '')
                     } else if(keySplitedAnd.includes('IsTrue')){
                         buildedWhere.pushProperty = '$$$';
@@ -424,35 +451,61 @@ export class VSRepository {
 
                     if(keySplitedAnd.includes('Without')){
                         const keySplitedConector = keySplitedAnd.split('Without');
-                        buildedWhere.pushProperty = `isNot${keySplitedConector[1] !== '' ? `.${uncaptalize(keySplitedConector[1])}` : ''}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        const specificField = keySplitedConector[1];
+                        if(!specificField) {
+                            if (nullMode) {
+                                buildedWhere.pushProperty = nullMode === 'not' ? 'is' : 'isNot';
+                            } else {
+                                buildedWhere.pushProperty = 'isNot';
+                                buildedWhere.autoInjectVal = {};
+                            }
+                        } else {
+                            buildedWhere.pushProperty = `isNot.${uncaptalize(specificField)}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        }
                         keySplitedAnd = keySplitedConector[0];
                     } else if(keySplitedAnd.includes('With')){
                         const keySplitedConector = keySplitedAnd.split('With');
-                        buildedWhere.pushProperty = `is${keySplitedConector[1] !== '' ? `.${uncaptalize(keySplitedConector[1])}` : ''}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        const specificField = keySplitedConector[1];
+                        if(!specificField) {
+                            if (nullMode) {
+                                buildedWhere.pushProperty = nullMode === 'not' ? 'isNot' : 'is';
+                            } else {
+                                buildedWhere.pushProperty = 'is';
+                                buildedWhere.autoInjectVal = {};
+                            }
+                        } else {
+                            buildedWhere.pushProperty = `is.${uncaptalize(specificField)}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
+                        }
                         keySplitedAnd = keySplitedConector[0];
                     } else if(keySplitedAnd.includes('Some')){
                         const keySplitedConector = keySplitedAnd.split('Some');
                         const specificField = keySplitedConector[1];
-                        if(specificField === '' && buildedWhere.autoInjectVal === null) {
+                        if(!specificField) {
+                            buildedWhere.pushProperty = 'some';
                             buildedWhere.autoInjectVal = {};
+                        } else {
+                            buildedWhere.pushProperty = `some.${uncaptalize(specificField)}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
                         }
-                        buildedWhere.pushProperty = `some${specificField !== '' ? `.${uncaptalize(keySplitedConector[1])}` : ''}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
                         keySplitedAnd = keySplitedConector[0];
                     } else if(keySplitedAnd.includes('Every')){
                         const keySplitedConector = keySplitedAnd.split('Every');
                         const specificField = keySplitedConector[1];
-                        if(specificField === '' && buildedWhere.autoInjectVal === null) {
+                        if(!specificField) {
+                            buildedWhere.pushProperty = 'every';
                             buildedWhere.autoInjectVal = {};
+                        } else {
+                            buildedWhere.pushProperty = `every.${uncaptalize(specificField)}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
                         }
-                        buildedWhere.pushProperty = `every${specificField !== '' ? `.${uncaptalize(keySplitedConector[1])}` : ''}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
                         keySplitedAnd = keySplitedConector[0];
                     } else if(keySplitedAnd.includes('None')){
                         const keySplitedConector = keySplitedAnd.split('None');
                         const specificField = keySplitedConector[1];
-                        if(specificField === '' && buildedWhere.autoInjectVal === null) {
+                        if(!specificField) {
+                            buildedWhere.pushProperty = 'none';
                             buildedWhere.autoInjectVal = {};
+                        } else {
+                            buildedWhere.pushProperty = `none.${uncaptalize(specificField)}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
                         }
-                        buildedWhere.pushProperty = `none${specificField !== '' ? `.${uncaptalize(keySplitedConector[1])}` : ''}${buildedWhere.pushProperty === '$$$' ? '' : `.${buildedWhere.pushProperty}`}`;
                         keySplitedAnd = keySplitedConector[0];
                     }
 

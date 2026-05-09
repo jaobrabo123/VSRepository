@@ -184,11 +184,11 @@ async function test(){
     const testeIsNull = await usuarioRepository.findBySenhaIsNotNullAndIdOrNomeContainsInsensitive(testeFindBy!.id, 'oliveira');
     console.log("Test IsNull:", testeIsNull)
 
-    const testeWith = await usuarioRepository.findByPerfilWithoutIsNull();
+    const testeWith = await usuarioRepository.findByPerfilWithoutPaginated({take: 3});
     console.log("Teste With:", testeWith)
 
-    console.log("Teste some:", await usuarioRepository.findByPostagensSomeIsNull())
-    console.log("Teste none:", await usuarioRepository.findByPostagensNoneIsNullAndEmailEndsWith('.com'))
+    console.log("Teste some:", await usuarioRepository.findByPostagensSomeConteudoContains('joao'))
+    console.log("Teste none:", await usuarioRepository.findByPostagensNoneAndEndsWithEmail('.com'))
     console.log("Teste IsFalse:", await usuarioRepository.findByIsFalseAtivo())
 
     console.log("\nRemovendo todos.")
