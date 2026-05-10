@@ -535,11 +535,9 @@ export type PaginationModel<M extends Prisma.ModelName> = PaginationOptions<Pris
 
 /**
  * Valid data input to execute an `upsert` operation for a specific Prisma model.
- * Can be either the creation payload or the update payload.
  */
 export type ModelUpsertInput<M extends Prisma.ModelName> =
-    | PrismaModelInputs<M>['upsertCreateInput']
-    | PrismaModelInputs<M>['upsertUpdateInput'];
+    PrismaModelInputs<M>['upsertCreateInput'];
 
 /**
  * Configuration options for generating a custom dynamic repository method.
@@ -684,10 +682,34 @@ type InjectedSave<T, M extends Prisma.ModelName, Config, C extends BuildConfig<a
 
 type DistributiveOmit<TObj, K extends keyof any> = TObj extends any ? Omit<TObj, K> : never;
 
-type RelationPayload<TField, TRelationConfig> = NonNullable<TField> extends (infer U)[]
-    ? Partial<U>[]
+/**
+ * Extrai o tipo exato de criação aninhada gerado pelo Prisma para uma relação.
+ * Garante que, ao criar um relacionamento, os campos mínimos obrigatórios sejam enviados.
+ */
+type ExtractNestedCreateInput<
+    M extends Prisma.ModelName,
+    K
+> = K extends keyof PrismaModelInputs<M>['createInput']
+    ? NonNullable<PrismaModelInputs<M>['createInput'][K]> extends { create?: infer C }
+        ? Exclude<C, any[]> // Remove arrays para capturar apenas o objeto singular
+        : never
+    : never;
+
+/**
+ * Define o payload permitido para uma relação aninhada.
+ * Modificado: Exige SEMPRE a estrutura completa e válida de criação exata do Prisma.
+ * Mesmo que a Chave Primária (ID) seja enviada, todos os campos obrigatórios
+ * para a criação de um novo registo têm de estar presentes no objeto.
+ */
+type RelationPayload<
+    TField, 
+    TRelationConfig, 
+    M extends Prisma.ModelName, 
+    K
+> = NonNullable<TField> extends (infer U)[]
+    ? (ExtractNestedCreateInput<M, K>)[]
     : NonNullable<TField> extends object
-      ? | Partial<NonNullable<TField>>
+      ? | ExtractNestedCreateInput<M, K>
         | (TRelationConfig extends { mode: 'oto'; restriction: 'set' }
               ? null
               : TRelationConfig extends { mode: 'mto'; nullAble: true }
@@ -701,7 +723,7 @@ type RelationPayload<TField, TRelationConfig> = NonNullable<TField> extends (inf
  */
 export type UpsertWithRelations<T, M extends Prisma.ModelName, TRelations> =
     DistributiveOmit<ModelUpsertInput<M>, keyof TRelations> & {
-        [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K]>;
+        [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K], M, K>;
     };
 
 type InjectedBaseMethods<

@@ -15,6 +15,7 @@ async function test(){
     }
 
     const usuarioComPerfil = await usuarioRepository.save({
+        id: crypto.randomUUID(),
         nome: "João",
         email: "joao@email.com",
         senha: "password",
