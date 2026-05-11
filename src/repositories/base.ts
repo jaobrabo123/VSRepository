@@ -17,7 +17,7 @@ export const fooSelectModels = {
 
 export const fooRequiredWhere = {
     
-} satisfies WhereModel<"foo">;
+} satisfies WhereModel<'foo'>;
 
 export const fooVSRepo = setupVSRepo<Foo, 'foo'>()({
     tableName: 'foo',

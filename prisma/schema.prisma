@@ -9,77 +9,89 @@ datasource db {
   provider = "postgresql"
 }
 
-// ---------------------------------------------------------
-// MODEL: usuario
-// Relacionamentos: 
-// - 1:1 com perfil
-// - 1:N com postagem (otm)
-// ---------------------------------------------------------
-model usuario {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nome            String   @db.VarChar(150)
-  email           String   @unique @db.VarChar(254)
-  senha           String?  @db.VarChar(255)
-  ativo           Boolean  @default(true)
-  dataCriacao     DateTime @default(now()) @map("data_criacao") @db.Timestamptz(6)
-  dataAtualizacao DateTime @updatedAt @map("data_atualizacao") @db.Timestamptz(6)
-
-  perfil    perfil?
-  postagens postagem[]
-
-  @@index([email])
+enum ROLES {
+  VIEWER
+  MODIFIER
+  CIENTIST
+  ALL
 }
 
-// ---------------------------------------------------------
-// MODEL: perfil
-// Relacionamentos: 
-// - 1:1 com usuario (mto)
-// ---------------------------------------------------------
-model perfil {
-  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  biografia String? @db.VarChar(500)
-  avatarUrl String? @map("avatar_url") @db.VarChar(255)
-  telefone  String? @db.VarChar(20)
-
-  usuarioId String  @unique @map("usuario_id") @db.Uuid
-  usuario   usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-
-  @@map("perfil_usuario")
+enum SECTORS {
+  HUMAN_RESOURCES
+  FINANCE
+  MARKETING
+  SALES
+  INFORMATION_TECHNOLOGY
 }
 
-// ---------------------------------------------------------
-// MODEL: postagem
-// Relacionamentos: 
-// - N:1 com usuario (mto)
-// - M:N com categoria (mtm)
-// ---------------------------------------------------------
-model postagem {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  titulo          String   @db.VarChar(200)
-  conteudo        String   @db.Text
-  publicado       Boolean  @default(false)
-  dataCriacao     DateTime @default(now()) @map("data_criacao") @db.Timestamptz(6)
-  dataAtualizacao DateTime @updatedAt @map("data_atualizacao") @db.Timestamptz(6)
-
-  autorId String  @map("autor_id") @db.Uuid
-  autor   usuario @relation(fields: [autorId], references: [id], onDelete: Cascade)
-
-  categorias categoria[] // Relação Many-to-Many implícita do Prisma
-
-  @@index([autorId, publicado])
+enum USER_TYPE {
+  ADMIN
+  COMMON
 }
 
-// ---------------------------------------------------------
-// MODEL: categoria
-// Relacionamentos: 
-// - M:N com postagem (mtm)
-// ---------------------------------------------------------
-model categoria {
-  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nome      String  @unique @db.VarChar(50)
-  descricao String? @db.VarChar(200)
+model User {
+  id         String      @id @default(cuid(2))
+  name       String      @db.VarChar(150)
+  email      String      @unique @db.VarChar(254)
+  password   String?     @db.VarChar(255)
+  active     Boolean     @default(true)
+  userType   USER_TYPE
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  admin      Admin?
+  commonUser CommonUser?
 
-  postagens postagem[] // Relação Many-to-Many implícita do Prisma
+  @@map("user")
+}
 
-  @@index([nome])
+model CommonUser {
+  id        String   @id @default(cuid(2))
+  biography String?  @db.VarChar(300)
+  birthDate DateTime @map("birth_date")
+  image     String   @db.VarChar(255)
+  followers Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  userId    String   @unique @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post[]
+
+  @@map("common_user_profile")
+}
+
+model Admin {
+  id        String   @id @default(cuid(2))
+  role      ROLES[]
+  sector    SECTORS
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  userId    String   @unique @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin")
+}
+
+model Post {
+  id           String     @id @default(cuid(2))
+  title        String     @db.VarChar(200)
+  content      String     @db.Text
+  publicated   Boolean    @default(false)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  commonUserId String     @map("common_user_id")
+  commonUser   CommonUser @relation(fields: [commonUserId], references: [id], onDelete: Cascade)
+  postTags     PostTag[]
+
+  @@map("post")
+}
+
+model PostTag {
+  id          String   @id @default(cuid(2))
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.VarChar(200)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  posts       Post[]
+
+  @@map("post_tag")
 }

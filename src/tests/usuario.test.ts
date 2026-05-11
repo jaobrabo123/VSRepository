@@ -189,8 +189,8 @@ async function test(){
     console.log("Teste With:", testeWith)
 
     console.log("Teste some:", await usuarioRepository.findByPostagensSomeConteudoContains('joao'))
-    console.log("Teste none:", await usuarioRepository.findByPostagensNoneAndEndsWithEmail('.com'))
-    console.log("Teste IsFalse:", await usuarioRepository.findByIsFalseAtivo())
+    console.log("Teste none:", await usuarioRepository.findByPostagensNoneAndEmailEndsWith('.com'))
+    console.log("Teste IsFalse:", await usuarioRepository.findByAtivoIsFalse())
 
     console.log("\nRemovendo todos.")
     await usuarioRepository.deleteManyByIdIn(novosUsuarios.map(_=>_.id));
