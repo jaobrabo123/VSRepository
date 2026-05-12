@@ -1,7 +1,7 @@
-import type { User } from "@generated/prisma/client";
 import prisma from "../db";
 import { setupVSRepo, type WhereModel, type SelectModels, type SelectModel } from "../VSRepository/VSRepository";
 import { commonUserToRelationModel } from "./commonUser.repository";
+import type { UserGetPayload } from "@generated/prisma/models";
 
 const userPublicModel = {
     id: true,
@@ -25,7 +25,7 @@ export const userRequiredWhere = {
     active: true
 } satisfies WhereModel<"User">;
 
-export const userVSRepo = setupVSRepo<User, 'User'>()({
+export const userVSRepo = setupVSRepo<UserGetPayload<{include: { commonUser: true }}>, 'User'>()({
     tableName: 'user',
     pkName: 'id',
     selectModels: userSelectModels,

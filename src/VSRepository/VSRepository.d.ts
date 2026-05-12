@@ -125,9 +125,13 @@ type ExtraArgs<M extends string, R extends string, I> = [
 // A resolução do modelo é feita instantaneamente pela Engine nativa do Prisma Client usando `Prisma.Result`.
 type PrismaDelegate<M extends Prisma.ModelName> = Uncapitalize<M> extends keyof DbClient ? DbClient[Uncapitalize<M>] : never;
 
-type SelectedModel<M extends Prisma.ModelName, S extends keyof SelectModels, SelectModels> = 
-    [S] extends [never] ? unknown : 
-    Prisma.Result<PrismaDelegate<M>, { select: SelectModels[S] }, 'findMany'> extends Array<infer U> ? U : never;
+type FullModelType<M extends Prisma.ModelName> = 
+  Prisma.Result<PrismaDelegate<M>, {}, 'findMany'> extends Array<infer U> ? U : never;
+
+type SelectedModel<M extends Prisma.ModelName, S, SelectModels> = 
+    S extends keyof SelectModels 
+        ? (Prisma.Result<PrismaDelegate<M>, { select: SelectModels[S] }, 'findMany'> extends Array<infer U> ? U : never)
+        : FullModelType<M>;
 
 type CleanFields<R extends string> =
     R extends `${infer F}PaginatedAndOrdered` ? F :
@@ -230,9 +234,10 @@ type ResolveMethodDefaultSelect<Config, C, Method extends 'get' | 'remove' | 'sa
         ? D extends keyof ExtractSelectModels<Config> ? D : ExtractDefaultSelect<Config>
         : ExtractDefaultSelect<Config>;
 
-type ResolveCurrentReturn<M extends Prisma.ModelName, Models, S, D> = [S] extends [never] ? unknown
-    : S extends keyof Models ? SelectedModel<M, S, Models>
-    : D extends keyof Models ? SelectedModel<M, D, Models> : unknown;
+type ResolveCurrentReturn<M extends Prisma.ModelName, Models, S, D> = 
+    [S] extends [never] 
+        ? ([D] extends [never] ? FullModelType<M> : SelectedModel<M, D, Models>)
+        : SelectedModel<M, S, Models>;
 
 type RefineSaveResult<R, O> = { [K in keyof R]: K extends keyof O ? (O[K] extends null ? R[K] : NonNullable<R[K]>) : R[K]; };
 
@@ -355,4 +360,8 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
 export declare function setupVSRepo<T extends object, M extends Prisma.ModelName>(): <
     const SM extends Record<string, SelectModel<M>>,
     const Config extends RepoConfig<T, M, SM>
->(config: Config extends ValidateRepoConfig<T, M, Config> ? Config : ValidateRepoConfig<T, M, Config>) => VSRepository<T, M, Config>;
+>(
+  config: Config extends ValidateRepoConfig<T, M, Config> 
+    ? Config 
+    : ValidateRepoConfig<T, M, Config>
+) => VSRepository<T, M, Config>;
