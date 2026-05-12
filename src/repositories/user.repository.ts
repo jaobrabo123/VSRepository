@@ -1,13 +1,7 @@
+import type { User } from "@generated/prisma/client";
 import prisma from "../db";
-import type { Prisma } from "../generated/prisma/client";
 import { setupVSRepo, type WhereModel, type SelectModels, type SelectModel } from "../VSRepository/VSRepository";
 import { commonUserToRelationModel } from "./commonUser.repository";
-
-type User = Prisma.UserGetPayload<{
-    include: {
-        commonUser: true;
-    }
-}>;
 
 const userPublicModel = {
     id: true,
