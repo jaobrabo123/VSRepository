@@ -763,7 +763,7 @@ export class VSRepository {
                     throw new VSRepoRuntimeError(`[VSRepository] (runtime) Missing parameters: ${missingParams.join(', ')}`);
                 } else if(args.length > argsCount) {
                     const optionsArg = args[args.length - 1]
-                    db = optionsArg.db;
+                    db = optionsArg.db ?? db;
                     optionsSelectModel = optionsArg.selectModel
                 } else {
                     args.push('1')
