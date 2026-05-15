@@ -149,14 +149,23 @@ type MethodFn<MethodName extends string, T, M extends Prisma.ModelName, R extend
 // Otimização: Achatamento da inferência de padrões
 type GetMappedMethod<K extends string, MethodConf> = 
     K extends `findBy${string}` ? (MethodConf extends { fbMode: 'one' } ? 'findByOne' : 'findByList') :
-    K extends `${'exists' | 'findUnique' | 'createManyAndReturn' | 'createMany' | 'create' | 'upsert' | 'findWhere' | 'findListWhere'}${'By' | ''}${string}` ? 
-        (K extends `${infer Prefix}By${string}` ? Prefix : 
-         K extends `${infer Prefix}Where${string}` ? `${Prefix}Where` : 
-         K extends `${infer Prefix}${Uppercase<string>}${string}` ? Prefix : K) :
-    K extends `${'updateManyAndReturn' | 'updateMany' | 'update' | 'deleteMany' | 'delete' | 'count'}${'By' | ''}${string}` ? 
-        (K extends `${infer Prefix}By${string}` ? Prefix : Prefix) :
-    K extends `findFirst${string}` ? 'findFirst' :
-    K extends `findMany${string}` ? 'findMany' : never;
+    K extends `existsBy${string}` ? 'existsBy' :
+    K extends `findUniqueBy${string}` ? 'findUnique' :
+    K extends `findFirstBy${string}` | `findFirst${string}` ? 'findFirst' :
+    K extends `findManyBy${string}` | `findMany${string}` ? 'findMany' :
+    K extends `createManyAndReturn${string}` ? 'createManyAndReturn' :
+    K extends `createMany${string}` ? 'createMany' :
+    K extends `create${string}` ? 'create' : // Precisa ficar depois dos createMany
+    K extends `updateManyAndReturnBy${string}` ? 'updateManyAndReturnBy' :
+    K extends `updateManyBy${string}` ? 'updateManyBy' :
+    K extends `updateBy${string}` ? 'updateBy' : // Precisa ficar depois dos updateMany
+    K extends `upsertBy${string}` ? 'upsertBy' :
+    K extends `deleteManyBy${string}` ? 'deleteManyBy' :
+    K extends `deleteBy${string}` ? 'deleteBy' : // Precisa ficar depois do deleteMany
+    K extends `countBy${string}` | `count${string}` ? 'count' :
+    K extends `findListWhere${string}` ? 'findListWhere' :
+    K extends `findWhere${string}` ? 'findWhere' :
+    never;
 
 type ExtractPatternBase<K extends string> = 
     K extends `${string}By${infer R}` ? R :
