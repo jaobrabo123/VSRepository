@@ -336,7 +336,7 @@ export declare class VSRepository<T extends object, M extends Prisma.ModelName, 
     vsrepocache: never;
 }
 
-export type RepositoryOf<TRepo, C = undefined, E = unknown> =
+export type VSRepositoryOf<TRepo, C = undefined, E = unknown> =
     TRepo extends VSRepository<infer T, infer M, infer Config>
         ? BuiltRepository<T, M, Config, C> & E
         : never;
