@@ -632,7 +632,7 @@ export class VSRepository {
             this.vsrepocache.set(originalKey, (args, optionsSelectModel) => {
                 const prismaArgs = {};
 
-                if(select) {
+                if(!ignoreSelect) {
                     prismaArgs.select = optionsSelectModel && !existsMode ? this.selectModels[optionsSelectModel] : select;
                 }
 

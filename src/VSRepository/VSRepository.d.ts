@@ -121,7 +121,6 @@ type ExtraArgs<M extends string, R extends string, I> = [
       : [])
 ];
 
-// 🔥 OTIMIZAÇÃO EXTREMA: Removido o longo ApplyPrismaSelect. 
 // A resolução do modelo é feita instantaneamente pela Engine nativa do Prisma Client usando `Prisma.Result`.
 type PrismaDelegate<M extends Prisma.ModelName> = Uncapitalize<M> extends keyof DbClient ? DbClient[Uncapitalize<M>] : never;
 
@@ -129,9 +128,11 @@ type FullModelType<M extends Prisma.ModelName> =
   Prisma.Result<PrismaDelegate<M>, {}, 'findMany'> extends Array<infer U> ? U : never;
 
 type SelectedModel<M extends Prisma.ModelName, S, SelectModels> = 
-    S extends keyof SelectModels 
-        ? (Prisma.Result<PrismaDelegate<M>, { select: SelectModels[S] }, 'findMany'> extends Array<infer U> ? U : never)
-        : FullModelType<M>;
+    [S] extends [never] 
+        ? FullModelType<M> 
+        : [S] extends [keyof SelectModels] 
+            ? (Prisma.Result<PrismaDelegate<M>, { select: SelectModels[S] }, 'findMany'> extends Array<infer U> ? U : never)
+            : FullModelType<M>;
 
 type CleanFields<R extends string> =
     R extends `${infer F}PaginatedAndOrdered` ? F :
@@ -258,7 +259,7 @@ type InjectedGet<
 > = C extends { baseMethods: { get: { active: false } } } ? {} : {
     get<S extends keyof TSelects = ResolveMethodDefaultSelect<Config, C, 'get'>>(
         pk: T[TPk extends keyof T ? TPk : never], options?: MethodOptions<S>
-    ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault>>;
+    ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault> | null>;
 };
 
 type InjectedRemove<
@@ -345,7 +346,7 @@ export declare class VSRepository<T extends object, M extends Prisma.ModelName, 
     vsrepocache: never;
 }
 
-export type VSRepositoryOf<TRepo, C = undefined, E = unknown> =
+export type RepositoryOf<TRepo, C = undefined, E = unknown> =
     TRepo extends VSRepository<infer T, infer M, infer Config>
         ? BuiltRepository<T, M, Config, C> & E
         : never;
