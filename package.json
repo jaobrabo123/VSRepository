@@ -1,6 +1,6 @@
 {
   "name": "vsrepo",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Uma biblioteca de repositório virtual para Prisma",
   "main": "./VSRepository/index.js",
   "types": "./VSRepository/index.d.ts",
