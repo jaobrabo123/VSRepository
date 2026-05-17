@@ -1,6 +1,6 @@
 import prisma from "../db";
 import type { Prisma } from "../generated/prisma/client";
-import { setupVSRepo, type WhereModel, type SelectModels } from "../VSRepository/VSRepository";
+import { setupVSRepo, type WhereModel, type SelectModels } from "../../VSRepository/VSRepository";
 import { categoriaSelectModels } from "./categoriaRepository";
 import { usuarioRequiredWhere } from "./usuarioRepository";
 

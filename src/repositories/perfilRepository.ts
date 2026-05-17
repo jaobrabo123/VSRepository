@@ -1,6 +1,6 @@
 import prisma from "../db";
 import type { Prisma } from "../generated/prisma/client";
-import { setupVSRepo, type SelectModels } from "../VSRepository/VSRepository";
+import { setupVSRepo, type SelectModels } from "../../VSRepository/VSRepository";
 
 type Perfil = Prisma.perfilGetPayload<{
     include: {

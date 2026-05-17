@@ -1,6 +1,6 @@
 import prisma from "../db";
 import type { Prisma } from "../generated/prisma/client";
-import { setupVSRepo, type WhereModel, type SelectModels, type SelectModel } from "../VSRepository/VSRepository";
+import { setupVSRepo, type WhereModel, type SelectModels, type SelectModel } from "../../VSRepository/VSRepository";
 
 type CommonUser = Prisma.CommonUserGetPayload<{
     include: {

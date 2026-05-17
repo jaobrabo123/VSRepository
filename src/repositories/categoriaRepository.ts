@@ -1,5 +1,5 @@
 import type { Prisma } from "@generated/prisma/client";
-import { type MethodOptionsModel, setupVSRepo, type SelectModels } from "../VSRepository/VSRepository";
+import { type MethodOptionsModel, setupVSRepo, type SelectModels } from "../../VSRepository/VSRepository";
 import prisma from "../db";
 
 type Categoria = Prisma.categoriaGetPayload<{

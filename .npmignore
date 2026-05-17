@@ -1,0 +1,39 @@
+# Ignore development files and artifacts not needed on npm
+
+# Tests and coverage
+tests/
+coverage/
+.nyc_output/
+
+src/
+
+# Prisma
+prisma/
+
+# Local envs and editor settings
+.env
+.env.local
+.vscode/
+.idea/
+.DS_Store
+
+# Lockfiles and workspace configs
+pnpm-lock.yaml
+pnpm-workspace.yaml
+package-lock.json
+
+# Logs and CI artifacts
+logs/
+*.log
+.github/
+
+# Build folders
+dist/
+build/
+
+# TypeScript config
+tsconfig.json
+
+# Misc
+*.local
+

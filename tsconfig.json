@@ -37,8 +37,8 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
     "paths": {
-      "@generated/*": ["./src/generated/*"],
+      "@vsrepo/prisma/types": ["./src/generated/prisma/client"],
     }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "VSRepository/VSRepository.d.ts", "VSRepository/VSRepository.js", "VSRepository/VSRepoError.js", "VSRepository/VSRepoError.d.ts", "VSRepository/index.d.ts", "VSRepository/index.js"]
 }

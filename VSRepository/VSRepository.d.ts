@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from '@generated/prisma/client';
+import { Prisma, PrismaClient } from '@vsrepo/prisma/types';
 
 export type DbClient = PrismaClient;
 export type DbTransaction = Prisma.TransactionClient;
