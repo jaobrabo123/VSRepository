@@ -48,7 +48,8 @@ export const userVSRepo = setupVSRepo<UserGetPayload<{ include: { commonUser: tr
                 OR: [{ email: { endsWith: '@gmail.com' } }]
             }
         },
-        findByNameContainsOptionalAndEmail: { map: true }
+        findByNameContainsOptionalAndEmail: { map: true },
+        findByCommonUserSome: { map: true }
     },
 });
 
