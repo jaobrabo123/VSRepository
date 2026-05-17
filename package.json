@@ -1,7 +1,12 @@
 {
   "name": "vsrepo",
   "version": "1.0.5",
-  "description": "Uma biblioteca de repositório virtual para Prisma",
+  "description": "Uma biblioteca de repository pattern para Prisma",
+  "homepage": "https://github.com/jaobrabo123/VSRepository#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jaobrabo123/VSRepository"
+  },
   "main": "./VSRepository/index.js",
   "types": "./VSRepository/index.d.ts",
   "exports": {
@@ -42,7 +47,7 @@
     "vsrepo",
     "vsrepository"
   ],
-  "author": "João Pedro Azevedo",
+  "author": "João Pedro Azevedo Freire Mecenas",
   "license": "MIT",
   "peerDependencies": {
     "@prisma/client": "^7.8.0"
