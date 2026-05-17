@@ -1,13 +1,39 @@
 {
   "name": "vsrepo",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "Uma biblioteca de repositório virtual para Prisma",
-  "main": "VSrepository/index.js",
-  "types": "VSrepository/index.d.ts",
+  "main": "./VSRepository/index.js",
+  "types": "./VSRepository/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./VSRepository/index.d.ts",
+      "import": "./VSRepository/index.js",
+      "require": "./VSRepository/index.js"
+    },
+    "./VSRepository": {
+      "types": "./VSRepository/VSRepository.d.ts",
+      "import": "./VSRepository/VSRepository.js",
+      "require": "./VSRepository/VSRepository.js"
+    },
+    "./VSRepoError": {
+      "types": "./VSRepository/VSRepoError.d.ts",
+      "import": "./VSRepository/VSRepoError.js",
+      "require": "./VSRepository/VSRepoError.js"
+    }
+  },
   "type": "module",
   "files": [
-    "VSrepository"
+    "VSRepository",
+    "scripts"
   ],
+  "bin": {
+    "vsrepo": "./scripts/configure-prisma-import.mjs",
+    "vsrepo-configure-prisma-import": "./scripts/configure-prisma-import.mjs"
+  },
+  "scripts": {
+    "vsrepo": "node ./scripts/configure-prisma-import.mjs",
+    "configure:prisma-import": "node ./scripts/configure-prisma-import.mjs"
+  },
   "keywords": [
     "prisma",
     "repository",

@@ -1,2 +1,2 @@
-export * from './VSRepoError';
-export * from './VSRepository';
+export * from './VSRepoError.js';
+export * from './VSRepository.js';

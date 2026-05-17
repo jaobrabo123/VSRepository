@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      vsrepo:
+        specifier: file:vsrepo-1.0.3.tgz
+        version: file:vsrepo-1.0.3.tgz(@prisma/client@7.8.0(prisma@7.8.0(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3))(typescript@6.0.3))
     devDependencies:
       '@prisma/adapter-pg':
         specifier: ^7.8.0
@@ -512,6 +516,13 @@ packages:
       typescript:
         optional: true
 
+  vsrepo@file:vsrepo-1.0.3.tgz:
+    resolution: {integrity: sha512-wQu3rtZA4FTJEIPnxWfsSCLSR/5etea0otcCXa/lozAuJwx5EtILSvTzgAAtwY1o6ttqAbvgCZ32GQ5HF6+FHA==, tarball: file:vsrepo-1.0.3.tgz}
+    version: 1.0.3
+    hasBin: true
+    peerDependencies:
+      '@prisma/client': ^7.8.0
+
   which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
     engines: {node: '>= 8'}
@@ -976,6 +987,10 @@ snapshots:
   valibot@1.2.0(typescript@6.0.3):
     optionalDependencies:
       typescript: 6.0.3
+
+  vsrepo@file:vsrepo-1.0.3.tgz(@prisma/client@7.8.0(prisma@7.8.0(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3))(typescript@6.0.3)):
+    dependencies:
+      '@prisma/client': 7.8.0(prisma@7.8.0(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@6.0.3))(typescript@6.0.3)
 
   which@2.0.2:
     dependencies:

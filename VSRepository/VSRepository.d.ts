@@ -4,7 +4,7 @@ export type DbClient = PrismaClient;
 export type DbTransaction = Prisma.TransactionClient;
 export type ClientOrTransaction = DbClient | DbTransaction;
 
-export * from './VSRepoError';
+export * from './VSRepoError.js';
 
 type OrderPattern = {
     [key: string]: 'asc' | 'desc' | { _count: 'asc' | 'desc' } | OrderPattern;
@@ -241,10 +241,16 @@ export type BuildConfig<TSelectKeys extends PropertyKey = string> = {
     };
 };
 
-type ResolveMethodDefaultSelect<Config, C, Method extends 'get' | 'remove' | 'save'> =
-    C extends { baseMethods: Record<Method, { defaultSelect: infer D }> }
-        ? D extends keyof ExtractSelectModels<Config> ? D : ExtractDefaultSelect<Config>
-        : ExtractDefaultSelect<Config>;
+type ResolveMethodDefaultSelect<Config, C, Method extends 'get' | 'remove' | 'save', TSelects = ExtractSelectModels<Config>> =
+    C extends { baseMethods?: { [_ in Method]?: { defaultSelect?: infer D } } }
+        ? D extends keyof TSelects 
+            ? D 
+            : ExtractDefaultSelect<Config> extends keyof TSelects 
+                ? ExtractDefaultSelect<Config> 
+                : false
+        : ExtractDefaultSelect<Config> extends keyof TSelects 
+            ? ExtractDefaultSelect<Config> 
+            : false;
 
 type ResolveCurrentReturn<M extends Prisma.ModelName, Models, S, D> = 
     [S] extends [false] 
@@ -261,7 +267,7 @@ type InjectedGet<
     TDefault = ExtractDefaultSelect<Config>,
     TPk = ExtractPkName<T, Config>
 > = C extends { baseMethods: { get: { active: false } } } ? {} : {
-    get<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'get'>>(
+    get<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'get', TSelects>>(
         pk: T[TPk extends keyof T ? TPk : never], options?: MethodOptions<S>
     ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault> | null>;
 };
@@ -272,7 +278,7 @@ type InjectedRemove<
     TDefault = ExtractDefaultSelect<Config>,
     TPk = ExtractPkName<T, Config>
 > = C extends { baseMethods: { remove: { active: false } } } ? {} : {
-    remove<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'remove'>>(
+    remove<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'remove', TSelects>>(
         pk: T[TPk extends keyof T ? TPk : never], options?: MethodOptions<S>
     ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault>>;
 };
@@ -304,14 +310,14 @@ type InjectedSave<
 > = C extends { baseMethods: { save: { active: false } } } ? {} : {
     save<
         O extends UpsertWithRelations<T, M, TRelations>, 
-        S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'save'>
+        S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'save', TSelects>
     >(
         obj: O & UpsertWithRelations<T, M, TRelations>, 
         options?: MethodOptions<S>
     ): Promise<RefineSaveResult<ResolveCurrentReturn<M, TSelects, S, TDefault>, O>>;
 };
 
-type InjectedBaseMethods<T, M extends Prisma.ModelName, Config, C extends BuildConfig | undefined> = 
+type InjectedBaseMethods<T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined> = 
     InjectedGet<T, M, Config, C> & 
     InjectedRemove<T, M, Config, C> & 
     InjectedSave<T, M, Config, C>;
@@ -333,24 +339,24 @@ export type RepoConfig<T, M extends Prisma.ModelName, SM extends Record<string, 
     tableName: Uncapitalize<M>;
     pkName: keyof T;
     selectModels?: SM;
-    defaultSelectModel?: keyof SM;
+    defaultSelectModel?: Extract<keyof SM, string>;
     requiredWhere?: WhereModel<M>;
     relations?: RepositoryRelations<T>;
     methods?: Record<string, MethodConfig<M, SM>>;
 };
 
-export type BuiltRepository<T extends object, M extends Prisma.ModelName, Config extends RepoConfig<T, M>, C extends BuildConfig<keyof ExtractSelectModels<Config>> | undefined> = {
+export type BuiltRepository<T extends object, M extends Prisma.ModelName, Config extends RepoConfig<T, M, any>, C extends BuildConfig<any> | undefined> = {
     extend<E>(extensionFunc: (repo: BuiltRepository<T, M, Config, C>) => E): BuiltRepository<T, M, Config, C> & E;
 } & DynamicMethods<T, M, Config, PrismaModelInputs<M>> & InjectedBaseMethods<T, M, Config, C>;
 
-export declare class VSRepository<T extends object, M extends Prisma.ModelName, const Config extends RepoConfig<T, M> = RepoConfig<T, M>> {
+export declare class VSRepository<T extends object, M extends Prisma.ModelName, const Config extends RepoConfig<T, M, any> = RepoConfig<T, M, any>> {
     readonly config: Config;
     constructor(config: Config);
-    build<C extends BuildConfig<keyof ExtractSelectModels<Config>>>(prisma: DbClient, config?: C): BuiltRepository<T, M, Config, C>;
+    build<C extends BuildConfig<any>>(prisma: DbClient, config?: C): BuiltRepository<T, M, Config, C>;
     vsrepocache: never;
 }
 
-export type RepositoryOf<TRepo, C = undefined, E = unknown> =
+export type RepositoryOf<TRepo, C extends BuildConfig<any> | undefined = undefined, E = unknown> =
     TRepo extends VSRepository<infer T, infer M, infer Config>
         ? BuiltRepository<T, M, Config, C> & E
         : never;
@@ -359,7 +365,7 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
     tableName: Uncapitalize<M>;
     pkName: keyof T;
     selectModels?: SelectModels<M>;
-    defaultSelectModel?: Config extends { selectModels: infer SM } ? (keyof SM extends never ? string : keyof SM) : string;
+    defaultSelectModel?: Config extends { selectModels: infer SM } ? (keyof SM extends never ? string : Extract<keyof SM, string>) : string;
     requiredWhere?: WhereModel<M>;
     relations?: RepositoryRelations<T>;
     methods?: {
