@@ -87,7 +87,7 @@ export class VSRepository {
                         throw new VSRepoConfigError(`[VSRepository] (config) Invalid 'whereType' on ${key}: ${value.whereType}`);
                     }
 
-                    if(value.selectModel !== undefined && (!config.selectModels || !Object.keys(config.selectModels).includes(value.selectModel))){
+                    if(value.selectModel !== undefined && value.selectModel !== false && (!config.selectModels || !Object.keys(config.selectModels).includes(value.selectModel))){
                         throw new VSRepoConfigError(`[VSRepository] (config) Invalid 'selectModel' on ${key}: ${value.selectModel}`);
                     }
 
@@ -620,7 +620,7 @@ export class VSRepository {
 
                 if(providedSelectModel) {
                     select = this.selectModels[providedSelectModel];
-                } else if(this.defaultSelectModel) {
+                } else if(this.defaultSelectModel && providedSelectModel !== false) {
                     select = this.selectModels[this.defaultSelectModel];
                 }
 
@@ -633,7 +633,11 @@ export class VSRepository {
                 const prismaArgs = {};
 
                 if(!ignoreSelect) {
-                    prismaArgs.select = optionsSelectModel && !existsMode ? this.selectModels[optionsSelectModel] : select;
+                    prismaArgs.select = existsMode || optionsSelectModel === undefined ?
+                        select :
+                        optionsSelectModel === false ?
+                            undefined :
+                            this.selectModels[optionsSelectModel];
                 }
 
                 if(orderPosition !== undefined) {

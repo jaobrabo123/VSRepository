@@ -128,11 +128,13 @@ type FullModelType<M extends Prisma.ModelName> =
   Prisma.Result<PrismaDelegate<M>, {}, 'findMany'> extends Array<infer U> ? U : never;
 
 type SelectedModel<M extends Prisma.ModelName, S, SelectModels> = 
-    [S] extends [never] 
-        ? FullModelType<M> 
-        : [S] extends [keyof SelectModels] 
-            ? (Prisma.Result<PrismaDelegate<M>, { select: SelectModels[S] }, 'findMany'> extends Array<infer U> ? U : never)
-            : FullModelType<M>;
+    [S] extends [false] 
+        ? FullModelType<M>
+        : [S] extends [never] 
+            ? FullModelType<M> 
+            : [S] extends [keyof SelectModels] 
+                ? (Prisma.Result<PrismaDelegate<M>, { select: SelectModels[S] }, 'findMany'> extends Array<infer U> ? U : never)
+                : FullModelType<M>;
 
 type CleanFields<R extends string> =
     R extends `${infer F}PaginatedAndOrdered` ? F :
@@ -141,11 +143,11 @@ type CleanFields<R extends string> =
     R extends `${infer F}Ordered` ? F :
     R extends `${infer F}SkipDuplicates` ? F : R;
 
-export type MethodOptions<S> = { selectModel?: S; db?: ClientOrTransaction };
-export type MethodOptionsModel<T> = MethodOptions<keyof T>;
+export type MethodOptions<S> = { selectModel?: S | false; db?: ClientOrTransaction };
+export type MethodOptionsModel<T> = MethodOptions<keyof T | false>;
 
-type MethodFn<MethodName extends string, T, M extends Prisma.ModelName, R extends string, SelectModels, DefaultSelect extends keyof SelectModels, I> = 
-    <S extends keyof SelectModels = DefaultSelect>(...args: [...ExtractFields<T, CleanFields<R>, I>, ...ExtraArgs<MethodName, R, I>, options?: MethodOptions<S>]) => Promise<ResolveReturnType<MethodName, SelectedModel<M, S, SelectModels>>>;
+type MethodFn<MethodName extends string, T, M extends Prisma.ModelName, R extends string, SelectModels, DefaultSelect extends keyof SelectModels | false, I> = 
+    <S extends keyof SelectModels | false = DefaultSelect>(...args: [...ExtractFields<T, CleanFields<R>, I>, ...ExtraArgs<MethodName, R, I>, options?: MethodOptions<S>]) => Promise<ResolveReturnType<MethodName, SelectedModel<M, S, SelectModels>>>;
 
 // Otimização: Achatamento da inferência de padrões
 type GetMappedMethod<K extends string, MethodConf> = 
@@ -172,11 +174,11 @@ type ExtractPatternBase<K extends string> =
     K extends `${string}By${infer R}` ? R :
     K extends `findFirst${infer R}` | `findMany${infer R}` | `createManyAndReturn${infer R}` | `createMany${infer R}` | `create${infer R}` | `count${infer R}` | `findWhere${infer R}` | `findListWhere${infer R}` ? R : '';
 
-type MethodFactory<T, M extends Prisma.ModelName, K extends string, SelectModels, DefaultSelect extends keyof SelectModels, I, MethodConf> = 
+type MethodFactory<T, M extends Prisma.ModelName, K extends string, SelectModels, DefaultSelect extends keyof SelectModels | false, I, MethodConf> = 
     MethodFn<GetMappedMethod<K, MethodConf>, T, M, ExtractPatternBase<K>, SelectModels, DefaultSelect, I>;
 
 type ResolveSelectModel<MethodConf, GlobalConf, SelectModels> = 
-    MethodConf extends { selectModel: infer S } ? (S extends keyof SelectModels ? S : never) : 
+    MethodConf extends { selectModel: infer S } ? (S extends false ? false : S extends keyof SelectModels ? S : never) : 
     GlobalConf extends { defaultSelectModel: infer D } ? (D extends keyof SelectModels ? D : never) : never;
 
 type ExtractPkName<T, Config> = Config extends { pkName: infer PK } ? (PK extends keyof T ? PK : never) : never;
@@ -214,7 +216,7 @@ export type ModelUpsertInput<M extends Prisma.ModelName> = PrismaModelInputs<M>[
 
 export type MethodConfig<M extends Prisma.ModelName, SelectModels = any> = {
     readonly map: boolean;
-    readonly selectModel?: keyof SelectModels;
+    readonly selectModel?: keyof SelectModels | false;
     readonly whereType?: 'overwrite' | 'extending';
     readonly proxyTo?: ValidMethodPatterns;
     readonly pushWhere?: WhereModel<M>;
@@ -245,9 +247,11 @@ type ResolveMethodDefaultSelect<Config, C, Method extends 'get' | 'remove' | 'sa
         : ExtractDefaultSelect<Config>;
 
 type ResolveCurrentReturn<M extends Prisma.ModelName, Models, S, D> = 
-    [S] extends [never] 
-        ? ([D] extends [never] ? FullModelType<M> : SelectedModel<M, D, Models>)
-        : SelectedModel<M, S, Models>;
+    [S] extends [false] 
+        ? FullModelType<M> 
+        : [S] extends [never] 
+            ? ([D] extends [never] ? FullModelType<M> : SelectedModel<M, D, Models>)
+            : SelectedModel<M, S, Models>;
 
 type RefineSaveResult<R, O> = { [K in keyof R]: K extends keyof O ? (O[K] extends null ? R[K] : NonNullable<R[K]>) : R[K]; };
 
@@ -257,7 +261,7 @@ type InjectedGet<
     TDefault = ExtractDefaultSelect<Config>,
     TPk = ExtractPkName<T, Config>
 > = C extends { baseMethods: { get: { active: false } } } ? {} : {
-    get<S extends keyof TSelects = ResolveMethodDefaultSelect<Config, C, 'get'>>(
+    get<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'get'>>(
         pk: T[TPk extends keyof T ? TPk : never], options?: MethodOptions<S>
     ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault> | null>;
 };
@@ -268,7 +272,7 @@ type InjectedRemove<
     TDefault = ExtractDefaultSelect<Config>,
     TPk = ExtractPkName<T, Config>
 > = C extends { baseMethods: { remove: { active: false } } } ? {} : {
-    remove<S extends keyof TSelects = ResolveMethodDefaultSelect<Config, C, 'remove'>>(
+    remove<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'remove'>>(
         pk: T[TPk extends keyof T ? TPk : never], options?: MethodOptions<S>
     ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault>>;
 };
@@ -300,7 +304,7 @@ type InjectedSave<
 > = C extends { baseMethods: { save: { active: false } } } ? {} : {
     save<
         O extends UpsertWithRelations<T, M, TRelations>, 
-        S extends keyof TSelects = ResolveMethodDefaultSelect<Config, C, 'save'>
+        S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'save'>
     >(
         obj: O & UpsertWithRelations<T, M, TRelations>, 
         options?: MethodOptions<S>
