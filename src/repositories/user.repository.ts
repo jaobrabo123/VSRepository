@@ -1,7 +1,7 @@
 import prisma from "../db";
 import { setupVSRepo, type WhereModel, type SelectModels, type SelectModel } from "../../VSRepository/VSRepository";
 import { commonUserToRelationModel } from "./commonUser.repository";
-import type { UserGetPayload } from "@generated/prisma/models";
+import type { UserGetPayload } from "../generated/prisma/models";
 
 const userPublicModel = {
     id: true,
@@ -25,7 +25,7 @@ export const userRequiredWhere = {
     active: true
 } satisfies WhereModel<"User">;
 
-export const userVSRepo = setupVSRepo<UserGetPayload<{include: { commonUser: true }}>, 'User'>()({
+export const userVSRepo = setupVSRepo<UserGetPayload<{ include: { commonUser: true } }>, 'User'>()({
     tableName: 'user',
     pkName: 'id',
     selectModels: userSelectModels,
@@ -39,15 +39,16 @@ export const userVSRepo = setupVSRepo<UserGetPayload<{include: { commonUser: tru
         }
     },
     methods: {
-        findById: {map: true, fbMode: 'one'},
-        deleteManyBy: {map: true},
+        findById: { map: true, fbMode: 'one' },
+        deleteManyBy: { map: true },
         findManyByGmailOrId: {
             map: true,
             proxyTo: 'findManyByOrId',
             pushWhere: {
-                OR: [{email: { endsWith: '@gmail.com' }}]
+                OR: [{ email: { endsWith: '@gmail.com' } }]
             }
-        }
+        },
+        findByNameContainsOptionalAndEmail: { map: true }
     },
 });
 

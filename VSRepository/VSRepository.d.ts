@@ -69,13 +69,20 @@ type IsNoArgModifier<S extends string> =
     S extends `${string}${NoArgModifiers | 'With'}` ? true : 
     false;
 
+type IsOptional<S extends string> = S extends `${string}Optional` ? true : false;
+type StripOptional<S extends string> = S extends `${infer Base}Optional` ? Base : S;
+
 type MapToContractTypes<T, Arr extends string[], I> = 
     Arr extends [infer First extends string, ...infer Rest extends string[]]
         ? First extends '' 
             ? MapToContractTypes<T, Rest, I>
-            : IsNoArgModifier<First> extends true
-                ? MapToContractTypes<T, Rest, I>
-                : [GetFieldType<T, First, I>, ...MapToContractTypes<T, Rest, I>]
+            : StripOptional<First> extends infer CleanFirst extends string
+                ? IsNoArgModifier<CleanFirst> extends true
+                    ? MapToContractTypes<T, Rest, I>
+                    : IsOptional<First> extends true
+                        ? [GetFieldType<T, CleanFirst, I> | undefined, ...MapToContractTypes<T, Rest, I>]
+                        : [GetFieldType<T, CleanFirst, I>, ...MapToContractTypes<T, Rest, I>]
+                : never
         : [];
 
 type HasMultipleANDs<S extends string> = S extends `${string}AND${string}AND${string}` ? true : false;

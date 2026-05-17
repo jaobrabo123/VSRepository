@@ -400,6 +400,9 @@ export class VSRepository {
                             buildedWhere.properties.mode = 'insensitive';
                             keySplitedAnd = keySplitedAnd.replace('Insensitive', '')
                         }
+                        if(keySplitedAnd.includes('Optional')){
+                            keySplitedAnd = keySplitedAnd.replace('Optional', '');
+                        }
 
                         if(keySplitedAnd.includes('NotStartsWith')){
                             buildedWhere.pushProperty = 'not.startsWith';

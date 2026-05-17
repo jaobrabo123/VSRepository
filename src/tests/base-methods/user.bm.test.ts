@@ -14,7 +14,7 @@ async function test() {
     });
     console.log("User saved with id:", saveUserWithId);
 
-    const getUser = await userRepository.get(mockId);
+    const getUser = await userRepository.findById("undefined");
     console.log('Get user:', getUser);
 
     console.log("Removed user:", await userRepository.remove(mockId));
