@@ -502,6 +502,13 @@ findByNomeOptionalAndEmail // nome é opcional, email é obrigatório
 | --------- | ---------------------------- | -------------------------------- |
 | `And`     | entre dois campos            | `findByIdAndEmail`               |
 | `Or`      | entre dois campos            | `findByNomeOrEmail`              |
+| `AND`     | separa bloco final em `AND`  | `findByEmailOrNameANDActiveStatus` |
+
+`AND` (em capslock) tem uma regra específica:
+
+- Só pode existir **um** `AND` por método.
+- Todos os campos (conectados por `And`) **depois** de `AND` são injetados dentro de `AND: []`.
+- Depois de um `AND` não pode ter `Or`.
 
 Exemplo:
 
@@ -509,13 +516,64 @@ Exemplo:
 methods: {
   findByIdAndEmail:   { map: true, fbMode: "one" },
   findByNomeOrEmail:  { map: true },
-  findUniqueByIdOrEmailAndNome: { map: true }
+  findUniqueByIdOrEmailAndNome: { map: true },
+  findByEmailOrNameANDActiveStatusAndIdadeGreaterThan: { map: true }
 }
 
 // Uso
 await usuarioRepository.findByIdAndEmail(1, "joao@email.com");
 await usuarioRepository.findByNomeOrEmail("Joao", "joao@email.com");
-await usuarioRepository.findUniqueByIdOrEmailAndNome(1, "joao@email.com", "Joao") // { OR: [ { id: 1 }, { email: "joao@email.com", nome: "Joao" } ] }
+await usuarioRepository.findUniqueByIdOrEmailAndNome(1, "joao@email.com", "Joao");
+await usuarioRepository.findByEmailOrNameANDActiveStatusAndIdadeGreaterThan("joao@email.com", "Joao", true, 17)
+```
+
+Gera (`findByIdAndEmail`):
+
+```ts
+{
+  id: 1,
+  email: "joao@email.com"
+}
+```
+
+Gera (`findByNomeOrEmail`):
+
+```ts
+{
+  OR: [
+    { nome: "Joao" },
+    { email: "joao@email.com" }
+  ]
+}
+```
+
+Gera (`findUniqueByIdOrEmailAndNome`):
+
+```ts
+{
+  OR: [
+    { id: 1 },
+    {
+      email: "joao@email.com",
+      nome: "Joao"
+    }
+  ]
+}
+```
+
+Gera (`findByEmailOrNameANDActiveStatusAndIdadeGreaterThan`):
+
+```ts
+{
+  OR: [
+    { email: "joao@email.com" },
+    { name: "Joao" }
+  ],
+  AND: [
+    { activeStatus: true },
+    { idade: { gt: 17 } }
+  ]
+}
 ```
 
 ---
