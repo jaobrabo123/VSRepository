@@ -153,9 +153,11 @@ export class VSRepository {
             config.freeze = true;
         }
 
-        const relationsKeys = this.relations ? Object.keys(this.relations) : [];
+        const buildInstance = Object.create(this);
 
-        const methods = this.methods;
+        const relationsKeys = buildInstance.relations ? Object.keys(buildInstance.relations) : [];
+
+        const methods = buildInstance.methods;
         const repositoryKeysToMap = Object.keys(methods);
 
         if(showWorking) {
@@ -622,17 +624,17 @@ export class VSRepository {
                 const providedSelectModel = methods[originalKey].selectModel;
 
                 if(providedSelectModel) {
-                    select = this.selectModels[providedSelectModel];
-                } else if(this.defaultSelectModel && providedSelectModel !== false) {
-                    select = this.selectModels[this.defaultSelectModel];
+                    select = buildInstance.selectModels[providedSelectModel];
+                } else if(buildInstance.defaultSelectModel && providedSelectModel !== false) {
+                    select = buildInstance.selectModels[buildInstance.defaultSelectModel];
                 }
 
             }
             if(existsMode) {
-                select = { [this.pkName]: true };
+                select = { [buildInstance.pkName]: true };
             }
 
-            this.vsrepocache.set(originalKey, (args, optionsSelectModel) => {
+            buildInstance.vsrepocache.set(originalKey, (args, optionsSelectModel) => {
                 const prismaArgs = {};
 
                 if(!ignoreSelect) {
@@ -640,7 +642,7 @@ export class VSRepository {
                         select :
                         optionsSelectModel === false ?
                             undefined :
-                            this.selectModels[optionsSelectModel];
+                            buildInstance.selectModels[optionsSelectModel];
                 }
 
                 if(orderPosition !== undefined) {
@@ -665,8 +667,8 @@ export class VSRepository {
                 }
 
                 const assignWhere = (where) => {
-                    if(whereType==='extending' && this.requiredWhere) {
-                        let safeRequiredWhere = structuredClone(this.requiredWhere);
+                    if(whereType==='extending' && buildInstance.requiredWhere) {
+                        let safeRequiredWhere = structuredClone(buildInstance.requiredWhere);
                         if(where.OR && safeRequiredWhere.OR) safeRequiredWhere.OR = safeRequiredWhere.OR.concat(where.OR)
                         if(where.AND && safeRequiredWhere.AND) safeRequiredWhere.AND = safeRequiredWhere.AND.concat(where.AND)
                         Object.assign(where, safeRequiredWhere);
@@ -761,7 +763,7 @@ export class VSRepository {
                 return prismaArgs;
             }) 
 
-            this[originalKey] = async (...args) => {
+            buildInstance[originalKey] = async (...args) => {
                 
                 let db = prisma;
                 let optionsSelectModel;
@@ -776,22 +778,22 @@ export class VSRepository {
                     args.push('1')
                 }
 
-                const prismaArgs = this.vsrepocache.get(originalKey)(args, optionsSelectModel);
+                const prismaArgs = buildInstance.vsrepocache.get(originalKey)(args, optionsSelectModel);
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing ${method} on ${this.tableName}.`);
-                    console.log(`[VSRepository] (runtime) Built arguments to ${method} on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (runtime) Executing ${method} on ${buildInstance.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Built arguments to ${method} on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
 
                 try {
-                    const result = await db[this.tableName][method](prismaArgs);
+                    const result = await db[buildInstance.tableName][method](prismaArgs);
 
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (runtime) Executed ${method} on ${this.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (runtime) Executed ${method} on ${buildInstance.tableName} (took: ${duration}ms).`);
                     }
 
                     if(existsMode) {
@@ -799,7 +801,7 @@ export class VSRepository {
                     }
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when executing ${method} on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (runtime) Fatal error when executing ${method} on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
                 
@@ -808,110 +810,110 @@ export class VSRepository {
         }
 
         if(config.baseMethods?.get?.active !== false) {
-            this.get = async(pk, options = {}) => {
+            buildInstance.get = async(pk, options = {}) => {
                 let db;
                 if(options?.db) db = options.db;
                 else db = prisma;
 
                 const prismaArgs = {};
 
-                const where = { [this.pkName]: pk };
-                if(this.requiredWhere && !config.baseMethods?.get?.ignoreRequiredWhere) {
-                    Object.assign(where, this.requiredWhere);
+                const where = { [buildInstance.pkName]: pk };
+                if(buildInstance.requiredWhere && !config.baseMethods?.get?.ignoreRequiredWhere) {
+                    Object.assign(where, buildInstance.requiredWhere);
                 }
                 prismaArgs.where = where;
 
-                let selectModelKey = options?.selectModel ?? config.baseMethods?.get?.defaultSelect ?? this.defaultSelectModel;
+                let selectModelKey = options?.selectModel ?? config.baseMethods?.get?.defaultSelect ?? buildInstance.defaultSelectModel;
                 if(selectModelKey){
-                    prismaArgs.select = this.selectModels[selectModelKey];
+                    prismaArgs.select = buildInstance.selectModels[selectModelKey];
                 }
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing get on ${this.tableName}.`);
-                    console.log(`[VSRepository] (runtime) Built arguments to get on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (runtime) Executing get on ${buildInstance.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Built arguments to get on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
 
                 try {
-                    const result = await db[this.tableName].findUnique(prismaArgs);
+                    const result = await db[buildInstance.tableName].findUnique(prismaArgs);
 
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (runtime) Executed get on ${this.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (runtime) Executed get on ${buildInstance.tableName} (took: ${duration}ms).`);
                     }
 
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when trying to get on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (runtime) Fatal error when trying to get on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }
         }
         if(config.baseMethods?.remove?.active !== false) {
-            this.remove = async (pk, options = {}) => {
+            buildInstance.remove = async (pk, options = {}) => {
                 let db;
                 if(options?.db) db = options.db;
                 else db = prisma;
 
                 const prismaArgs = {};
 
-                const where = { [this.pkName]: pk };
-                if(this.requiredWhere && !config.baseMethods?.remove?.ignoreRequiredWhere) {
-                    Object.assign(where, this.requiredWhere);
+                const where = { [buildInstance.pkName]: pk };
+                if(buildInstance.requiredWhere && !config.baseMethods?.remove?.ignoreRequiredWhere) {
+                    Object.assign(where, buildInstance.requiredWhere);
                 }
                 prismaArgs.where = where;
 
-                let selectModelKey = options?.selectModel ?? config.baseMethods?.remove?.defaultSelect ?? this.defaultSelectModel;
+                let selectModelKey = options?.selectModel ?? config.baseMethods?.remove?.defaultSelect ?? buildInstance.defaultSelectModel;
                 if(selectModelKey){
-                    prismaArgs.select = this.selectModels[selectModelKey];
+                    prismaArgs.select = buildInstance.selectModels[selectModelKey];
                 }
                 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing remove on ${this.tableName}.`);
-                    console.log(`[VSRepository] (runtime) Built arguments to remove on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (runtime) Executing remove on ${buildInstance.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Built arguments to remove on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
                 try {
-                    const result = await db[this.tableName].delete(prismaArgs);
+                    const result = await db[buildInstance.tableName].delete(prismaArgs);
 
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (runtime) Executed remove on ${this.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (runtime) Executed remove on ${buildInstance.tableName} (took: ${duration}ms).`);
                     }
 
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when trying to remove on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (runtime) Fatal error when trying to remove on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }
         }
         if(config.baseMethods?.save?.active !== false) {
-            this.save = async (obj, options = {}) => {
+            buildInstance.save = async (obj, options = {}) => {
                 let db;
                 if(options?.db) db = options.db;
                 else db = prisma;
 
                 const prismaArgs = {};
 
-                let selectModelKey = options?.selectModel ?? config.baseMethods?.save?.defaultSelect ?? this.defaultSelectModel;
+                let selectModelKey = options?.selectModel ?? config.baseMethods?.save?.defaultSelect ?? buildInstance.defaultSelectModel;
                 if(selectModelKey){
-                    prismaArgs.select = this.selectModels[selectModelKey];
+                    prismaArgs.select = buildInstance.selectModels[selectModelKey];
                 }
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing save on ${this.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Executing save on ${buildInstance.tableName}.`);
                     start = performance.now();
                 }
 
                 try {
                     let result;
-                    if(obj[this.pkName] !== undefined){
+                    if(obj[buildInstance.pkName] !== undefined){
                         prismaArgs.create = {};
                         prismaArgs.update = {};
 
@@ -923,7 +925,7 @@ export class VSRepository {
                             if(field === undefined) continue;
 
                             if(relationsKeys.includes(key)){
-                                const relation = this.relations[key];
+                                const relation = buildInstance.relations[key];
                                 const relationMode = relation.mode;
                                 const relationRestriction = relation.restriction;
                                 const relationPk = relation.pk;
@@ -1022,23 +1024,23 @@ export class VSRepository {
                                 }
                             } else {
                                 prismaArgs.create[key] = field;
-                                if(key !== this.pkName) {
+                                if(key !== buildInstance.pkName) {
                                     prismaArgs.update[key] = field;
                                 }
                             }
                         }
 
-                        const where = { [this.pkName]: obj[this.pkName] };
-                        if(this.requiredWhere && !config.baseMethods?.save?.ignoreRequiredWhere) {
-                            Object.assign(where, this.requiredWhere);
+                        const where = { [buildInstance.pkName]: obj[buildInstance.pkName] };
+                        if(buildInstance.requiredWhere && !config.baseMethods?.save?.ignoreRequiredWhere) {
+                            Object.assign(where, buildInstance.requiredWhere);
                         }
                         prismaArgs.where = where;
 
                         if(showWorking) {
-                            console.log(`[VSRepository] (runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                            console.log(`[VSRepository] (runtime) Built arguments to save on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                         }
 
-                        result = await db[this.tableName].upsert(prismaArgs);
+                        result = await db[buildInstance.tableName].upsert(prismaArgs);
                     } else {
                         prismaArgs.data = {};
 
@@ -1050,7 +1052,7 @@ export class VSRepository {
                             if(field == null) continue;
 
                             if(relationsKeys.includes(key)){
-                                const relation = this.relations[key];
+                                const relation = buildInstance.relations[key];
                                 const relationMode = relation.mode;
                                 const relationPk = relation.pk;
 
@@ -1086,28 +1088,28 @@ export class VSRepository {
                         }
 
                         if(showWorking) {
-                            console.log(`[VSRepository] (runtime) Built arguments to save on ${this.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                            console.log(`[VSRepository] (runtime) Built arguments to save on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                         }
 
-                        result = await db[this.tableName].create(prismaArgs);
+                        result = await db[buildInstance.tableName].create(prismaArgs);
                     }
 
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (runtime) Executed save on ${this.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (runtime) Executed save on ${buildInstance.tableName} (took: ${duration}ms).`);
                     }
 
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when trying to save on ${this.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (runtime) Fatal error when trying to save on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }
         }
 
-        if(config.freeze) Object.freeze(this)
-        return this;
+        if(config.freeze) Object.freeze(buildInstance)
+        return buildInstance;
     }
 
 }
