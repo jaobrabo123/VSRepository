@@ -338,7 +338,7 @@ Todos aceitam `options?: { selectModel?, db? }` como último argumento.
 ```ts
 usuarioVSRepo.build(prisma, {
   freeze: true,        // Congela o objeto (padrão: true)
-  showWorking: false,  // Exibe logs internos no console
+  showWorking: false,  // Exibe logs do VSRepository no console, ótimo para debugar as queries criadas e os objetos passados para o prisma
 
   baseMethods: {
     get: {
