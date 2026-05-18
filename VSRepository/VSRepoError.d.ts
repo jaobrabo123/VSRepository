@@ -1,5 +1,5 @@
 /**
- * Literal types representing the library's internal error codes.
+ * Tipos literais que representam os códigos de erro internos da biblioteca.
  */
 export type VSRepoErrorType = 
     | 'VSREPO_CONFIG'
@@ -8,18 +8,18 @@ export type VSRepoErrorType =
     | 'VSREPO_RUNTIME';
 
 /**
- * Base class for all errors thrown by the Virtual Schema Repository.
+ * Classe base para todos os erros lançados pelo Virtual Schema Repository.
  */
 export declare abstract class VSRepoError extends Error {
-    /** Internal code used to identify the error category. */
+    /** Código interno usado para identificar a categoria do erro. */
     abstract readonly type: VSRepoErrorType;
     
     constructor(message: string, type: VSRepoErrorType);
 }
 
 /**
- * Thrown when an invalid configuration or setup inconsistency is detected
- * before or during repository initialization.
+ * Lançado quando uma configuração inválida ou uma inconsistência de
+ * configuração é detectada antes ou durante a inicialização do repositório.
  */
 export declare class VSRepoConfigError extends VSRepoError {
     readonly type: 'VSREPO_CONFIG';
@@ -27,8 +27,8 @@ export declare class VSRepoConfigError extends VSRepoError {
 }
 
 /**
- * Thrown when the Prisma instance injection fails or when the repository
- * cannot be finalized through `.build()`.
+ * Lançado quando a injeção da instância do Prisma falha ou quando o
+ * repositório não pode ser finalizado por meio de `.build()`.
  */
 export declare class VSRepoBuildError extends VSRepoError {
     readonly type: 'VSREPO_BUILD';
@@ -36,8 +36,8 @@ export declare class VSRepoBuildError extends VSRepoError {
 }
 
 /**
- * Thrown when an error occurs while injecting new methods into the
- * repository through `.extend()`.
+ * Lançado quando ocorre um erro ao injetar novos métodos no repositório
+ * por meio de `.extend()`.
  */
 export declare class VSRepoExtendError extends VSRepoError {
     readonly type: 'VSREPO_EXTEND';
@@ -45,8 +45,8 @@ export declare class VSRepoExtendError extends VSRepoError {
 }
 
 /**
- * Thrown when dynamic operations fail at runtime, such as when invalid
- * arguments are passed to methods.
+ * Lançado quando operações dinâmicas falham em tempo de execução, como
+ * quando argumentos inválidos são passados para métodos.
  */
 export declare class VSRepoRuntimeError extends VSRepoError {
     readonly type: 'VSREPO_RUNTIME';

@@ -169,6 +169,17 @@ for (const file of tsFiles) {
   console.log(`Gerado: ${path.relative(workspaceRoot, targetFile)}`);
 }
 
+// Copia o README.md para o diretório de output, se existir
+const readmeSource = path.join(workspaceRoot, 'README.md');
+const readmeTarget = path.join(outputDir, 'README.md');
+
+if (fs.existsSync(readmeSource)) {
+  fs.copyFileSync(readmeSource, readmeTarget);
+  console.log(`Copiado: ${path.relative(workspaceRoot, readmeTarget)}`);
+} else {
+  console.warn('README.md nao encontrado, ignorando a copia.');
+}
+
 console.log('\nVSRepository gerado com tipagem do Prisma.');
 console.log(`Output: ${outputDir}`);
 console.log(`Prisma usado em: ${prismaTargetPath}`);

@@ -616,7 +616,7 @@ Cada entrada em `methods` aceita as seguintes opções:
 | `whereType`         | `'extending'` \| `'overwrite'`  | `extending`  | `extending` combina com `requiredWhere`. `overwrite` ignora o `requiredWhere`.                      |
 | `selectModel`       | `keyof SelectModels \| false`   | —            | Sobrescreve o `defaultSelectModel` para este método.                                                        |
 | `fbMode`            | `'one'` \| `'list'`             | `'list'`     | Somente para `findBy`. `'one'` retorna `T \| null`; `'list'` retorna `T[]`.                                 |
-| `proxyTo`           | `ValidMethodPatterns`           | —            | Delega a lógica para outro padrão de método válido. Útil para methods com nomes personalizados.       |
+| `proxyTo`           | `Padrão de método válido`           | —            | Delega a lógica para outro padrão de método válido. Útil para methods com nomes personalizados.       |
 | `pushWhere`         | `WhereModel<M>`                 | —            | Where extra adicionado à query além do `requiredWhere`.                                                     |
 | `injectOrdenation`  | `OrdenationModel<M>`            | —            | Ordenação fixa injetada automaticamente na query.                                                           |
 | `injectPagination`  | `PaginationModel<M>`            | —            | Paginação fixa injetada automaticamente na query.                                                           |
