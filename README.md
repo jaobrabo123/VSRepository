@@ -491,7 +491,7 @@ findByNomeInsensitive            // { nome: { equals: valor, mode: 'insensitive'
 O sufixo `Optional` pode ser adicionado a qualquer campo para tornar o argumento opcional:
 
 ```ts
-findByNomeOptionalAndEmail // nome é opcional, email é obrigatório
+findByNomeOptionalAndEmail // nome é opcional (pode ser passado como undefined no parâmetro), email é obrigatório
 ```
 
 ---

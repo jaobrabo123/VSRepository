@@ -377,7 +377,11 @@ type ResolveCurrentReturn<M extends Prisma.ModelName, Models, S, D> =
             ? ([D] extends [never] ? FullModelType<M> : SelectedModel<M, D, Models>)
             : SelectedModel<M, S, Models>;
 
-type RefineSaveResult<R, O> = { [K in keyof R]: K extends keyof O ? (O[K] extends null ? R[K] : NonNullable<R[K]>) : R[K]; };
+type RefineSaveResult<R, O> = { 
+    [K in keyof R]: K extends keyof O 
+        ? (undefined extends O[K] ? R[K] : null extends O[K] ? R[K] : NonNullable<R[K]>) 
+        : R[K]; 
+};
 
 type InjectedGet<
     T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
