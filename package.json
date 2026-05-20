@@ -1,6 +1,6 @@
 {
   "name": "vsrepo",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Uma biblioteca de repository pattern para Prisma",
   "homepage": "https://github.com/jaobrabo123/VSRepository#readme",
   "repository": {
@@ -32,8 +32,10 @@
     "scripts"
   ],
   "bin": {
-    "vsrepo": "./scripts/configure-prisma-import.mjs",
-    "vsrepo-configure-prisma-import": "./scripts/configure-prisma-import.mjs"
+    "vsrepo": "./scripts/configure-prisma-import.mjs"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "scripts": {
     "vsrepo": "node ./scripts/configure-prisma-import.mjs",
