@@ -59,8 +59,20 @@ type NumberModifiers =
     | 'LessThanEqual' | 'LessThan' | 'GreaterThanEqual' | 'GreaterThan';
 
 type StripModifier<S extends string> =
-  S extends `${infer Base}${`${StringModifiers}Insensitive`}` ? Base :
-  S extends `${infer Base}${StringModifiers | NumberModifiers}` ? Base :
+  S extends `${infer Base}${StringModifiers}Insensitive` ? Base :
+  S extends `${infer Base}NotStartsWith` ? Base :
+  S extends `${infer Base}StartsWith` ? Base :
+  S extends `${infer Base}NotEndsWith` ? Base :
+  S extends `${infer Base}EndsWith` ? Base :
+  S extends `${infer Base}NotContains` ? Base :
+  S extends `${infer Base}Contains` ? Base :
+  S extends `${infer Base}NotIn` ? Base :
+  S extends `${infer Base}In` ? Base :
+  S extends `${infer Base}Not` ? Base :
+  S extends `${infer Base}LessThanEqual` ? Base :
+  S extends `${infer Base}LessThan` ? Base :
+  S extends `${infer Base}GreaterThanEqual` ? Base :
+  S extends `${infer Base}GreaterThan` ? Base :
   S extends `${infer Base}Insensitive` ? Base :
   S;
 
