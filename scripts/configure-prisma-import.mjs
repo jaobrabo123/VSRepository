@@ -10,6 +10,15 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 const DEFAULT_OUTPUT = 'src/generated/vsrepo';
 const DEFAULT_PRISMA = 'src/generated/prisma';
+const GENERATED_HEADER = `/**
+ * ! THIS FILE IS AUTO-GENERATED.
+ * ! DO NOT EDIT MANUALLY.
+ */
+/* eslint-disable */
+/* biome-ignore-all lint: generated file */
+// @ts-nocheck
+
+`;
 
 const command = args[0]?.startsWith('-') ? 'generate' : args[0] ?? 'generate';
 const commandArgs = command === 'generate' && args[0] !== command ? args : args.slice(1);
@@ -91,7 +100,7 @@ for (const fileName of typeFiles) {
     `from '${relativeImportPath(path.dirname(targetFile), prismaTargetPath)}'`
   );
 
-  fs.writeFileSync(targetFile, contents, 'utf8');
+  fs.writeFileSync(targetFile, GENERATED_HEADER + contents, 'utf8');
 
   console.log(`Gerado: ${path.relative(workspaceRoot, targetFile)}`);
 }
@@ -166,7 +175,7 @@ export type * from './VSRepository.types';
 for (const file of tsFiles) {
   const targetFile = path.join(outputDir, file.fileName);
 
-  fs.writeFileSync(targetFile, file.content, 'utf8');
+  fs.writeFileSync(targetFile, GENERATED_HEADER + file.content, 'utf8');
 
   console.log(`Gerado: ${path.relative(workspaceRoot, targetFile)}`);
 }

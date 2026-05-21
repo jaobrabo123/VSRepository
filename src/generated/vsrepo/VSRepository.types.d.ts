@@ -1,4 +1,12 @@
-import { Prisma, PrismaClient } from '@vsrepo/prisma/types';
+/**
+ * ! THIS FILE IS AUTO-GENERATED.
+ * ! DO NOT EDIT MANUALLY.
+ */
+/* eslint-disable */
+/* biome-ignore-all lint: generated file */
+// @ts-nocheck
+
+import { Prisma, PrismaClient } from '../prisma/client';
 
 /**
  * Instância completa do Prisma Client usada para construir repositories.
