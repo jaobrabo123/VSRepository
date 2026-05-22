@@ -182,7 +182,7 @@ O VSRepository pode ser facilmente integrado em projetos NestJS através de prov
 import { Provider } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
 import { UserGetPayload } from "../../generated/prisma/models";
-import { RepositoryOf, setupVSRepo } from "../../generated/vsrepo";
+import { setupVSRepo } from "../../generated/vsrepo";
 
 const userVSRepo = setupVSRepo<
     UserGetPayload<{ include: { profile: true } }>,
@@ -220,19 +220,28 @@ const userVSRepo = setupVSRepo<
             proxyTo: "findUniqueByEmail",
             selectModel: "auth",
         },
+        findByEmailEndsWith: {
+            map: true,
+        }
     },
 });
 
-export type UserRepository = RepositoryOf<typeof userVSRepo>;
+const setupUserRepository = (prisma: PrismaService) => {
+    return userVSRepo.build(prisma).extend((repo) => ({
+        buscarPorDominio: async (dominio: string) => {
+            return repo.findByEmailEndsWith(`@${dominio}`);
+        },
+    }));
+};
+
+export type UserRepository = ReturnType<typeof setupUserRepository>;
 
 export const USER_REPOSITORY = Symbol("USER_REPOSITORY");
 
 export const UserRepositoryProvider: Provider = {
     provide: USER_REPOSITORY,
     inject: [PrismaService],
-    useFactory: (prisma: PrismaService) => {
-        return userVSRepo.build(prisma);
-    },
+    useFactory: setupUserRepository,
 };
 ```
 
