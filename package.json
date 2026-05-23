@@ -5,7 +5,7 @@
   "homepage": "https://github.com/jaobrabo123/VSRepository#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jaobrabo123/VSRepository"
+    "url": "git+https://github.com/jaobrabo123/VSRepository.git"
   },
   "main": "./VSRepository/index.js",
   "types": "./VSRepository/index.d.ts",
@@ -32,7 +32,7 @@
     "scripts"
   ],
   "bin": {
-    "vsrepo": "./scripts/configure-prisma-import.mjs"
+    "vsrepo": "scripts/configure-prisma-import.mjs"
   },
   "engines": {
     "node": ">=18"
