@@ -50,7 +50,8 @@ export const userVSRepo = setupVSRepo<UserGetPayload<{ include: { commonUser: tr
         },
         findByNameContainsOptionalAndEmail: { map: true },
         findByCommonUserSome: { map: true },
-        findManyByNameContainsInsensitiveOptionalPaginated: { map: true}
+        findManyByNameContainsInsensitiveOptionalPaginated: { map: true},
+        findFirstOrThrowById: {map: true}
     },
 });
 

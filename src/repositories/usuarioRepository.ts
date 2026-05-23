@@ -141,11 +141,3 @@ const usuarioRepository = usuarioVSRepo.build(prisma, {
     }
 });
 export default usuarioRepository;
-
-prisma.usuario.findFirst({
-    where: {
-        perfil: {
-            is: {}
-        }
-    }
-}).then(console.log)

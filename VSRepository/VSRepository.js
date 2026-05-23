@@ -9,6 +9,7 @@ export * from "./VSRepoError.js";
 
 // * Importando classes de erro
 import { VSRepoConfigError, VSRepoBuildError, VSRepoExtendError, VSRepoRuntimeError } from "./VSRepoError.js";
+import { validateConfig } from "./VSRepoUtils.js";
 
 // * Essa é a classe pincipal, é a partir dela que serão criados os objetos dos repositories
 export class VSRepository {
@@ -28,92 +29,7 @@ export class VSRepository {
     methods;
 
     constructor(config) {
-        if(typeof config !== 'object' || config === null){
-            throw new VSRepoConfigError(`[VSRepository] (config) 'config' must be a valid object.`);
-        }
-        if(typeof config.tableName !== 'string') {
-            throw new VSRepoConfigError(`[VSRepository] (config) 'tableName' must be a valid string.`);
-        }
-        if(typeof config.pkName !== 'string') {
-            throw new VSRepoConfigError(`[VSRepository] (config) 'pkName' must be a valid string.`);
-        }
-        if(config.selectModels !== undefined && typeof config.selectModels !== 'object' || config.selectModels === null) {
-            throw new VSRepoConfigError(`[VSRepository] (config) 'selectModels' must be a valid object.`);
-        }
-        if(config.defaultSelectModel !== undefined) {
-            if(!config.selectModels) {
-                throw new VSRepoConfigError(`[VSRepository] (config) 'defaultSelectModel' can only be passed with 'selectModels'.`);
-            }
-            if(typeof config.defaultSelectModel !== 'string') {
-                throw new VSRepoConfigError(`[VSRepository] (config) 'defaultSelectModel' must be a valid string.`);
-            }
-            if(!Object.keys(config.selectModels).includes(config.defaultSelectModel)){
-                throw new VSRepoConfigError(`[VSRepository] (config) Invalid 'defaultSelectModel': ${config.defaultSelectModel}`);
-            }
-        }
-        if(config.relations !== undefined) {
-            const relations = config.relations;
-            if(typeof relations !== 'object' || relations === null){
-                throw new VSRepoConfigError(`[VSRepository] (config) 'relations' must be a valid object.`);
-            }
-
-            for (const key of Object.keys(relations)) {
-                const relation = relations[key];
-                if(typeof relation.pk !== 'string'){
-                    throw new VSRepoConfigError(`[VSRepository] (config) The property 'pk' of relation '${key}' must be a string.`);
-                }
-                if(typeof relation.mode !== 'string'){
-                    throw new VSRepoConfigError(`[VSRepository] (config) The property 'mode' of relation '${key}' must be 'otm', 'mtm', 'mto' or 'oto'.`);
-                }
-                if(typeof relation.restriction !== 'string'){
-                    throw new VSRepoConfigError(`[VSRepository] (config) The property 'restriction' of relation '${key}' must be 'set' or 'add'.`);
-                }
-            }
-        }
-        if(config.requiredWhere !== undefined && typeof config.requiredWhere !== 'object' || config.requiredWhere === null) {
-            throw new VSRepoConfigError(`[VSRepository] (config) 'requiredWhere' must be a valid object.`);
-        }
-        if(config.methods !== undefined) {
-            if(typeof config.methods !== 'object' || config.methods === null){
-                throw new VSRepoConfigError(`[VSRepository] (config) 'methods' must be a valid object.`);
-            } else {
-                for (const [key, value] of Object.entries(config.methods)) {
-
-                    if(typeof value.map !== "boolean") {
-                        throw new VSRepoConfigError(`[VSRepository] (config) 'map' on ${key} must be a valid boolean.`);
-                    }
-
-                    if(value.whereType !== undefined && !['extending', 'overwrite'].includes(value.whereType)){
-                        throw new VSRepoConfigError(`[VSRepository] (config) Invalid 'whereType' on ${key}: ${value.whereType}`);
-                    }
-
-                    if(value.selectModel !== undefined && value.selectModel !== false && (!config.selectModels || !Object.keys(config.selectModels).includes(value.selectModel))){
-                        throw new VSRepoConfigError(`[VSRepository] (config) Invalid 'selectModel' on ${key}: ${value.selectModel}`);
-                    }
-
-                    if(value.proxyTo !== undefined && typeof value.proxyTo !== 'string') {
-                        throw new VSRepoConfigError(`[VSRepository] (config) 'proxyTo' on ${key} must be a valid string.`);
-                    }
-
-                    if(value.fbMode !== undefined && !['one', 'list'].includes(value.fbMode)) {
-                        throw new VSRepoConfigError(`[VSRepository] (config) Invalid 'fbMode' on ${key}: ${value.whereType}`);
-                    }
-
-                    if(value.pushWhere !== undefined && (typeof value.pushWhere !== 'object' || value.pushWhere === null)) {
-                        throw new VSRepoConfigError(`[VSRepository] (config) 'pushWhere' on ${key} must be a valid object.`);
-                    }
-
-                    if(value.injectOrdenation !== undefined && (typeof value.injectOrdenation !== 'object' || value.injectOrdenation === null)) {
-                        throw new VSRepoConfigError(`[VSRepository] (config) 'injectOrdenation' on ${key} must be a valid object or array.`);
-                    }
-
-                    if(value.injectPagination !== undefined && (typeof value.injectPagination !== 'object' || value.injectPagination === null)) {
-                        throw new VSRepoConfigError(`[VSRepository] (config) 'injectPagination' on ${key} must be a valid object.`);
-                    }
-
-                }
-            }
-        }
+        validateConfig(config);
 
         this.vsrepocache = new Map();
         this.tableName = config.tableName;
@@ -185,9 +101,22 @@ export class VSRepository {
             const whereParams = [];
             const otherParams = [];
 
-            if(keyToMap.startsWith('findUniqueBy')) {
+            if(keyToMap.startsWith('findUniqueOrThrowBy')) {
+                keyToMapReplaced = keyToMap.replace('findUniqueOrThrowBy', '');
+                method = 'findUniqueOrThrow';
+            } else if(keyToMap.startsWith('findUniqueBy')) {
                 keyToMapReplaced = keyToMap.replace('findUniqueBy', '');
                 method = 'findUnique';
+            } else if(keyToMap.startsWith('findFirstOrThrowBy')) {
+                keyToMapReplaced = keyToMap.replace('findFirstOrThrowBy', '')
+                ignoreOrderByAndPagination = false;
+                method = 'findFirstOrThrow';
+            } else if(keyToMap.startsWith('findFirstOrThrow')) {
+                keyToMapReplaced = keyToMap.replace('findFirstOrThrow', '');
+                ignoreOrderByAndPagination = false;
+                ignoreWhere = true;
+                onlyBaseWheres = true;
+                method = 'findFirstOrThrow';
             } else if(keyToMap.startsWith('findFirstBy')) {
                 keyToMapReplaced = keyToMap.replace('findFirstBy', '')
                 ignoreOrderByAndPagination = false;
@@ -847,6 +776,48 @@ export class VSRepository {
                     return result;
                 } catch (err) {
                     console.log(`[VSRepository] (runtime) Fatal error when trying to get on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    throw err;
+                }
+            }
+        }
+        if(config.baseMethods?.getOrThrow?.active !== false) {
+            buildInstance.getOrThrow = async(pk, options = {}) => {
+                let db;
+                if(options?.db) db = options.db;
+                else db = prisma;
+
+                const prismaArgs = {};
+
+                const where = { [buildInstance.pkName]: pk };
+                if(buildInstance.requiredWhere && !config.baseMethods?.getOrThrow?.ignoreRequiredWhere) {
+                    Object.assign(where, buildInstance.requiredWhere);
+                }
+                prismaArgs.where = where;
+
+                let selectModelKey = options?.selectModel ?? config.baseMethods?.getOrThrow?.defaultSelect ?? buildInstance.defaultSelectModel;
+                if(selectModelKey){
+                    prismaArgs.select = buildInstance.selectModels[selectModelKey];
+                }
+
+                let start;
+                if(showWorking){
+                    console.log(`[VSRepository] (runtime) Executing getOrThrow on ${buildInstance.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Built arguments to getOrThrow on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    start = performance.now();
+                }
+
+                try {
+                    const result = await db[buildInstance.tableName].findUniqueOrThrow(prismaArgs);
+
+                    if(showWorking) {
+                        const end = performance.now();
+                        const duration = (end - start).toFixed(2);
+                        console.log(`[VSRepository] (runtime) Executed getOrThrow on ${buildInstance.tableName} (took: ${duration}ms).`);
+                    }
+
+                    return result;
+                } catch (err) {
+                    console.log(`[VSRepository] (runtime) Fatal error when trying to getOrThrow on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }

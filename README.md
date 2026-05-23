@@ -7,7 +7,7 @@ Biblioteca de repository pattern para projetos que usam **Prisma**, com suporte 
 
 O VSRepository permite criar repositories fortemente tipados com:
 
-- **Métodos base** automáticos: `get`, `save`, `remove`
+- **Métodos base** automáticos: `get`, `getOrThrow`, `save`, `remove`
 - **Métodos dinâmicos** inferidos pelo nome: `findByEmail`, `findManyPaginated`, `updateById`, `deleteManyByIdIn`
 - **Select models** reutilizáveis para diferentes projeções de dados
 - **Type safety** em 100% das operações
@@ -332,11 +332,12 @@ export class UserController {
 
 ## Métodos base
 
-Ao chamar `.build(prisma)`, três métodos são automaticamente disponibilizados:
+Ao chamar `.build(prisma)`, quatro métodos são automaticamente disponibilizados:
 
 | Método       | Descrição                                  |
 | ------------ | ------------------------------------------ |
 | `get(pk)`    | Busca um registro pela primary key         |
+| `getOrThrow(pk)` | Busca um registro pela primary key e lança erro se não encontrar |
 | `save(obj)`  | Cria ou atualiza (upsert pela primary key) |
 | `remove(pk)` | Remove um registro pela primary key        |
 
@@ -442,8 +443,11 @@ O prefixo do nome do método determina qual operação Prisma será chamada e qu
 | ------------------------- | ------------------------ | ---------------------- | -------------------------------------------------------- |
 | `findBy`                  | `findMany` / `findFirst` | `T[]` ou `T \| null`   | Padrão é lista; use `fbMode: "one"` para retorno único   |
 | `findUniqueBy`            | `findUnique`             | `T \| null`            |                                                          |
+| `findUniqueOrThrowBy`     | `findUniqueOrThrow`      | `T`                    | Lança erro se não encontrar                                  |
 | `findFirstBy`             | `findFirst`              | `T \| null`            | Aceita campos como filtro                                |
+| `findFirstOrThrowBy`      | `findFirstOrThrow`       | `T`                    | Aceita campos como filtro; lança erro se não encontrar       |
 | `findFirst`               | `findFirst`              | `T \| null`            | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`          |
+| `findFirstOrThrow`        | `findFirstOrThrow`       | `T`                    | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`; lança erro se não encontrar |
 | `findManyBy`              | `findMany`               | `T[]`                  | Aceita campos como filtro                                |
 | `findMany`                | `findMany`               | `T[]`                  | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`           |
 | `findWhere`               | `findFirst`              | `T \| null`            | Recebe um objeto `where` explícito como argumento        |
