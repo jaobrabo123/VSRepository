@@ -7,7 +7,7 @@ Biblioteca de repository pattern para projetos que usam **Prisma**, com suporte 
 
 O VSRepository permite criar repositories fortemente tipados com:
 
-- **Métodos base** automáticos: `get`, `getOrThrow`, `save`, `remove`
+- **Métodos base** automáticos: `get`, `getOrThrow`, `save`, `remove`, `removeList`, `getAll`, `total`, `has`
 - **Métodos dinâmicos** inferidos pelo nome: `findByEmail`, `findManyPaginated`, `updateById`, `deleteManyByIdIn`
 - **Select models** reutilizáveis para diferentes projeções de dados
 - **Type safety** em 100% das operações
@@ -24,7 +24,7 @@ O VSRepository permite criar repositories fortemente tipados com:
 - [Integração com NestJS](#integração-com-nestjs)
 - [Métodos base](#métodos-base)
 - [Select Models](#select-models)
-- [requiredWhere](#requiredwhere)
+- [Required Where](#requiredwhere)
 - [Métodos dinâmicos](#métodos-dinâmicos)
   - [Prefixos disponíveis](#prefixos-disponíveis)
   - [Filtros de campo](#filtros-de-campo)
@@ -38,6 +38,7 @@ O VSRepository permite criar repositories fortemente tipados com:
 - [Tratamento de erros](#tratamento-de-erros)
 - [Tipos utilitários](#tipos-utilitários)
 - [API Reference](#api-reference)
+- [Contribuindo](#contribuindo)
 - [Requisitos](#requisitos)
 - [Troubleshooting](#troubleshooting)
 
@@ -94,9 +95,11 @@ src/generated/vsrepo/
 Após gerar, importe sempre a partir da pasta gerada:
 
 ```ts
+// CORRETO ✅
 import { setupVSRepo } from "../generated/vsrepo";
-// ou
-import { setupVSRepo, type SelectModels, type WhereModel } from "../generated/vsrepo";
+
+// ERRADO ❌
+import { setupVSRepo } from "vsrepo";
 ```
 
 ---
@@ -128,22 +131,11 @@ import type { Usuario } from "../generated/prisma/client";
 const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
   tableName: "usuario",
   pkName: "id",
-
   selectModels: {
     public: { id: true, nome: true, email: true },
-    minimal: { id: true },
   },
   defaultSelectModel: "public",
-
   requiredWhere: { ativo: true },
-
-  methods: {
-    findByEmail: { map: true, fbMode: "one" },
-    findManyPaginated: { map: true },
-    updateById: { map: true },
-    deleteManyByIdIn: { map: true, whereType: "overwrite" },
-    count: { map: true },
-  },
 }).build(prisma);
 
 export default usuarioRepository;
@@ -163,9 +155,11 @@ const usuario = await usuarioRepository.save({
 });
 
 const encontrado = await usuarioRepository.get(usuario.id);
-const porEmail = await usuarioRepository.findByEmail("joao@email.com");
+const todos = await usuarioRepository.getAll();
 
-await usuarioRepository.updateById(usuario.id, { nome: "Joao Pedro" });
+usuario.nome = "Joao Pedro";
+
+await usuarioRepository.save(usuario);
 await usuarioRepository.remove(usuario.id);
 ```
 
@@ -332,23 +326,27 @@ export class UserController {
 
 ## Métodos base
 
-Ao chamar `.build(prisma)`, quatro métodos são automaticamente disponibilizados:
+Ao chamar `.build(prisma)` os métodos base abaixo são automaticamente disponibilizados:
 
 | Método       | Descrição                                  |
 | ------------ | ------------------------------------------ |
 | `get(pk)`    | Busca um registro pela primary key         |
 | `getOrThrow(pk)` | Busca um registro pela primary key e lança erro se não encontrar |
-| `save(obj)`  | Cria ou atualiza (upsert pela primary key) |
+| `save(obj)`  | Cria ou atualiza (se o objeto passado tiver a `pk` faz `upsert`, se não faz `create`) |
 | `remove(pk)` | Remove um registro pela primary key        |
+| `removeList(pks)`  | Remove vários registros pela lista de primary keys — retorna `{ count }`   |
+| `getAll()` | Retorna todos os registros (aceita `pagination` e `order` no `options`)  |
+| `total()`  | Retorna o total de registros |
+| `has(pk)`          | Verifica existência de um registro pela primary key — retorna `boolean`   |
 
-Todos aceitam `options?: { selectModel?, db? }` como último argumento.
+Todos aceitam `options` como último argumento.
 
 ### Configurando os métodos base
 
 ```ts
 usuarioVSRepo.build(prisma, {
-  freeze: true,        // Congela o objeto (padrão: true)
-  showWorking: false,  // Exibe logs do VSRepository no console, ótimo para debugar as queries criadas e os objetos passados para o prisma
+  freeze: true,        // Congela o objeto (padrão = true)
+  showWorking: true,  // Exibe logs do VSRepository no console, ótimo para debugar as queries criadas e os objetos passados para o prisma
 
   baseMethods: {
     get: {
@@ -360,9 +358,11 @@ usuarioVSRepo.build(prisma, {
       defaultSelect: "minimal",
     },
     save: {
-      active: true,
-      ignoreRequiredWhere: true, // Não aplica requiredWhere no upsert
+      ignoreRequiredWhere: true, // Não aplica requiredWhere no save
     },
+    has: {
+      active: false, // Desativa o 'has' (padrão = true)
+    }
   },
 });
 ```
@@ -398,7 +398,7 @@ const usuarioCompleto = await usuarioRepository.get(id, { selectModel: false });
 
 ---
 
-## requiredWhere
+## Required Where
 
 `requiredWhere` define filtros aplicados automaticamente em todas as queries do repository.
 
@@ -487,10 +487,10 @@ Os filtros são sufixos aplicados ao nome do campo dentro do método. O campo em
 | `GreaterThanEqual` | `gte`                 | sim                  |
 | `LessThan`         | `lt`                  | sim                  |
 | `LessThanEqual`    | `lte`                 | sim                  |
-| `IsNull`           | `null`                | não (zero-arg)       |
-| `IsNotNull`        | `not: null`           | não (zero-arg)       |
-| `IsTrue`           | `true`                | não (zero-arg)       |
-| `IsFalse`          | `false`               | não (zero-arg)       |
+| `IsNull`           | `null`                | não                  |
+| `IsNotNull`        | `not: null`           | não                  |
+| `IsTrue`           | `true`                | não                  |
+| `IsFalse`          | `false`               | não                  |
 | `Insensitive`      | `mode: 'insensitive'` | combinador           |
 
 `Insensitive` é um combinador e pode ser usado junto com outro filtro de texto:
@@ -833,7 +833,7 @@ try {
 
 | Classe               | Quando é lançada                                        |
 | -------------------- | ------------------------------------------------------- |
-| `VSRepoConfigError`  | Configuração inválida em `setupVSRepo` ou `build`       |
+| `VSRepoConfigError`  | Configuração inválida em `setupVSRepo`       |
 | `VSRepoBuildError`   | Nome de método inválido ou desconhecido no `build`      |
 | `VSRepoExtendError`  | Argumento inválido em `extend`                          |
 | `VSRepoRuntimeError` | Erro em tempo de execução durante uma operação          |
@@ -998,13 +998,24 @@ setupVSRepo<TPayload, TTableName>()({
 
 ```ts
 vsRepo.build(prisma, {
-  freeze?: boolean;        // Congela o objeto (padrão: true)
-  showWorking?: boolean;   // Exibe logs internos no console
+  freeze?: boolean;        // Congela o objeto (default = true)
+  showWorking?: boolean;   // Exibe logs internos no console (default = false)
 
+  // `active` serve para definir se o método vai existir depois do build (default = true)
+  // `defaultSelect` serve para definir qual `selectModel` esse método vai usar por default (default = `defaultSelectModel` definido no `setupVSRepo`)
+  // `ignoreRequiredWhere` serve para definir se o método vai ignorar o `requiredWhere` definido no `setupVSRepo` (default = false)
   baseMethods?: {
-    get?:    { active?: boolean; defaultSelect?: string };
-    remove?: { active?: boolean; defaultSelect?: string };
-    save?:   { active?: boolean; ignoreRequiredWhere?: boolean };
+    // Métodos que podem utilizar um `defaultSelect`
+    get?:       { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    getOrThrow?:{ active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    remove?:    { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    save?:      { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    getAll?:    { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+
+    // Métodos que NÃO aceitam `defaultSelect`
+    removeList?: { active?: boolean; ignoreRequiredWhere?: boolean };
+    total?:      { active?: boolean; ignoreRequiredWhere?: boolean };
+    has?:        { active?: boolean; ignoreRequiredWhere?: boolean };
   };
 });
 ```
@@ -1013,9 +1024,22 @@ vsRepo.build(prisma, {
 
 ```ts
 repo.extend((repo) => ({
-  meuMetodo() { ... }
+  meuMetodo: () => { ... }
 }));
 ```
+
+---
+
+## Contribuindo
+
+Contribuições são bem-vindas! Se você encontrou um bug, tem uma ideia de melhoria ou quer ajudar com a documentação, sinta-se à vontade para participar (**[Repositório do GitHub](https://github.com/jaobrabo123/VSRepository)**):
+
+1. Faça um **Fork** do projeto.
+2. Crie uma nova branch com a sua alteração: `git checkout -b corrigindo-bug`.
+3. Faça o push para a sua branch: `git push origin corrigindo-bug`.
+4. Abra um **Pull Request**.
+
+Para reportar problemas ou sugerir novas funcionalidades, abra uma **Issue**.
 
 ---
 

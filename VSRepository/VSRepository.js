@@ -8,7 +8,7 @@
 export * from "./VSRepoError.js";
 
 // * Importando classes de erro
-import { VSRepoConfigError, VSRepoBuildError, VSRepoExtendError, VSRepoRuntimeError } from "./VSRepoError.js";
+import { VSRepoBuildError, VSRepoExtendError, VSRepoRuntimeError } from "./VSRepoError.js";
 import { validateConfig } from "./VSRepoUtils.js";
 
 // * Essa é a classe pincipal, é a partir dela que serão criados os objetos dos repositories
@@ -740,10 +740,7 @@ export class VSRepository {
 
         if(config.baseMethods?.get?.active !== false) {
             buildInstance.get = async(pk, options = {}) => {
-                let db;
-                if(options?.db) db = options.db;
-                else db = prisma;
-
+                let db = options?.db ?? prisma;
                 const prismaArgs = {};
 
                 const where = { [buildInstance.pkName]: pk };
@@ -782,10 +779,7 @@ export class VSRepository {
         }
         if(config.baseMethods?.getOrThrow?.active !== false) {
             buildInstance.getOrThrow = async(pk, options = {}) => {
-                let db;
-                if(options?.db) db = options.db;
-                else db = prisma;
-
+                let db = options?.db ?? prisma;
                 const prismaArgs = {};
 
                 const where = { [buildInstance.pkName]: pk };
@@ -824,10 +818,7 @@ export class VSRepository {
         }
         if(config.baseMethods?.remove?.active !== false) {
             buildInstance.remove = async (pk, options = {}) => {
-                let db;
-                if(options?.db) db = options.db;
-                else db = prisma;
-
+                let db = options?.db ?? prisma;
                 const prismaArgs = {};
 
                 const where = { [buildInstance.pkName]: pk };
@@ -865,10 +856,7 @@ export class VSRepository {
         }
         if(config.baseMethods?.save?.active !== false) {
             buildInstance.save = async (obj, options = {}) => {
-                let db;
-                if(options?.db) db = options.db;
-                else db = prisma;
-
+                let db = options?.db ?? prisma;
                 const prismaArgs = {};
 
                 let selectModelKey = options?.selectModel ?? config.baseMethods?.save?.defaultSelect ?? buildInstance.defaultSelectModel;
@@ -1075,6 +1063,137 @@ export class VSRepository {
                 } catch (err) {
                     console.log(`[VSRepository] (runtime) Fatal error when trying to save on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
+                }
+            }
+            if(config.baseMethods?.removeList?.active !== false) {
+                buildInstance.removeList = async (pks, options = {}) => {
+                    let db = options?.db ?? prisma;
+                    const prismaArgs = {};
+                    
+                    const where = { [buildInstance.pkName]: { in: pks } };
+                    if(buildInstance.requiredWhere && !config.baseMethods?.removeList?.ignoreRequiredWhere) {
+                        Object.assign(where, buildInstance.requiredWhere);
+                    }
+                    prismaArgs.where = where;
+
+                    let start;
+                    if(showWorking){
+                        console.log(`[VSRepository] (runtime) Executing removeList on ${buildInstance.tableName}.`);
+                        console.log(`[VSRepository] (runtime) Built arguments to removeList on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                        start = performance.now();
+                    }
+                    try {
+                        const result = await db[buildInstance.tableName].deleteMany(prismaArgs);
+                        if(showWorking) {
+                            const end = performance.now();
+                            console.log(`[VSRepository] (runtime) Executed removeList on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
+                        }
+                        return result;
+                    } catch (err) {
+                        console.log(`[VSRepository] (runtime) Fatal error when trying to removeList on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                        throw err;
+                    }
+                }
+            }
+            if(config.baseMethods?.getAll?.active !== false) {
+                buildInstance.getAll = async (options = {}) => {
+                    let db = options?.db ?? prisma;
+                    const prismaArgs = {};
+
+                    if(buildInstance.requiredWhere && !config.baseMethods?.getAll?.ignoreRequiredWhere) {
+                        prismaArgs.where = { ...buildInstance.requiredWhere };
+                    }
+
+                    let selectModelKey = options?.selectModel ?? config.baseMethods?.getAll?.defaultSelect ?? buildInstance.defaultSelectModel;
+                    if(selectModelKey){
+                        prismaArgs.select = buildInstance.selectModels[selectModelKey];
+                    }
+
+                    if(options.pagination) {
+                        prismaArgs.skip = options.pagination.skip;
+                        prismaArgs.take = options.pagination.take;
+                        prismaArgs.cursor = options.pagination.cursor;
+                    }
+                    if(options.order) {
+                        prismaArgs.orderBy = options.order;
+                    }
+
+                    let start;
+                    if(showWorking){
+                        console.log(`[VSRepository] (runtime) Executing getAll on ${buildInstance.tableName}.`);
+                        console.log(`[VSRepository] (runtime) Built arguments to getAll on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                        start = performance.now();
+                    }
+                    try {
+                        const result = await db[buildInstance.tableName].findMany(prismaArgs);
+                        if(showWorking) {
+                            const end = performance.now();
+                            console.log(`[VSRepository] (runtime) Executed getAll on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
+                        }
+                        return result;
+                    } catch (err) {
+                        console.log(`[VSRepository] (runtime) Fatal error when trying to getAll on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                        throw err;
+                    }
+                }
+            }
+            if(config.baseMethods?.total?.active !== false) {
+                buildInstance.total = async (options = {}) => {
+                    let db = options?.db ?? prisma;
+                    const prismaArgs = {};
+
+                    if(buildInstance.requiredWhere && !config.baseMethods?.total?.ignoreRequiredWhere) {
+                        prismaArgs.where = { ...buildInstance.requiredWhere };
+                    }
+
+                    let start;
+                    if(showWorking){
+                        console.log(`[VSRepository] (runtime) Executing total on ${buildInstance.tableName}.`);
+                        console.log(`[VSRepository] (runtime) Built arguments to total on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                        start = performance.now();
+                    }
+                    try {
+                        const result = await db[buildInstance.tableName].count(prismaArgs);
+                        if(showWorking) {
+                            const end = performance.now();
+                            console.log(`[VSRepository] (runtime) Executed total on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
+                        }
+                        return result;
+                    } catch (err) {
+                        console.log(`[VSRepository] (runtime) Fatal error when trying to total on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                        throw err;
+                    }
+                }
+            }
+            if(config.baseMethods?.has?.active !== false) {
+                buildInstance.has = async (pk, options = {}) => {
+                    let db = options?.db ?? prisma;
+                    const prismaArgs = {};
+                    
+                    const where = { [buildInstance.pkName]: pk };
+                    if(buildInstance.requiredWhere && !config.baseMethods?.has?.ignoreRequiredWhere) {
+                        Object.assign(where, buildInstance.requiredWhere);
+                    }
+                    prismaArgs.where = where;
+                    prismaArgs.select = { [buildInstance.pkName]: true };
+
+                    let start;
+                    if(showWorking){
+                        console.log(`[VSRepository] (runtime) Executing has on ${buildInstance.tableName}.`);
+                        console.log(`[VSRepository] (runtime) Built arguments to has on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                        start = performance.now();
+                    }
+                    try {
+                        const result = await db[buildInstance.tableName].findUnique(prismaArgs);
+                        if(showWorking) {
+                            const end = performance.now();
+                            console.log(`[VSRepository] (runtime) Executed has on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
+                        }
+                        return !!result;
+                    } catch (err) {
+                        console.log(`[VSRepository] (runtime) Fatal error when trying to has on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                        throw err;
+                    }
                 }
             }
         }

@@ -348,7 +348,7 @@ type BaseMethodConfig<TSelectKeys extends PropertyKey = string> = {
     active?: boolean;
     /** Select model padrão usado pelo método base. */
     defaultSelect?: TSelectKeys;
-    /** Ignora o `requiredWhere` no `save`. */
+    /** Ignora o `requiredWhere`. */
     ignoreRequiredWhere?: boolean;
 };
 
@@ -372,10 +372,18 @@ export type BuildConfig<TSelectKeys extends PropertyKey = string> = {
         remove?: BaseMethodConfig<TSelectKeys>;
         /** Configuração do método `save`. */
         save?: BaseMethodConfig<TSelectKeys>;
+        /** Configuração do método `removeList` (exclusão em lote). Não aceita select. */
+        removeList?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
+        /** Configuração do método `getAll` (listagem total). */
+        getAll?: BaseMethodConfig<TSelectKeys>;
+        /** Configuração do método `total` (contagem). Não aceita select. */
+        total?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
+        /** Configuração do método `has` (verificação de existência). Não aceita select. */
+        has?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
     };
 };
 
-type ResolveMethodDefaultSelect<Config, C, Method extends 'get' | 'getOrThrow' | 'remove' | 'save', TSelects = ExtractSelectModels<Config>> =
+type ResolveMethodDefaultSelect<Config, C, Method extends 'get' | 'getOrThrow' | 'remove' | 'save' | 'getAll', TSelects = ExtractSelectModels<Config>> =
     C extends { baseMethods?: { [_ in Method]?: { defaultSelect?: infer D } } }
         ? D extends keyof TSelects 
             ? D 
@@ -475,11 +483,59 @@ type InjectedSave<
     ): Promise<RefineSaveResult<ResolveCurrentReturn<M, TSelects, S, TDefault>, O>>;
 };
 
+type InjectedRemoveList<
+    T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
+    TPk = ExtractPkName<T, Config>
+> = C extends { baseMethods: { removeList: { active: false } } } ? {} : {
+    /** Remove múltiplos registros de uma vez pelas suas chaves primárias. */
+    removeList(
+        pks: T[TPk extends keyof T ? TPk : never][], 
+        options?: { db?: ClientOrTransaction }
+    ): Promise<{ count: number }>;
+};
+
+type InjectedGetAll<
+    T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
+    TSelects = ExtractSelectModels<Config>,
+    TDefault = ExtractDefaultSelect<Config>,
+    I = PrismaModelInputs<M>
+> = C extends { baseMethods: { getAll: { active: false } } } ? {} : {
+    /** Busca todos os registros, respeitando o `requiredWhere` se houver. */
+    getAll<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'getAll', TSelects>>(
+        options?: MethodOptions<S> & { 
+            pagination?: PaginationOptions<I extends { cursorInput: infer Curs } ? Curs : unknown>;
+            order?: I extends { orderByInput: infer OB } ? OB : OrderOptions;
+        }
+    ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault>[]>;
+};
+
+type InjectedTotal<
+    T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined
+> = C extends { baseMethods: { total: { active: false } } } ? {} : {
+    /** Retorna a quantidade total de registros, respeitando o `requiredWhere` se houver. */
+    total(options?: { db?: ClientOrTransaction }): Promise<number>;
+};
+
+type InjectedHas<
+    T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
+    TPk = ExtractPkName<T, Config>
+> = C extends { baseMethods: { has: { active: false } } } ? {} : {
+    /** Verifica de forma otimizada se um registro existe pela chave primária. */
+    has(
+        pk: T[TPk extends keyof T ? TPk : never], 
+        options?: { db?: ClientOrTransaction }
+    ): Promise<boolean>;
+};
+
 type InjectedBaseMethods<T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined> = 
     InjectedGet<T, M, Config, C> & 
     InjectedGetOrThrow<T, M, Config, C> & 
     InjectedRemove<T, M, Config, C> & 
-    InjectedSave<T, M, Config, C>;
+    InjectedSave<T, M, Config, C> &
+    InjectedRemoveList<T, M, Config, C> &
+    InjectedGetAll<T, M, Config, C> &
+    InjectedTotal<T, M, Config, C> &
+    InjectedHas<T, M, Config, C>;
 
 /**
  * Infere automaticamente a configuração de relação possível a partir de um campo.
