@@ -55,7 +55,10 @@ export const userVSRepo = setupVSRepo<UserGetPayload<{ include: { commonUser: tr
     },
 });
 
+const start = performance.now()
 const userRepository = userVSRepo.build(prisma, {
     showWorking: true
 });
+const end = performance.now();
+console.log("test:", end - start)
 export default userRepository;

@@ -1,84 +1,127 @@
-import { VSRepoConfigError } from "./VSRepoError.js";
+import z from "zod";
+import { VSRepoConfigError, VSRepoBuildError } from "./VSRepoError.js";
 
-export class FieldValidator {
-    constructor(throws) {
-        this.throws = throws;
-    }
-
-    validate(
-        field,
-        fieldName,
-        mustBe,
-        undefinedAble,
-        nullAble,
-        customReason
-    ) {
-        if (field === undefined) {
-            if (undefinedAble) return;
-            throw this.instanceError(fieldName, customReason ?? "cannot be undefined");
-        }
-
-        if (field === null) {
-            if (nullAble) return;
-            throw this.instanceError(fieldName, customReason ?? "cannot be null");
-        }
-
-        const condition = typeof mustBe === "function" ? !mustBe(field) : typeof field !== mustBe;
-
-        if(condition) {
-            throw this.instanceError(fieldName, customReason ?? `must be a valid ${mustBe}`);
-        };
-    }
-
-    instanceError(fieldName, reason) {
-        const error = new this.throws("");
-        error.message = `[VSRepository] (${error.type}) '${fieldName}' ${reason}.`;
-        return error;
-    }
-}
+const stringSchema = z.string().trim().nonempty();
+const objectSchema = z.looseObject({});
+const booleanSchema = z.boolean();
 
 export function validateConfig(config) {
-    const validator = new FieldValidator(VSRepoConfigError);
-
-    validator.validate(config, "config", "object");
-    validator.validate(config.tableName, "tableName", "string");
-    validator.validate(config.pkName, "pkName", "string");
-    validator.validate(config.selectModels, "selectModels", "object", true);
-
-    if(config.defaultSelectModel !== undefined) {
-        validator.validate(config.defaultSelectModel, "defaultSelectModel", "string");
-
-        validator.validate(config.defaultSelectModel, "defaultSelectModel", (field) => {
-            return !!(config.selectModels && Object.keys(config.selectModels).includes(config.defaultSelectModel))
-        }, false, false, "must be a valid key of 'selectModels'");
-    }
-
-    if(config.relations !== undefined) {
-        validator.validate(config.relations, "relations", "object");
-
-        for (const key of Object.keys(config.relations)) {
-            const relation = config.relations[key];
-
-            validator.validate(relation.pk, "pk", "string", false, false, `of relation '${key}' must be a string`);
-            validator.validate(relation.mode, "mode", (field) => ['otm', 'mtm', 'mto', 'oto'].includes(field), false, false, `of relation '${key}' must be 'otm', 'mtm', 'mto' or 'oto'`);
-            validator.validate(relation.restriction, "restriction", (field) => ['set', 'add'].includes(field), false, false, `of relation '${key}' must be 'set' or 'add'`);
+    const configSchema = z.strictObject({
+        tableName: stringSchema,
+        pkName: stringSchema,
+        selectModels: z.record(stringSchema, objectSchema).optional(),
+        defaultSelectModel: stringSchema.optional(),
+        requiredWhere: objectSchema.optional(),
+        relations: z.record(
+            stringSchema,
+            z.strictObject({
+                mode: z.enum(['otm', 'mtm', 'mto', 'oto']),
+                restriction: z.enum(['set', 'add']),
+                pk: stringSchema,
+                nullAble: booleanSchema.optional(),
+            })
+        ).optional(),
+        methods: z.record(stringSchema, z.strictObject({
+            map: booleanSchema,
+            selectModel: stringSchema.or(z.literal(false)).optional(),
+            whereType: z.enum(["overwrite", "extending"]).optional(),
+            proxyTo: stringSchema.optional(),
+            pushWhere: objectSchema.optional(),
+            fbMode: z.enum(["one", "list"]).optional(),
+            injectOrdenation: objectSchema.or(z.array(objectSchema)).optional(),
+            injectPagination: objectSchema.optional()
+        })).optional()
+    }).superRefine((config, ctx)=>{
+        if (config.defaultSelectModel && !config.selectModels?.[config.defaultSelectModel]) {
+            ctx.addIssue({
+                code: "vs_custom",
+                path: ["defaultSelectModel"],
+                message: "must be a valid key of 'selectModels'",
+            });
         }
-    }
 
-    validator.validate(config.requiredWhere, "requiredWhere", "object", true);
-
-    if(config.methods !== undefined) {
-        validator.validate(config.methods, "methods", "object");
-
-        for (const [key, value] of Object.entries(config.methods)) {
-            validator.validate(value.map, "map", "boolean", false, false, `on ${key} must be a valid boolean`);
-            validator.validate(value.whereType, "whereType", (field) => ['extending', 'overwrite'].includes(field), true, false, `on ${key} must be 'extending' or 'overwrite'`);
-            validator.validate(value.selectModel, "selectModel", (field) => !!(field === false || (config.selectModels && Object.keys(config.selectModels).includes(field))), true, false, `on ${key} must be a valid key of 'selectModels'`);
-            validator.validate(value.proxyTo, "proxyTo", "string", true, false, `on ${key} must be a valid string`);
-            validator.validate(value.fbMode, "fbMode", (field) => ['one', 'list'].includes(field), true, false, `on ${key} must be 'one' or 'list'`);
-            validator.validate(value.pushWhere, "pushWhere", "object", true, false, `on ${key} must be a valid object`);
-            validator.validate(value.injectOrdenation, "injectOrdenation", "object", true, false, `on ${key} must be a valid object or array`);
-            validator.validate(value.injectPagination, "injectPagination", "object", true, false, `on ${key} must be a valid object`);
+        if (config.methods) {
+            for (const [key, method] of Object.entries(config.methods)) {
+                if (method.selectModel && !config.selectModels?.[method.selectModel]) {
+                    ctx.addIssue({
+                        code: "vs_custom",
+                        path: ["methods", key, "selectModel"],
+                        message: "must be a valid key of 'selectModels'",
+                    });
+                }
+            }
         }
+    });
+
+    const configParsed = configSchema.safeParse(config);
+
+    if(!configParsed.success) {
+        const firstIssue = configParsed.error.issues[0];
+        const path = firstIssue.path.length ? firstIssue.path.join(".") : "config";
+        throw new VSRepoConfigError(`[VSRepository] (config) ${path}: ${firstIssue.message}`)
     }
+
+    return configParsed.data;
+}
+
+export function validateBuildConfig(buildConfig, buildInstance) {
+    const activeSchema = booleanSchema.default(true);
+    const defaultSelectSchema = buildInstance.selectModels ?
+        z.enum(Object.keys(buildInstance.selectModels)).optional()
+        : z.never("can only be passed if you have configured 'selectModels'.");
+    const ignoreRequiredWhereSchema = booleanSchema.default(false);
+
+    const buildConfigSchema = z.strictObject({
+        freeze: booleanSchema.default(true),
+        showWorking: booleanSchema.default(false),
+        baseMethods: z.strictObject({
+            get: z.strictObject({
+                active: activeSchema,
+                defaultSelect: defaultSelectSchema,
+                ignoreRequiredWhere: ignoreRequiredWhereSchema
+            }).optional(),
+            getOrThrow: z.strictObject({
+                active: activeSchema,
+                defaultSelect: defaultSelectSchema,
+                ignoreRequiredWhere: ignoreRequiredWhereSchema
+            }).optional(),
+            getAll: z.strictObject({
+                active: activeSchema,
+                defaultSelect: defaultSelectSchema,
+                ignoreRequiredWhere: ignoreRequiredWhereSchema
+            }).optional(),
+            remove: z.strictObject({
+                active: activeSchema,
+                defaultSelect: defaultSelectSchema,
+                ignoreRequiredWhere: ignoreRequiredWhereSchema
+            }).optional(),
+            save: z.strictObject({
+                active: activeSchema,
+                defaultSelect: defaultSelectSchema,
+                ignoreRequiredWhere: ignoreRequiredWhereSchema
+            }).optional(),
+            removeList: z.strictObject({
+                active: activeSchema,
+                ignoreRequiredWhere: ignoreRequiredWhereSchema
+            }).optional(),
+            total: z.strictObject({
+                active: activeSchema,
+                ignoreRequiredWhere: ignoreRequiredWhereSchema
+            }).optional(),
+            has: z.strictObject({
+                active: activeSchema,
+                ignoreRequiredWhere: ignoreRequiredWhereSchema
+            }).optional(),
+        }).optional()
+    });
+
+    const buildConfigParsed = buildConfigSchema.safeParse(buildConfig);
+
+    if(!buildConfigParsed.success) {
+        const firstIssue = buildConfigParsed.error.issues[0];
+        const path = firstIssue.path.length ? firstIssue.path.join(".") : "config";
+        throw new VSRepoBuildError(`[VSRepository] (build) ${path}: ${firstIssue.message}`)
+    }
+
+    return buildConfigParsed.data;
 }

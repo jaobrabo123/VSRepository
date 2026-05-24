@@ -9,7 +9,7 @@ export * from "./VSRepoError.js";
 
 // * Importando classes de erro
 import { VSRepoBuildError, VSRepoExtendError, VSRepoRuntimeError } from "./VSRepoError.js";
-import { validateConfig } from "./VSRepoUtils.js";
+import { validateBuildConfig, validateConfig } from "./VSRepoUtils.js";
 
 // * Essa é a classe pincipal, é a partir dela que serão criados os objetos dos repositories
 export class VSRepository {
@@ -29,7 +29,7 @@ export class VSRepository {
     methods;
 
     constructor(config) {
-        validateConfig(config);
+        config = validateConfig(config);
 
         this.vsrepocache = new Map();
         this.tableName = config.tableName;
@@ -59,17 +59,16 @@ export class VSRepository {
         return extended;
     }
 
-    build(prisma, config = {}) {
-        const showWorking = config.showWorking;
-
-        if(typeof config !== 'object' || config === null) {
-            throw new VSRepoBuildError(`[VSRepository] (build) 'config' must be a valid object.`);
-        }
-        if(config.freeze === undefined) {
-            config.freeze = true;
+    build(prisma, config = { freeze: true, showWorking: false }) {
+        if(typeof prisma !== 'object' || prisma === null) {
+            throw new VSRepoBuildError(`[VSRepository] (build) 'prisma' must be a valid Prisma Client.`);
         }
 
         const buildInstance = Object.create(this);
+
+        config = validateBuildConfig(config, buildInstance);
+
+        const showWorking = config.showWorking;
 
         const relationsKeys = buildInstance.relations ? Object.keys(buildInstance.relations) : [];
 
@@ -487,10 +486,6 @@ export class VSRepository {
                                 whereArgs.push(buildedWhere);
                             }
 
-                            if(showWorking) {
-                                console.log(`[VSRepository] (build) Where object builded to ${keyToMap}:\n`, JSON.stringify(buildedWhere, null, 2));
-                            }
-
                             if(buildedWhere.autoInjectVal === undefined) argsCount++;
                         }
 
@@ -700,9 +695,9 @@ export class VSRepository {
                     const missingParams = whereParams.concat(otherParams).slice(args.length);
                     throw new VSRepoRuntimeError(`[VSRepository] (runtime) Missing parameters: ${missingParams.join(', ')}`);
                 } else if(args.length > argsCount) {
-                    const optionsArg = args[args.length - 1]
+                    const optionsArg = args[args.length - 1];
                     db = optionsArg.db ?? db;
-                    optionsSelectModel = optionsArg.selectModel
+                    optionsSelectModel = optionsArg.selectModel;
                 } else {
                     args.push('1')
                 }

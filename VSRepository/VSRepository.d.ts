@@ -605,7 +605,7 @@ export declare class VSRepository<T extends object, M extends Prisma.ModelName, 
     /**
      * Constrói o repository final com os métodos base e dinâmicos.
      */
-    build<C extends BuildConfig<any>>(prisma: DbClient, config?: C): BuiltRepository<T, M, Config, C>;
+    build<C extends BuildConfig<keyof ExtractSelectModels<Config>>>(prisma: DbClient, config?: C): BuiltRepository<T, M, Config, C>;
     vsrepocache: never;
 }
 
