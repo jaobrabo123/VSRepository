@@ -2,6 +2,7 @@ import prisma from "../db";
 import { setupVSRepo, type WhereModel, type SelectModels, type SelectModel } from "../../VSRepository/VSRepository";
 import { commonUserToRelationModel } from "./commonUser.repository";
 import type { UserGetPayload } from "../generated/prisma/models";
+import type { User } from "@vsrepo/prisma/types";
 
 const userPublicModel = {
     id: true,
@@ -50,15 +51,19 @@ export const userVSRepo = setupVSRepo<UserGetPayload<{ include: { commonUser: tr
         },
         findByNameContainsOptionalAndEmail: { map: true },
         findByCommonUserSome: { map: true },
-        findManyByNameContainsInsensitiveOptionalPaginated: { map: true},
-        findFirstOrThrowById: {map: true}
+        findManyByNameContainsInsensitiveOptionalPaginated: { map: true },
+        findFirstOrThrowById: { map: true }
     },
 });
 
-const start = performance.now()
 const userRepository = userVSRepo.build(prisma, {
     showWorking: true
-});
-const end = performance.now();
-console.log("test:", end - start)
+}).extend(repo => ({
+    rawById: async (id: string) => {
+        const user: User[] = await repo.prisma.$queryRaw`
+            select * from "user" where "id" = ${id}
+        `;
+        return user[0];
+    }
+}))
 export default userRepository;

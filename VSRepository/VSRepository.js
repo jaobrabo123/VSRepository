@@ -1193,7 +1193,9 @@ export class VSRepository {
             }
         }
 
-        if(config.freeze) Object.freeze(buildInstance)
+        buildInstance.prisma = prisma;
+
+        if(config.freeze) Object.freeze(buildInstance);
         return buildInstance;
     }
 

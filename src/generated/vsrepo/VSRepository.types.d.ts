@@ -51,9 +51,12 @@ export type PaginationOptions<TCursor = unknown> = {
 export type OrderOptions = OrderPattern | OrderPattern[];
 
 type ValidMethodPatterns =
-    | `existsBy${string}` | `findBy${string}` | `findUniqueBy${string}`
-    | `findFirstBy${string}` | `findFirst${string}` | `findManyBy${string}`
-    | `findMany${string}` | `createManyAndReturn${string}` | `createMany${string}`
+    | `existsBy${string}` | `findBy${string}` 
+    | `findUniqueBy${string}` | `findUniqueOrThrowBy${string}`
+    | `findFirstBy${string}` | `findFirst${string}` 
+    | `findFirstOrThrowBy${string}` | `findFirstOrThrow${string}`
+    | `findManyBy${string}` | `findMany${string}` 
+    | `createManyAndReturn${string}` | `createMany${string}`
     | `create${string}` | `updateManyAndReturnBy${string}` | `updateManyBy${string}`
     | `updateBy${string}` | `upsertBy${string}` | `deleteManyBy${string}`
     | `deleteBy${string}` | `countBy${string}` | `count${string}`
@@ -154,7 +157,7 @@ type ResolveReturnType<M extends string, TSelected> =
     M extends 'createMany' | 'updateManyBy' | 'deleteManyBy' ? { count: number } :
     M extends 'findMany' | 'createManyAndReturn' | 'updateManyAndReturnBy' | 'findListWhere' | 'findByList' ? TSelected[] :
     M extends 'findUnique' | 'findFirst' | 'findWhere' | 'findByOne' ? TSelected | null :
-    M extends 'create' | 'updateBy' | 'upsertBy' | 'deleteBy' ? TSelected :
+    M extends 'findUniqueOrThrow' | 'findFirstOrThrow' | 'create' | 'updateBy' | 'upsertBy' | 'deleteBy' ? TSelected :
     M extends 'count' ? number : never;
 
 type ExtraArgs<M extends string, R extends string, I> = [
@@ -223,7 +226,9 @@ type GetMappedMethod<K extends string, MethodConf> =
     K extends `findBy${string}` ? (MethodConf extends { fbMode: 'one' } ? 'findByOne' : 'findByList') :
     K extends `existsBy${string}` ? 'existsBy' :
     K extends `findUniqueBy${string}` ? 'findUnique' :
+    K extends `findUniqueOrThrowBy${string}` ? 'findUniqueOrThrow' :
     K extends `findFirstBy${string}` | `findFirst${string}` ? 'findFirst' :
+    K extends `findFirstOrThrowBy${string}` | `findFirstOrThrow${string}` ? 'findFirstOrThrow' :
     K extends `findManyBy${string}` | `findMany${string}` ? 'findMany' :
     K extends `createManyAndReturn${string}` ? 'createManyAndReturn' :
     K extends `createMany${string}` ? 'createMany' :
@@ -241,7 +246,7 @@ type GetMappedMethod<K extends string, MethodConf> =
 
 type ExtractPatternBase<K extends string> = 
     K extends `${string}By${infer R}` ? R :
-    K extends `findFirst${infer R}` | `findMany${infer R}` | `createManyAndReturn${infer R}` | `createMany${infer R}` | `create${infer R}` | `count${infer R}` | `findWhere${infer R}` | `findListWhere${infer R}` ? R : '';
+    K extends `findFirst${infer R}` | `findFirstOrThrow${infer R}` | `findMany${infer R}` | `createManyAndReturn${infer R}` | `createMany${infer R}` | `create${infer R}` | `count${infer R}` | `findWhere${infer R}` | `findListWhere${infer R}` ? R : '';
 
 type MethodFactory<T, M extends Prisma.ModelName, K extends string, SelectModels, DefaultSelect extends keyof SelectModels | false, I, MethodConf> = 
     MethodFn<GetMappedMethod<K, MethodConf>, T, M, ExtractPatternBase<K>, SelectModels, DefaultSelect, I>;
@@ -351,7 +356,7 @@ type BaseMethodConfig<TSelectKeys extends PropertyKey = string> = {
     active?: boolean;
     /** Select model padrão usado pelo método base. */
     defaultSelect?: TSelectKeys;
-    /** Ignora o `requiredWhere` no `save`. */
+    /** Ignora o `requiredWhere`. */
     ignoreRequiredWhere?: boolean;
 };
 
@@ -369,14 +374,24 @@ export type BuildConfig<TSelectKeys extends PropertyKey = string> = {
     baseMethods?: {
         /** Configuração do método `get`. */
         get?: BaseMethodConfig<TSelectKeys>;
+        /** Configuração do método `getOrThrow`. */
+        getOrThrow?: BaseMethodConfig<TSelectKeys>;
         /** Configuração do método `remove`. */
         remove?: BaseMethodConfig<TSelectKeys>;
         /** Configuração do método `save`. */
         save?: BaseMethodConfig<TSelectKeys>;
+        /** Configuração do método `removeList` (exclusão em lote). Não aceita select. */
+        removeList?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
+        /** Configuração do método `getAll` (listagem total). */
+        getAll?: BaseMethodConfig<TSelectKeys>;
+        /** Configuração do método `total` (contagem). Não aceita select. */
+        total?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
+        /** Configuração do método `has` (verificação de existência). Não aceita select. */
+        has?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
     };
 };
 
-type ResolveMethodDefaultSelect<Config, C, Method extends 'get' | 'remove' | 'save', TSelects = ExtractSelectModels<Config>> =
+type ResolveMethodDefaultSelect<Config, C, Method extends 'get' | 'getOrThrow' | 'remove' | 'save' | 'getAll', TSelects = ExtractSelectModels<Config>> =
     C extends { baseMethods?: { [_ in Method]?: { defaultSelect?: infer D } } }
         ? D extends keyof TSelects 
             ? D 
@@ -409,6 +424,17 @@ type InjectedGet<
     get<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'get', TSelects>>(
         pk: T[TPk extends keyof T ? TPk : never], options?: MethodOptions<S>
     ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault> | null>;
+};
+
+type InjectedGetOrThrow<
+    T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
+    TSelects = ExtractSelectModels<Config>,
+    TDefault = ExtractDefaultSelect<Config>,
+    TPk = ExtractPkName<T, Config>
+> = C extends { baseMethods: { getOrThrow: { active: false } } } ? {} : {
+    getOrThrow<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'getOrThrow', TSelects>>(
+        pk: T[TPk extends keyof T ? TPk : never], options?: MethodOptions<S>
+    ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault>>;
 };
 
 type InjectedRemove<
@@ -465,10 +491,59 @@ type InjectedSave<
     ): Promise<RefineSaveResult<ResolveCurrentReturn<M, TSelects, S, TDefault>, O>>;
 };
 
+type InjectedRemoveList<
+    T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
+    TPk = ExtractPkName<T, Config>
+> = C extends { baseMethods: { removeList: { active: false } } } ? {} : {
+    /** Remove múltiplos registros de uma vez pelas suas chaves primárias. */
+    removeList(
+        pks: T[TPk extends keyof T ? TPk : never][], 
+        options?: { db?: ClientOrTransaction }
+    ): Promise<{ count: number }>;
+};
+
+type InjectedGetAll<
+    T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
+    TSelects = ExtractSelectModels<Config>,
+    TDefault = ExtractDefaultSelect<Config>,
+    I = PrismaModelInputs<M>
+> = C extends { baseMethods: { getAll: { active: false } } } ? {} : {
+    /** Busca todos os registros, respeitando o `requiredWhere` se houver. */
+    getAll<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'getAll', TSelects>>(
+        options?: MethodOptions<S> & { 
+            pagination?: PaginationOptions<I extends { cursorInput: infer Curs } ? Curs : unknown>;
+            order?: I extends { orderByInput: infer OB } ? OB : OrderOptions;
+        }
+    ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault>[]>;
+};
+
+type InjectedTotal<
+    T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined
+> = C extends { baseMethods: { total: { active: false } } } ? {} : {
+    /** Retorna a quantidade total de registros, respeitando o `requiredWhere` se houver. */
+    total(options?: { db?: ClientOrTransaction }): Promise<number>;
+};
+
+type InjectedHas<
+    T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
+    TPk = ExtractPkName<T, Config>
+> = C extends { baseMethods: { has: { active: false } } } ? {} : {
+    /** Verifica de forma otimizada se um registro existe pela chave primária. */
+    has(
+        pk: T[TPk extends keyof T ? TPk : never], 
+        options?: { db?: ClientOrTransaction }
+    ): Promise<boolean>;
+};
+
 type InjectedBaseMethods<T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined> = 
     InjectedGet<T, M, Config, C> & 
+    InjectedGetOrThrow<T, M, Config, C> & 
     InjectedRemove<T, M, Config, C> & 
-    InjectedSave<T, M, Config, C>;
+    InjectedSave<T, M, Config, C> &
+    InjectedRemoveList<T, M, Config, C> &
+    InjectedGetAll<T, M, Config, C> &
+    InjectedTotal<T, M, Config, C> &
+    InjectedHas<T, M, Config, C>;
 
 /**
  * Infere automaticamente a configuração de relação possível a partir de um campo.
@@ -538,7 +613,7 @@ export declare class VSRepository<T extends object, M extends Prisma.ModelName, 
     /**
      * Constrói o repository final com os métodos base e dinâmicos.
      */
-    build<C extends BuildConfig<any>>(prisma: DbClient, config?: C): BuiltRepository<T, M, Config, C>;
+    build<C extends BuildConfig<keyof ExtractSelectModels<Config>>>(prisma: DbClient, config?: C): BuiltRepository<T, M, Config, C>;
     vsrepocache: never;
 }
 
