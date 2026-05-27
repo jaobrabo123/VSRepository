@@ -598,6 +598,11 @@ export type BuiltRepository<T extends object, M extends Prisma.ModelName, Config
      * Estende o repository com métodos personalizados sem perder a tipagem.
      */
     extend<E>(extensionFunc: (repo: BuiltRepository<T, M, Config, C>) => E): BuiltRepository<T, M, Config, C> & E;
+
+    /**
+     * Instância do Prisma Client passada no `build`.
+     */
+    readonly prisma: DbClient;
 } & DynamicMethods<T, M, Config, PrismaModelInputs<M>> & InjectedBaseMethods<T, M, Config, C>;
 
 /**

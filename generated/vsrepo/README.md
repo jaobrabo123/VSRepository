@@ -70,21 +70,21 @@ Equivale a:
 
 ```bash
 npx vsrepo generate \
-  --output src/generated/vsrepo \
-  --prisma src/generated/prisma
+  --output generated/vsrepo \
+  --prisma generated/prisma
 ```
 
 **Flags disponíveis:**
 
 | Flag       | Alias | Padrão                 |
 | ---------- | ----- | ---------------------- |
-| `--output` | `-o`  | `src/generated/vsrepo` |
-| `--prisma` | `-p`  | `src/generated/prisma` |
+| `--output` | `-o`  | `generated/vsrepo` |
+| `--prisma` | `-p`  | `generated/prisma` |
 
 **Arquivos gerados:**
 
 ```
-src/generated/vsrepo/
+generated/vsrepo/
 ├── VSRepoError.ts
 ├── VSRepoError.types.d.ts
 ├── VSRepository.ts
@@ -96,7 +96,7 @@ Após gerar, importe sempre a partir da pasta gerada:
 
 ```ts
 // CORRETO ✅
-import { setupVSRepo } from "../generated/vsrepo";
+import { setupVSRepo } from "../../generated/vsrepo";
 
 // ERRADO ❌
 import { setupVSRepo } from "vsrepo";
@@ -110,7 +110,7 @@ import { setupVSRepo } from "vsrepo";
 
 ```ts
 // src/configs/db.ts
-import { PrismaClient } from '../generated/prisma/client';
+import { PrismaClient } from '../../generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import 'dotenv/config';
 
@@ -125,8 +125,8 @@ export default prisma;
 ```ts
 // src/repositories/usuarioRepository.ts
 import prisma from "../configs/db";
-import { setupVSRepo } from "../generated/vsrepo";
-import type { Usuario } from "../generated/prisma/client";
+import { setupVSRepo } from "../../generated/vsrepo";
+import type { Usuario } from "../../generated/prisma/client";
 
 const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
   tableName: "usuario",
@@ -172,11 +172,11 @@ O VSRepository pode ser facilmente integrado em projetos NestJS através de prov
 ### Configurando o repository como provider
 
 ```ts
-// src/repositories/user.repository.ts
+// src/resources/user/user.repository.ts
 import { Provider } from "@nestjs/common";
 import { PrismaService } from "../../database/prisma.service";
-import { UserGetPayload } from "../../generated/prisma/models";
-import { setupVSRepo } from "../../generated/vsrepo";
+import { UserGetPayload } from "../../../generated/prisma/models";
+import { setupVSRepo } from "../../../generated/vsrepo";
 
 const userVSRepo = setupVSRepo<
     UserGetPayload<{ include: { profile: true } }>,
@@ -242,9 +242,9 @@ export const UserRepositoryProvider: Provider = {
 ### Registrando o provider no módulo
 
 ```ts
-// src/modules/user/user.module.ts
+// src/resources/user/user.module.ts
 import { Module } from "@nestjs/common";
-import { UserRepositoryProvider } from "../../repositories/user.repository";
+import { UserRepositoryProvider } from "./user.repository";
 import { UserService } from "./user.service";
 import { UserController } from "./user.controller";
 
@@ -260,9 +260,9 @@ export class UserModule {}
 ### Utilizando o repository em um serviço
 
 ```ts
-// src/modules/user/user.service.ts
+// src/resources/user/user.service.ts
 import { Injectable, Inject } from "@nestjs/common";
-import { USER_REPOSITORY, UserRepository } from "../../repositories/user.repository";
+import { USER_REPOSITORY, UserRepository } from "./user.repository";
 
 @Injectable()
 export class UserService {
@@ -292,7 +292,7 @@ export class UserService {
 ### Usando em um controller
 
 ```ts
-// src/modules/user/user.controller.ts
+// src/resources/user/user.controller.ts
 import { Controller, Get, Post, Body, Param, Patch, Delete } from "@nestjs/common";
 import { UserService } from "./user.service";
 
@@ -723,7 +723,7 @@ methods: {
 Configure relações para que o `save` as gerencie automaticamente. Para que as relações apareçam no autocomplete, o tipo genérico deve incluir as relações usando `GetPayload`:
 
 ```ts
-import type { Prisma } from "../generated/prisma/client";
+import type { Prisma } from "../../generated/prisma/client";
 
 type Usuario = Prisma.usuarioGetPayload<{
   include: { perfil: true; postagens: true };
@@ -818,7 +818,7 @@ const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
 O VSRepository lança `VSRepoError` e suas subclasses em situações específicas (OBS: Erros do Prisma não são sobrescritos como `VSRepoError`):
 
 ```ts
-import { VSRepoError } from "../generated/vsrepo";
+import { VSRepoError } from "../../generated/vsrepo";
 
 try {
   const usuario = await usuarioRepository.get();
@@ -847,7 +847,7 @@ O VSRepository exporta os seguintes tipos para uso nas suas aplicações:
 ### Tipos de cliente
 
 ```ts
-import type { DbClient, DbTransaction, ClientOrTransaction } from "../generated/vsrepo";
+import type { DbClient, DbTransaction, ClientOrTransaction } from "../../generated/vsrepo";
 
 type DbClient           = PrismaClient;
 type DbTransaction      = Prisma.TransactionClient;
@@ -864,7 +864,7 @@ import type {
   OrdenationModel,
   PaginationModel,
   ModelUpsertInput,
-} from "../generated/vsrepo";
+} from "../../generated/vsrepo";
 
 // Select de um campo específico
 type UsuarioSelect = SelectModel<"usuario">;
@@ -888,7 +888,7 @@ type UsuarioUpsertInput = ModelUpsertInput<"usuario">;
 ### Todos os inputs do modelo
 
 ```ts
-import type { PrismaModelInputs } from "../generated/vsrepo";
+import type { PrismaModelInputs } from "../../generated/vsrepo";
 
 type UsuarioInputs = PrismaModelInputs<"usuario">;
 // Contém:
@@ -899,7 +899,7 @@ type UsuarioInputs = PrismaModelInputs<"usuario">;
 ### Tipos de opções de método
 
 ```ts
-import type { MethodOptions, MethodOptionsModel } from "../generated/vsrepo";
+import type { MethodOptions, MethodOptionsModel } from "../../generated/vsrepo";
 
 // MethodOptions<S> — opções passadas nos métodos do repository
 // S = chave do select model ou false
@@ -919,7 +919,7 @@ import type {
   RepositoryRelations,
   ExtractRelationConfig,
   UpsertWithRelations,
-} from "../generated/vsrepo";
+} from "../../generated/vsrepo";
 
 // Configuração de um método dinâmico
 type MeuMethodConfig = MethodConfig<"usuario", typeof meuSelectModels>;
@@ -943,7 +943,7 @@ type UsuarioComRelacoes = UpsertWithRelations<Usuario, "usuario", typeof relatio
 ### Tipo do repository construído
 
 ```ts
-import type { BuiltRepository, RepositoryOf } from "../generated/vsrepo";
+import type { BuiltRepository, RepositoryOf } from "../../generated/vsrepo";
 
 // Tipo completo de um repository construído
 type MeuRepo = BuiltRepository<Usuario, "usuario", typeof config, typeof buildConfig>;
@@ -970,7 +970,7 @@ type UsuarioRepositoryExtended = RepositoryOf<typeof usuarioVSRepo, undefined, t
 ### Tipo auxiliar
 
 ```ts
-import type { DistributiveOmit } from "../generated/vsrepo";
+import type { DistributiveOmit } from "../../generated/vsrepo";
 
 // Omit distributivo — preserva unions ao omitir propriedades
 type SemEmail = DistributiveOmit<Usuario | Perfil, "email">;

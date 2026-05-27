@@ -3,9 +3,8 @@ node_modules/
 dist/
 .env
 *.log
-/src/generated/prisma
-
 /generated/prisma
+
 .gemini/
 .cursor/
 .codex/

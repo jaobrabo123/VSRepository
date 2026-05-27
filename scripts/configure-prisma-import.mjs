@@ -8,8 +8,8 @@ const workspaceRoot = process.cwd();
 const args = process.argv.slice(2);
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 
-const DEFAULT_OUTPUT = 'src/generated/vsrepo';
-const DEFAULT_PRISMA = 'src/generated/prisma';
+const DEFAULT_OUTPUT = 'generated/vsrepo';
+const DEFAULT_PRISMA = 'generated/prisma';
 const GENERATED_HEADER = `/**
  * ! THIS FILE IS AUTO-GENERATED.
  * ! DO NOT EDIT MANUALLY.
@@ -55,7 +55,7 @@ if (prismaArg.startsWith('-')) {
 const outputDir = path.resolve(workspaceRoot, outputArg);
 
 const prismaTargetPath = stripKnownExtension(
-  path.resolve(workspaceRoot, prismaArg, 'client')
+  path.resolve(workspaceRoot, prismaArg, prismaArg.endsWith('client') ? '' : 'client')
 );
 
 const installedNodeModulesPath = path.join(workspaceRoot, 'node_modules/vsrepo');
@@ -186,7 +186,7 @@ const readmeTarget = path.join(outputDir, 'README.md');
 
 if (fs.existsSync(readmeSource)) {
   fs.copyFileSync(readmeSource, readmeTarget);
-  console.log(`Copiado: ${path.relative(workspaceRoot, readmeTarget)} (origem: ${path.relative(workspaceRoot, readmeSource)})`);
+  console.log(`Gerado: ${path.relative(workspaceRoot, readmeTarget)}`);
 } else {
   console.warn(`README.md do VSRepository nao encontrado em: ${path.relative(workspaceRoot, readmeSource)}. Ignorando a copia.`);
 }
