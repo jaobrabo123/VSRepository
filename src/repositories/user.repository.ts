@@ -1,7 +1,7 @@
 import prisma from "../db";
 import { setupVSRepo, type WhereModel, type SelectModels, type SelectModel } from "../../VSRepository/VSRepository";
 import { commonUserToRelationModel } from "./commonUser.repository";
-import type { UserGetPayload } from "../generated/prisma/models";
+import type { UserGetPayload } from "../../generated/prisma/models";
 import type { User } from "@vsrepo/prisma/types";
 
 const userPublicModel = {

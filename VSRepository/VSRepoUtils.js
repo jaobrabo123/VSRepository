@@ -1,6 +1,29 @@
 import z from "zod";
 import { VSRepoConfigError, VSRepoBuildError } from "./VSRepoError.js";
 
+export function mergeWheres(currentWhere, restrictWhere) {
+    const restrictWhereKeys = Object.keys(restrictWhere);
+    for (let i = 0; i < restrictWhereKeys.length; i++) {
+        const restrictWhereKey = restrictWhereKeys[i];
+        const restrictWhereField = restrictWhere[restrictWhereKey];
+
+        if (restrictWhereField === null || typeof restrictWhereField !== "object") {
+            currentWhere[restrictWhereKey] = restrictWhereField;
+        } else if (Array.isArray(restrictWhereField)) {
+            currentWhere[restrictWhereKey] = Array.isArray(currentWhere[restrictWhereKey]) ?
+                restrictWhereField.concat(currentWhere[restrictWhereKey]) :
+                restrictWhereField;
+        } else {
+            currentWhere[restrictWhereKey] = 
+                currentWhere[restrictWhereKey] != null &&
+                typeof currentWhere[restrictWhereKey] === "object" &&
+                !Array.isArray(currentWhere[restrictWhereKey]) ?
+                    Object.assign(currentWhere[restrictWhereKey], restrictWhereField) :
+                    restrictWhereField;
+        }
+    }
+}
+
 const stringSchema = z.string().trim().nonempty();
 const objectSchema = z.looseObject({});
 const booleanSchema = z.boolean();

@@ -9,7 +9,7 @@ export * from "./VSRepoError.js";
 
 // * Importando classes de erro
 import { VSRepoBuildError, VSRepoExtendError, VSRepoRuntimeError } from "./VSRepoError.js";
-import { validateBuildConfig, validateConfig } from "./VSRepoUtils.js";
+import { mergeWheres, validateBuildConfig, validateConfig } from "./VSRepoUtils.js";
 
 // * Essa é a classe pincipal, é a partir dela que serão criados os objetos dos repositories
 export class VSRepository {
@@ -593,15 +593,11 @@ export class VSRepository {
                 const assignWhere = (where) => {
                     if(whereType==='extending' && buildInstance.requiredWhere) {
                         let safeRequiredWhere = structuredClone(buildInstance.requiredWhere);
-                        if(where.OR && safeRequiredWhere.OR) safeRequiredWhere.OR = safeRequiredWhere.OR.concat(where.OR)
-                        if(where.AND && safeRequiredWhere.AND) safeRequiredWhere.AND = safeRequiredWhere.AND.concat(where.AND)
-                        Object.assign(where, safeRequiredWhere);
+                        mergeWheres(where, safeRequiredWhere);
                     }
                     if(pushWhere !== undefined) {
                         let safePushWhere = structuredClone(pushWhere);
-                        if(where.OR && safePushWhere.OR) safePushWhere.OR = safePushWhere.OR.concat(where.OR)
-                        if(where.AND && safePushWhere.AND) safePushWhere.AND = safePushWhere.AND.concat(where.AND)
-                        Object.assign(where, safePushWhere);
+                        mergeWheres(where, safePushWhere);
                     }
                 }
 

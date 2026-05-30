@@ -1,5 +1,5 @@
 // * Prisma
-import { PrismaClient } from './generated/prisma/client';
+import { PrismaClient } from '@vsrepo/prisma/types';
 
 import { PrismaPg } from '@prisma/adapter-pg';
 
