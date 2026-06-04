@@ -1,7 +1,7 @@
 # VSRepository
 
 ![npm](https://img.shields.io/npm/v/vsrepo?style=flat-square)
-![license](https://img.shields.io/github/license/jaobrabo123/vsrepository?style=flat-square)
+![license](https://img.shields.io/github/license/jaobrabo123/vsrepository?style=flat-square&v=1)
 ![NPM Downloads](https://img.shields.io/npm/d18m/vsrepo.svg)
 
 Biblioteca de repository pattern para projetos que usam **Prisma**, com suporte completo a **TypeScript** e **type inference** automático.
@@ -35,7 +35,7 @@ O VSRepository permite criar repositories fortemente tipados com:
   - [Configuração de métodos](#configuração-de-métodos)
 - [Relações no save](#relações-no-save)
 - [Transações](#transações)
-- [Extendendo um repository](#extendendo-um-repository)
+- [Estendendo um repository](#estendendo-um-repository)
 - [Tratamento de erros](#tratamento-de-erros)
 - [Tipos utilitários](#tipos-utilitários)
 - [API Reference](#api-reference)
@@ -334,6 +334,7 @@ Ao chamar `.build(prisma)` os métodos base abaixo são automaticamente disponib
 | `get(pk)`    | Busca um registro pela primary key         |
 | `getOrThrow(pk)` | Busca um registro pela primary key e lança erro se não encontrar |
 | `save(obj)`  | Cria ou atualiza (se o objeto passado tiver a `pk` faz `upsert`, se não faz `create`) |
+| `patch(pk, obj)` | Atualiza parcialmente um registro pela primary key (equivalente ao `update` com payload parcial) |
 | `remove(pk)` | Remove um registro pela primary key        |
 | `removeList(pks)`  | Remove vários registros pela lista de primary keys — retorna `{ count }`   |
 | `getAll()` | Retorna todos os registros (aceita `pagination` e `order` no `options`)  |
@@ -357,9 +358,13 @@ usuarioVSRepo.build(prisma, {
     remove: {
       active: true,
       defaultSelect: "minimal",
+      ignoreRequiredWhere: false, // Aplica o requiredWhere no remove (padrão = false)
     },
     save: {
-      ignoreRequiredWhere: true, // Não aplica requiredWhere no save
+      ignoreRequiredWhere: true,  // Não aplica requiredWhere no save
+    },
+    patch: {
+      defaultSelect: "minimal",
     },
     has: {
       active: false, // Desativa o 'has' (padrão = true)
@@ -721,7 +726,7 @@ methods: {
 
 ## Relações no save
 
-Configure relações para que o `save` as gerencie automaticamente. Para que as relações apareçam no autocomplete, o tipo genérico deve incluir as relações usando `GetPayload`:
+Configure relações para que o `save` as gerencie automaticamente. Essas mesmas relações também são usadas no `patch`. Para que as relações apareçam no autocomplete, o tipo genérico deve incluir as relações usando `GetPayload`:
 
 ```ts
 import type { Prisma } from "../../generated/prisma/client";
@@ -743,10 +748,37 @@ const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
     postagens: {
       pk: "id",
       mode: "otm",
-      restriction: "set",
+      restriction: "add",
     },
   },
 }).build(prisma);
+```
+
+Exemplos de uso com relações:
+
+```ts
+await usuarioRepository.save({
+  nome: "Maria",
+  email: "maria@email.com",
+  senha: "password",
+  perfil: {
+    id: 1,
+    bio: "Bio da Maria",
+  },
+  postagens: [
+    { titulo: "Primeiro post", conteudo: "Olá!" },
+  ],
+});
+
+await usuarioRepository.patch(1, {
+  perfil: {
+    id: 1,
+    bio: "Bio atualizada",
+  },
+  postagens: [
+    { id: 10, titulo: "Post revisado", conteudo: "Conteúdo ajustado" },
+  ],
+});
 ```
 
 > **Dica:** Se o tipo genérico não incluir `include: { relação: true }`, o VSRepository ainda funcionará, mas o autocomplete não sugerirá as relações no `save`. O tipo recomendado é sempre `GetPayload<{ include: { /* suas relações */ } }>` para melhor experiência de desenvolvimento.
@@ -774,23 +806,24 @@ const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
 Todos os métodos aceitam `options.db` para participar de uma transação:
 
 ```ts
-await prisma.$transaction(async (tx) => {
+await usuarioRepository.prisma.$transaction(async (tx) => {
   const usuario = await usuarioRepository.save(
     { nome: "Maria", email: "maria@email.com", senha: "password" },
     { db: tx }
   );
 
-  await usuarioRepository.updateById(
-    usuario.id,
-    { ativo: true },
+  await usuarioLogsRepository.save(
+    { acao: "Cadastro de usuário", data: { usuarioCadastrado: usuario.id } },
     { db: tx }
   );
 });
 ```
 
+Observe que é possível diferentes repositories participarem da mesma transação.
+
 ---
 
-## Extendendo um repository
+## Estendendo um repository
 
 ```ts
 const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
@@ -1011,6 +1044,7 @@ vsRepo.build(prisma, {
     getOrThrow?:{ active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
     remove?:    { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
     save?:      { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    patch?:     { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
     getAll?:    { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
 
     // Métodos que NÃO aceitam `defaultSelect`

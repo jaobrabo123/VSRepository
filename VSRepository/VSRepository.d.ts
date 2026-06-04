@@ -372,6 +372,8 @@ export type BuildConfig<TSelectKeys extends PropertyKey = string> = {
         remove?: BaseMethodConfig<TSelectKeys>;
         /** Configuração do método `save`. */
         save?: BaseMethodConfig<TSelectKeys>;
+        /** Configuração do método `patch`. */
+        patch?: BaseMethodConfig<TSelectKeys>;
         /** Configuração do método `removeList` (exclusão em lote). Não aceita select. */
         removeList?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
         /** Configuração do método `getAll` (listagem total). */
@@ -383,7 +385,7 @@ export type BuildConfig<TSelectKeys extends PropertyKey = string> = {
     };
 };
 
-type ResolveMethodDefaultSelect<Config, C, Method extends 'get' | 'getOrThrow' | 'remove' | 'save' | 'getAll', TSelects = ExtractSelectModels<Config>> =
+type ResolveMethodDefaultSelect<Config, C, Method extends 'get' | 'getOrThrow' | 'remove' | 'save' | 'getAll' | 'patch', TSelects = ExtractSelectModels<Config>> =
     C extends { baseMethods?: { [_ in Method]?: { defaultSelect?: infer D } } }
         ? D extends keyof TSelects 
             ? D 
@@ -483,6 +485,21 @@ type InjectedSave<
     ): Promise<RefineSaveResult<ResolveCurrentReturn<M, TSelects, S, TDefault>, O>>;
 };
 
+type InjectedPatch<
+    T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
+    TSelects = ExtractSelectModels<Config>,
+    TDefault = ExtractDefaultSelect<Config>,
+    TPk = ExtractPkName<T, Config>,
+    I = PrismaModelInputs<M>
+> = C extends { baseMethods: { patch: { active: false } } } ? {} : {
+    /** Atualiza parcialmente um registro existente através da sua chave primária (PK). */
+    patch<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'patch', TSelects>>(
+        pk: T[TPk extends keyof T ? TPk : never],
+        obj: I extends { updateInput: infer U } ? U : Record<string, any>,
+        options?: MethodOptions<S>
+    ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault>>;
+};
+
 type InjectedRemoveList<
     T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
     TPk = ExtractPkName<T, Config>
@@ -532,6 +549,7 @@ type InjectedBaseMethods<T, M extends Prisma.ModelName, Config, C extends BuildC
     InjectedGetOrThrow<T, M, Config, C> & 
     InjectedRemove<T, M, Config, C> & 
     InjectedSave<T, M, Config, C> &
+    InjectedPatch<T, M, Config, C> &
     InjectedRemoveList<T, M, Config, C> &
     InjectedGetAll<T, M, Config, C> &
     InjectedTotal<T, M, Config, C> &

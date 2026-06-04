@@ -1055,138 +1055,287 @@ export class VSRepository {
                     console.log(`[VSRepository] (runtime) Fatal error when trying to save on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
-            }
-            if(config.baseMethods?.removeList?.active !== false) {
-                buildInstance.removeList = async (pks, options = {}) => {
-                    let db = options?.db ?? prisma;
-                    const prismaArgs = {};
-                    
-                    const where = { [buildInstance.pkName]: { in: pks } };
-                    if(buildInstance.requiredWhere && !config.baseMethods?.removeList?.ignoreRequiredWhere) {
-                        Object.assign(where, buildInstance.requiredWhere);
-                    }
-                    prismaArgs.where = where;
+            } 
+        }
+        if(config.baseMethods?.removeList?.active !== false) {
+            buildInstance.removeList = async (pks, options = {}) => {
+                let db = options?.db ?? prisma;
+                const prismaArgs = {};
+                
+                const where = { [buildInstance.pkName]: { in: pks } };
+                if(buildInstance.requiredWhere && !config.baseMethods?.removeList?.ignoreRequiredWhere) {
+                    Object.assign(where, buildInstance.requiredWhere);
+                }
+                prismaArgs.where = where;
 
-                    let start;
-                    if(showWorking){
-                        console.log(`[VSRepository] (runtime) Executing removeList on ${buildInstance.tableName}.`);
-                        console.log(`[VSRepository] (runtime) Built arguments to removeList on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
-                        start = performance.now();
+                let start;
+                if(showWorking){
+                    console.log(`[VSRepository] (runtime) Executing removeList on ${buildInstance.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Built arguments to removeList on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    start = performance.now();
+                }
+                try {
+                    const result = await db[buildInstance.tableName].deleteMany(prismaArgs);
+                    if(showWorking) {
+                        const end = performance.now();
+                        console.log(`[VSRepository] (runtime) Executed removeList on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
                     }
-                    try {
-                        const result = await db[buildInstance.tableName].deleteMany(prismaArgs);
-                        if(showWorking) {
-                            const end = performance.now();
-                            console.log(`[VSRepository] (runtime) Executed removeList on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
-                        }
-                        return result;
-                    } catch (err) {
-                        console.log(`[VSRepository] (runtime) Fatal error when trying to removeList on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
-                        throw err;
-                    }
+                    return result;
+                } catch (err) {
+                    console.log(`[VSRepository] (runtime) Fatal error when trying to removeList on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    throw err;
                 }
             }
-            if(config.baseMethods?.getAll?.active !== false) {
-                buildInstance.getAll = async (options = {}) => {
-                    let db = options?.db ?? prisma;
-                    const prismaArgs = {};
+        }
+        if(config.baseMethods?.getAll?.active !== false) {
+            buildInstance.getAll = async (options = {}) => {
+                let db = options?.db ?? prisma;
+                const prismaArgs = {};
 
-                    if(buildInstance.requiredWhere && !config.baseMethods?.getAll?.ignoreRequiredWhere) {
-                        prismaArgs.where = { ...buildInstance.requiredWhere };
-                    }
+                if(buildInstance.requiredWhere && !config.baseMethods?.getAll?.ignoreRequiredWhere) {
+                    prismaArgs.where = { ...buildInstance.requiredWhere };
+                }
 
-                    let selectModelKey = options?.selectModel ?? config.baseMethods?.getAll?.defaultSelect ?? buildInstance.defaultSelectModel;
-                    if(selectModelKey){
-                        prismaArgs.select = buildInstance.selectModels[selectModelKey];
-                    }
+                let selectModelKey = options?.selectModel ?? config.baseMethods?.getAll?.defaultSelect ?? buildInstance.defaultSelectModel;
+                if(selectModelKey){
+                    prismaArgs.select = buildInstance.selectModels[selectModelKey];
+                }
 
-                    if(options.pagination) {
-                        prismaArgs.skip = options.pagination.skip;
-                        prismaArgs.take = options.pagination.take;
-                        prismaArgs.cursor = options.pagination.cursor;
-                    }
-                    if(options.order) {
-                        prismaArgs.orderBy = options.order;
-                    }
+                if(options.pagination) {
+                    prismaArgs.skip = options.pagination.skip;
+                    prismaArgs.take = options.pagination.take;
+                    prismaArgs.cursor = options.pagination.cursor;
+                }
+                if(options.order) {
+                    prismaArgs.orderBy = options.order;
+                }
 
-                    let start;
-                    if(showWorking){
-                        console.log(`[VSRepository] (runtime) Executing getAll on ${buildInstance.tableName}.`);
-                        console.log(`[VSRepository] (runtime) Built arguments to getAll on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
-                        start = performance.now();
+                let start;
+                if(showWorking){
+                    console.log(`[VSRepository] (runtime) Executing getAll on ${buildInstance.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Built arguments to getAll on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    start = performance.now();
+                }
+                try {
+                    const result = await db[buildInstance.tableName].findMany(prismaArgs);
+                    if(showWorking) {
+                        const end = performance.now();
+                        console.log(`[VSRepository] (runtime) Executed getAll on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
                     }
-                    try {
-                        const result = await db[buildInstance.tableName].findMany(prismaArgs);
-                        if(showWorking) {
-                            const end = performance.now();
-                            console.log(`[VSRepository] (runtime) Executed getAll on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
-                        }
-                        return result;
-                    } catch (err) {
-                        console.log(`[VSRepository] (runtime) Fatal error when trying to getAll on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
-                        throw err;
-                    }
+                    return result;
+                } catch (err) {
+                    console.log(`[VSRepository] (runtime) Fatal error when trying to getAll on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    throw err;
                 }
             }
-            if(config.baseMethods?.total?.active !== false) {
-                buildInstance.total = async (options = {}) => {
-                    let db = options?.db ?? prisma;
-                    const prismaArgs = {};
+        }
+        if(config.baseMethods?.total?.active !== false) {
+            buildInstance.total = async (options = {}) => {
+                let db = options?.db ?? prisma;
+                const prismaArgs = {};
 
-                    if(buildInstance.requiredWhere && !config.baseMethods?.total?.ignoreRequiredWhere) {
-                        prismaArgs.where = { ...buildInstance.requiredWhere };
-                    }
+                if(buildInstance.requiredWhere && !config.baseMethods?.total?.ignoreRequiredWhere) {
+                    prismaArgs.where = { ...buildInstance.requiredWhere };
+                }
 
-                    let start;
-                    if(showWorking){
-                        console.log(`[VSRepository] (runtime) Executing total on ${buildInstance.tableName}.`);
-                        console.log(`[VSRepository] (runtime) Built arguments to total on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
-                        start = performance.now();
+                let start;
+                if(showWorking){
+                    console.log(`[VSRepository] (runtime) Executing total on ${buildInstance.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Built arguments to total on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    start = performance.now();
+                }
+                try {
+                    const result = await db[buildInstance.tableName].count(prismaArgs);
+                    if(showWorking) {
+                        const end = performance.now();
+                        console.log(`[VSRepository] (runtime) Executed total on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
                     }
-                    try {
-                        const result = await db[buildInstance.tableName].count(prismaArgs);
-                        if(showWorking) {
-                            const end = performance.now();
-                            console.log(`[VSRepository] (runtime) Executed total on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
-                        }
-                        return result;
-                    } catch (err) {
-                        console.log(`[VSRepository] (runtime) Fatal error when trying to total on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
-                        throw err;
-                    }
+                    return result;
+                } catch (err) {
+                    console.log(`[VSRepository] (runtime) Fatal error when trying to total on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    throw err;
                 }
             }
-            if(config.baseMethods?.has?.active !== false) {
-                buildInstance.has = async (pk, options = {}) => {
-                    let db = options?.db ?? prisma;
-                    const prismaArgs = {};
-                    
+        }
+        if(config.baseMethods?.has?.active !== false) {
+            buildInstance.has = async (pk, options = {}) => {
+                let db = options?.db ?? prisma;
+                const prismaArgs = {};
+                
+                const where = { [buildInstance.pkName]: pk };
+                if(buildInstance.requiredWhere && !config.baseMethods?.has?.ignoreRequiredWhere) {
+                    Object.assign(where, buildInstance.requiredWhere);
+                }
+                prismaArgs.where = where;
+                prismaArgs.select = { [buildInstance.pkName]: true };
+
+                let start;
+                if(showWorking){
+                    console.log(`[VSRepository] (runtime) Executing has on ${buildInstance.tableName}.`);
+                    console.log(`[VSRepository] (runtime) Built arguments to has on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    start = performance.now();
+                }
+                try {
+                    const result = await db[buildInstance.tableName].findUnique(prismaArgs);
+                    if(showWorking) {
+                        const end = performance.now();
+                        console.log(`[VSRepository] (runtime) Executed has on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
+                    }
+                    return !!result;
+                } catch (err) {
+                    console.log(`[VSRepository] (runtime) Fatal error when trying to has on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    throw err;
+                }
+            }
+        }
+        if(config.baseMethods?.patch?.active !== false) {
+            buildInstance.patch = async (pk, obj, options = {}) => {
+                let db = options?.db ?? prisma;
+                const prismaArgs = {};
+
+                let selectModelKey = options?.selectModel ?? config.baseMethods?.patch?.defaultSelect ?? buildInstance.defaultSelectModel;
+                if(selectModelKey){
+                    prismaArgs.select = buildInstance.selectModels[selectModelKey];
+                }
+
+                let start;
+                if(showWorking){
+                    console.log(`[VSRepository] (runtime) Executing patch on ${buildInstance.tableName}.`);
+                    start = performance.now();
+                }
+
+                try {
+                    let result;
+                    prismaArgs.data = {};
+
+                    const keys = Object.keys(obj);
+                    for (let i = 0; i < keys.length; i++) {
+                        const key = keys[i];
+                        const field = obj[key];
+
+                        if(field === undefined) continue;
+
+                        if(relationsKeys.includes(key)){
+                            const relation = buildInstance.relations[key];
+                            const relationMode = relation.mode;
+                            const relationRestriction = relation.restriction;
+                            const relationPk = relation.pk;
+
+                            if(relationMode === 'oto' || relationMode === 'mto') {
+                                if(field === null) {
+                                    if(relationMode === 'oto' && relationRestriction === 'set') {
+                                        prismaArgs.data[key] = { delete: true };
+                                    } else if(relationMode === 'mto' && relation.nullAble) {
+                                        prismaArgs.data[key] = { disconnect: true };
+                                    }
+                                } else if (field !== undefined) {
+                                    const relationFieldPk = field[relationPk];
+                                    if(relationFieldPk){
+                                        const connectOrCreate = {
+                                            where: { [relationPk]: relationFieldPk },
+                                            create: field
+                                        };
+
+                                        if(relationRestriction === 'add') {
+                                            prismaArgs.data[key] = { connectOrCreate };
+                                        } else {
+                                            const update = {...field};
+                                            delete update[relationPk];
+
+                                            prismaArgs.data[key] = {
+                                                upsert: {
+                                                    where: { [relationPk]: relationFieldPk },
+                                                    create: field,
+                                                    update: update
+                                                }
+                                            };
+                                        }
+                                    } else {
+                                        prismaArgs.data[key] = { create: field };
+                                    }
+                                }
+                            } else if(Array.isArray(field)) {
+                                const dataWithPk = field.filter(data=>data[relationPk]!==undefined);
+                                const dataWithoutPk = field.filter(data=>data[relationPk]===undefined);
+
+                                const connectOrCreate = dataWithPk.map(data=>({
+                                    where: { [relationPk]: data[relationPk] },
+                                    create: data
+                                }));
+
+                                if(relationRestriction === 'add') {
+                                    if(relationMode === 'mtm') {
+                                        prismaArgs.data[key] = {
+                                            create: dataWithoutPk,
+                                            connectOrCreate
+                                        }
+                                    } else {
+                                        prismaArgs.data[key] = {
+                                            create: dataWithoutPk,
+                                            upsert: dataWithPk.map(data=>{
+                                                const update = { ...data };
+                                                delete update[relationPk];
+                                                return {
+                                                    where: { [relationPk]: data[relationPk] },
+                                                    create: data, update
+                                                }
+                                            })
+                                        }
+                                    }
+                                } else {
+                                    if(relationMode === 'mtm') {
+                                        prismaArgs.data[key] = {
+                                            set: [],
+                                            create: dataWithoutPk,
+                                            connectOrCreate
+                                        }
+                                    } else {
+                                        prismaArgs.data[key] = {
+                                            deleteMany: { [relationPk]: { notIn: dataWithPk.map(data=>data[relationPk]) } },
+                                            create: dataWithoutPk,
+                                            upsert: dataWithPk.map(data=>{
+                                                const update = { ...data };
+                                                delete update[relationPk];
+                                                return {
+                                                    where: { [relationPk]: data[relationPk] },
+                                                    create: data, update
+                                                }
+                                            })
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            if (key !== buildInstance.pkName) {
+                                prismaArgs.data[key] = field;
+                            }
+                        }
+                    }
+
                     const where = { [buildInstance.pkName]: pk };
-                    if(buildInstance.requiredWhere && !config.baseMethods?.has?.ignoreRequiredWhere) {
+                    if(buildInstance.requiredWhere && !config.baseMethods?.patch?.ignoreRequiredWhere) {
                         Object.assign(where, buildInstance.requiredWhere);
                     }
                     prismaArgs.where = where;
-                    prismaArgs.select = { [buildInstance.pkName]: true };
 
-                    let start;
-                    if(showWorking){
-                        console.log(`[VSRepository] (runtime) Executing has on ${buildInstance.tableName}.`);
-                        console.log(`[VSRepository] (runtime) Built arguments to has on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
-                        start = performance.now();
+                    if(showWorking) {
+                        console.log(`[VSRepository] (runtime) Built arguments to patch on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
                     }
-                    try {
-                        const result = await db[buildInstance.tableName].findUnique(prismaArgs);
-                        if(showWorking) {
-                            const end = performance.now();
-                            console.log(`[VSRepository] (runtime) Executed has on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
-                        }
-                        return !!result;
-                    } catch (err) {
-                        console.log(`[VSRepository] (runtime) Fatal error when trying to has on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
-                        throw err;
+
+                    result = await db[buildInstance.tableName].update(prismaArgs);
+
+                    if(showWorking) {
+                        const end = performance.now();
+                        const duration = (end - start).toFixed(2);
+                        console.log(`[VSRepository] (runtime) Executed patch on ${buildInstance.tableName} (took: ${duration}ms).`);
                     }
+
+                    return result;
+                } catch (err) {
+                    console.log(`[VSRepository] (runtime) Fatal error when trying to patch on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    throw err;
                 }
-            }
+            } 
         }
 
         buildInstance.prisma = prisma;
