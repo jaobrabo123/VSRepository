@@ -54,7 +54,9 @@ if (prismaArg.startsWith('-')) {
 
 const outputDir = path.resolve(workspaceRoot, outputArg);
 
-const prismaTargetPath = stripKnownExtension(
+const CLASSIC_PRISMA_GENERATED_PATH = "@prisma/client";
+
+const prismaTargetPath = prismaArg === CLASSIC_PRISMA_GENERATED_PATH ? prismaArg : stripKnownExtension(
   path.resolve(workspaceRoot, prismaArg, prismaArg.endsWith('client') ? '' : 'client')
 );
 
@@ -97,7 +99,7 @@ for (const fileName of typeFiles) {
 
   contents = contents.replace(
     /from\s+(['"])@vsrepo\/prisma\/types\1/g,
-    `from '${relativeImportPath(path.dirname(targetFile), prismaTargetPath)}'`
+    `from '${prismaTargetPath === CLASSIC_PRISMA_GENERATED_PATH ? prismaTargetPath : relativeImportPath(path.dirname(targetFile), prismaTargetPath)}'`
   );
 
   fs.writeFileSync(targetFile, GENERATED_HEADER + contents, 'utf8');
