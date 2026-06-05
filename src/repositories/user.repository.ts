@@ -34,9 +34,9 @@ export const userVSRepo = setupVSRepo<UserGetPayload<{ include: { commonUser: tr
     requiredWhere: userRequiredWhere,
     relations: {
         commonUser: {
-            mode: 'oto',
-            pk: 'id',
-            restriction: 'set'
+            mode: "oto",
+            pk: "id",
+            restriction: "set",
         }
     },
     methods: {

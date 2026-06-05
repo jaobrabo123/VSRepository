@@ -205,7 +205,7 @@ export type MethodOptions<S> = {
     /**
      * Select model a ser aplicado na operação.
      *
-     * Use `false` para retornar o payload completo do Prisma, sem select.
+     * @note Use `false` para retornar o payload completo do Prisma, sem select.
      */
     selectModel?: S | false;
     /**
@@ -337,7 +337,7 @@ export type MethodConfig<M extends Prisma.ModelName, SelectModels = any> = {
     readonly map: boolean;
     /** Sobrescreve o `defaultSelectModel` apenas para este método. */
     readonly selectModel?: keyof SelectModels | false;
-    /** Controla se o método combina ou sobrescreve o `requiredWhere`. */
+    /** Controla se o método combina (`extending`) ou sobrescreve (`overwrite`) o `requiredWhere`. */
     readonly whereType?: 'overwrite' | 'extending';
     /** Redireciona a lógica para outro padrão de método válido. */
     readonly proxyTo?: ValidMethodPatterns;
@@ -423,6 +423,12 @@ type InjectedGet<
     TDefault = ExtractDefaultSelect<Config>,
     TPk = ExtractPkName<T, Config>
 > = C extends { baseMethods: { get: { active: false } } } ? {} : {
+    /**
+     * Busca um registro pela chave primária (PK).
+     * @param pk Chave primária do registro.
+     * @param options Opções adicionais (por exemplo `selectModel` ou `db`).
+     * @returns O registro selecionado ou `null` se não encontrado.
+     */
     get<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'get', TSelects>>(
         pk: T[TPk extends keyof T ? TPk : never], options?: MethodOptions<S>
     ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault> | null>;
@@ -434,6 +440,12 @@ type InjectedGetOrThrow<
     TDefault = ExtractDefaultSelect<Config>,
     TPk = ExtractPkName<T, Config>
 > = C extends { baseMethods: { getOrThrow: { active: false } } } ? {} : {
+    /**
+     * Busca um registro pela chave primária (PK) e lança erro se não encontrado.
+     * @param pk Chave primária do registro.
+     * @param options Opções adicionais (por exemplo `selectModel` ou `db`).
+     * @returns O registro selecionado.
+     */
     getOrThrow<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'getOrThrow', TSelects>>(
         pk: T[TPk extends keyof T ? TPk : never], options?: MethodOptions<S>
     ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault>>;
@@ -445,6 +457,12 @@ type InjectedRemove<
     TDefault = ExtractDefaultSelect<Config>,
     TPk = ExtractPkName<T, Config>
 > = C extends { baseMethods: { remove: { active: false } } } ? {} : {
+    /**
+     * Remove um registro identificado pela chave primária (PK).
+     * @param pk Chave primária do registro a ser removido.
+     * @param options Opções adicionais (por exemplo `selectModel` ou `db`).
+     * @returns O registro removido.
+     */
     remove<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'remove', TSelects>>(
         pk: T[TPk extends keyof T ? TPk : never], options?: MethodOptions<S>
     ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault>>;
@@ -484,6 +502,12 @@ type InjectedSave<
     TDefault = ExtractDefaultSelect<Config>,
     TRelations = ExtractRelations<Config>
 > = C extends { baseMethods: { save: { active: false } } } ? {} : {
+    /**
+     * Insere ou atualiza (save/upsert) um registro, aceita os campos de relações definidas nas `relations`.
+     * @param obj Payload para criação/atualização.
+     * @param options Opções adicionais (por exemplo `selectModel` ou `db`).
+     * @returns O registro salvo com tipos refinados conforme a entrada.
+     */
     save<
         O extends UpsertWithRelations<T, M, TRelations>, 
         S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'save', TSelects>
@@ -500,19 +524,33 @@ type InjectedPatch<
     TPk = ExtractPkName<T, Config>,
     I = PrismaModelInputs<M>
 > = C extends { baseMethods: { patch: { active: false } } } ? {} : {
-    /** Atualiza parcialmente um registro existente através da sua chave primária (PK). */
-    patch<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'patch', TSelects>>(
+    /**
+     * Atualiza parcialmente (patch) um registro existente pela chave primária (PK), aceita os campos de relações definidas nas `relations`.
+     * @param pk Chave primária do registro.
+     * @param obj Objeto parcial com os campos a atualizar.
+     * @param options Opções adicionais (por exemplo `selectModel` ou `db`).
+     * @returns O registro atualizado refinado conforme a entrada.
+     */
+    patch<
+        O extends (I extends { updateInput: infer U } ? U : Record<string, any>),
+        S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'patch', TSelects>
+    >(
         pk: T[TPk extends keyof T ? TPk : never],
-        obj: I extends { updateInput: infer U } ? U : Record<string, any>,
+        obj: O & (I extends { updateInput: infer U } ? U : Record<string, any>),
         options?: MethodOptions<S>
-    ): Promise<ResolveCurrentReturn<M, TSelects, S, TDefault>>;
+    ): Promise<RefineSaveResult<ResolveCurrentReturn<M, TSelects, S, TDefault>, O>>;
 };
 
 type InjectedRemoveList<
     T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
     TPk = ExtractPkName<T, Config>
 > = C extends { baseMethods: { removeList: { active: false } } } ? {} : {
-    /** Remove múltiplos registros de uma vez pelas suas chaves primárias. */
+    /**
+     * Remove múltiplos registros pelas suas chaves primárias.
+     * @param pks Lista de chaves primárias a remover.
+     * @param options Opções adicionais (por exemplo `db`).
+     * @returns Objeto com a contagem de registros removidos.
+     */
     removeList(
         pks: T[TPk extends keyof T ? TPk : never][], 
         options?: { db?: ClientOrTransaction }
@@ -525,7 +563,11 @@ type InjectedGetAll<
     TDefault = ExtractDefaultSelect<Config>,
     I = PrismaModelInputs<M>
 > = C extends { baseMethods: { getAll: { active: false } } } ? {} : {
-    /** Busca todos os registros, respeitando o `requiredWhere` se houver. */
+    /**
+     * Busca todos os registros (respeita `requiredWhere` quando aplicado).
+     * @param options Opções adicionais, incluindo paginação, ordenação e `db`/`selectModel`.
+     * @returns Lista dos registros encontrados`.
+     */
     getAll<S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'getAll', TSelects>>(
         options?: MethodOptions<S> & { 
             pagination?: PaginationOptions<I extends { cursorInput: infer Curs } ? Curs : unknown>;
@@ -537,7 +579,11 @@ type InjectedGetAll<
 type InjectedTotal<
     T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined
 > = C extends { baseMethods: { total: { active: false } } } ? {} : {
-    /** Retorna a quantidade total de registros, respeitando o `requiredWhere` se houver. */
+    /**
+     * Retorna a quantidade total de registros, respeitando `requiredWhere` quando aplicado.
+     * @param options Opções adicionais (por exemplo `db`).
+     * @returns Número total de registros.
+     */
     total(options?: { db?: ClientOrTransaction }): Promise<number>;
 };
 
@@ -545,7 +591,12 @@ type InjectedHas<
     T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
     TPk = ExtractPkName<T, Config>
 > = C extends { baseMethods: { has: { active: false } } } ? {} : {
-    /** Verifica de forma otimizada se um registro existe pela chave primária. */
+    /**
+     * Verifica se um registro existe pela chave primária (PK).
+     * @param pk Chave primária a verificar.
+     * @param options Opções adicionais (por exemplo `db`).
+     * @returns `true` se existir, caso contrário `false`.
+     */
     has(
         pk: T[TPk extends keyof T ? TPk : never], 
         options?: { db?: ClientOrTransaction }
@@ -564,12 +615,56 @@ type InjectedBaseMethods<T, M extends Prisma.ModelName, Config, C extends BuildC
     InjectedHas<T, M, Config, C>;
 
 /**
+ * Configuração de relação para One-to-Many ou Many-to-Many.
+ *
+ * @template TItem O tipo da entidade relacionada.
+ */
+export type ManyRelationConfig<TItem> = {
+    /** A chave primária (Primary Key) do entidade relacionada. */
+    pk: keyof TItem;
+    /** Tipo de relação: `otm` (One-to-Many) ou `mtm` (Many-to-Many). */
+    mode: 'otm' | 'mtm';
+    /** Comportamento de mutação: `set` (substitui tudo) ou `add` (adiciona aos existentes). */
+    restriction: 'set' | 'add';
+};
+
+/**
+ * Configuração de relação One-to-One.
+ *
+ * @template TItem O tipo da entidade relacionada.
+ */
+export type OneToOneRelationConfig<TItem> = {
+    /** A chave primária (Primary Key) do entidade relacionada. */
+    pk: keyof TItem;
+    /** Tipo de relação: `oto` (One-to-One). */
+    mode: 'oto';
+    /** Comportamento de mutação permitido para salvar. */
+    restriction: 'set' | 'add';
+};
+
+/**
+ * Configuração de relação Many-to-One.
+ *
+ * @template TItem O tipo da entidade relacionada.
+ */
+export type ManyToOneRelationConfig<TItem> = {
+    /** A chave primária (Primary Key) da entidade relacionada. */
+    pk: keyof TItem;
+    /** Tipo de relação: `mto` (Many-to-One). */
+    mode: 'mto';
+    /** Comportamento de mutação permitido para salvar. */
+    restriction: 'set' | 'add';
+    /** Habilita a possibilidade de desvincular a relação, tornando a chave estrangeira nula. */
+    nullAble?: boolean;
+};
+
+/**
  * Infere automaticamente a configuração de relação possível a partir de um campo.
  */
 export type ExtractRelationConfig<TField> = NonNullable<TField> extends infer NonNull
     ? NonNull extends Date | Buffer | Uint8Array ? never
-    : NonNull extends any[] ? (NonNull[number] extends object ? { pk: keyof NonNull[number]; mode: 'otm' | 'mtm'; restriction: 'set' | 'add' } : never)
-    : NonNull extends object ? ({ pk: keyof NonNull; mode: 'oto'; restriction: 'set' | 'add' } | { pk: keyof NonNull; mode: 'mto'; restriction: 'set' | 'add'; nullAble?: boolean })
+    : NonNull extends any[] ? (NonNull[number] extends object ? ManyRelationConfig<NonNull[number]> : never)
+    : NonNull extends object ? (OneToOneRelationConfig<NonNull> | ManyToOneRelationConfig<NonNull>)
     : never
     : never;
 
@@ -660,11 +755,11 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
     pkName: keyof T;
     /** Mapa de select models disponíveis. */
     selectModels?: SelectModels<M>;
-    /** Chave do select model padrão. */
+    /** Select model padrão. */
     defaultSelectModel?: Config extends { selectModels: infer SM } ? (keyof SM extends never ? string : Extract<keyof SM, string>) : string;
     /** Filtros globais aplicados às queries do repository. */
     requiredWhere?: WhereModel<M>;
-    /** Relações gerenciadas automaticamente pelo `save`. */
+    /** Relações gerenciadas automaticamente pelo `save` e pelo `patch`. */
     relations?: RepositoryRelations<T>;
     /** Mapa dos métodos dinâmicos e suas regras de validação. */
     methods?: {
@@ -677,16 +772,12 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
 };
 
 /**
- * Cria uma fábrica tipada para definir repositories fortemente tipados com Prisma.
- *
- * Use esta função para declarar `tableName`, `pkName`, `selectModels`,
- * `requiredWhere`, `relations` e `methods` do seu repository.
+ * Função para inicializar e configurar o `repository`.
+ * As configurações passadas nele são as que serão lidas ao executar o `.build()`.
  */
 export declare function setupVSRepo<T extends object, M extends Prisma.ModelName>(): <
     const SM extends Record<string, SelectModel<M>>,
     const Config extends RepoConfig<T, M, SM>
 >(
-  config: Config extends ValidateRepoConfig<T, M, Config> 
-    ? Config 
-    : ValidateRepoConfig<T, M, Config>
+  config: Config & ValidateRepoConfig<T, M, Config>
 ) => VSRepository<T, M, Config>;
