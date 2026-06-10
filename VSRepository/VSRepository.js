@@ -913,7 +913,9 @@ export class VSRepository {
                                             }
                                         } else {
                                             prismaArgs.create[key] = { create: field };
-                                            prismaArgs.update[key] = { create: field };
+                                            prismaArgs.update[key] = relationRestriction === 'add' ?
+                                                { create: field } :
+                                                { upsert: { create: field, update: field } };
                                         }
                                     }
                                 } else if(Array.isArray(field)) {
@@ -1251,7 +1253,9 @@ export class VSRepository {
                                             };
                                         }
                                     } else {
-                                        prismaArgs.data[key] = { create: field };
+                                        prismaArgs.data[key] = relationRestriction === 'add' ?
+                                            { create: field } :
+                                            { upsert: { create: field, update: field } };
                                     }
                                 }
                             } else if(Array.isArray(field)) {
