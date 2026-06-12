@@ -496,6 +496,34 @@ export type UpsertWithRelations<T, M extends Prisma.ModelName, TRelations> =
         [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K], M, K>;
     };
 
+type ExtractNestedUpdateInput<M extends Prisma.ModelName, K extends PropertyKey> = 
+    NonNullable<ExtractUnionProp<PrismaModelInputs<M>['updateInput'], K>> extends { update?: infer U } 
+        ? (
+            Exclude<U, any[]> extends infer Obj 
+                ? Obj extends { where: any, data: infer D } 
+                    ? Exclude<D, any[]> 
+                    : Obj
+                : never
+          )
+        : never;
+
+type RelationUpdatePayload<TField, TRelationConfig, M extends Prisma.ModelName, K extends PropertyKey> = NonNullable<TField> extends any[]
+    ? (ExtractNestedUpdateInput<M, K>)[]
+    : NonNullable<TField> extends object
+      ? ExtractNestedUpdateInput<M, K> | (TRelationConfig extends { mode: 'oto'; restriction: 'set' } | { mode: 'mto'; nullAble: true } ? null : never)
+      : never;
+
+/**
+ * Payload aceito pelo `patch` quando o repository possui relações configuradas.
+ *
+ * Substitui os campos relacionais pelo formato compatível com os modos
+ * configurados em `relations` para fluxos de Update.
+ */
+export type UpdateWithRelations<T, M extends Prisma.ModelName, TRelations> = 
+    DistributiveOmit<PrismaModelInputs<M>['updateInput'], keyof TRelations> & {
+        [K in Extract<keyof TRelations, keyof T>]?: RelationUpdatePayload<T[K], TRelations[K], M, K>;
+    };
+
 type InjectedSave<
     T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
     TSelects = ExtractSelectModels<Config>,
@@ -522,7 +550,7 @@ type InjectedPatch<
     TSelects = ExtractSelectModels<Config>,
     TDefault = ExtractDefaultSelect<Config>,
     TPk = ExtractPkName<T, Config>,
-    I = PrismaModelInputs<M>
+    TRelations = ExtractRelations<Config>
 > = C extends { baseMethods: { patch: { active: false } } } ? {} : {
     /**
      * Atualiza parcialmente (patch) um registro existente pela chave primária (PK), aceita os campos de relações definidas nas `relations`.
@@ -532,11 +560,11 @@ type InjectedPatch<
      * @returns O registro atualizado refinado conforme a entrada.
      */
     patch<
-        O extends (I extends { updateInput: infer U } ? U : Record<string, any>),
+        O extends UpdateWithRelations<T, M, TRelations>,
         S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'patch', TSelects>
     >(
         pk: T[TPk extends keyof T ? TPk : never],
-        obj: O & (I extends { updateInput: infer U } ? U : Record<string, any>),
+        obj: O & UpdateWithRelations<T, M, TRelations>,
         options?: MethodOptions<S>
     ): Promise<RefineSaveResult<ResolveCurrentReturn<M, TSelects, S, TDefault>, O>>;
 };
@@ -692,7 +720,7 @@ export type RepoConfig<T, M extends Prisma.ModelName, SM extends Record<string, 
     /** Projeções de dados nomeadas e reutilizáveis. */
     selectModels?: SM;
     /** Select model aplicado por padrão quando nenhum for informado. */
-    defaultSelectModel?: Extract<keyof SM, string>;
+    defaultSelectModel?: keyof SM;
     /** Filtros aplicados automaticamente em todas as queries do repository. */
     requiredWhere?: WhereModel<M>;
     /** Configuração das relações gerenciadas pelo `save`. */
@@ -756,7 +784,7 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
     /** Mapa de select models disponíveis. */
     selectModels?: SelectModels<M>;
     /** Select model padrão. */
-    defaultSelectModel?: Config extends { selectModels: infer SM } ? (keyof SM extends never ? string : Extract<keyof SM, string>) : string;
+    defaultSelectModel?: Config extends { selectModels: infer SM } ? (keyof SM extends never ? string : keyof SM) : string;
     /** Filtros globais aplicados às queries do repository. */
     requiredWhere?: WhereModel<M>;
     /** Relações gerenciadas automaticamente pelo `save` e pelo `patch`. */

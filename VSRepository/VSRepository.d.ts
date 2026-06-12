@@ -775,8 +775,8 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
     pkName: keyof T;
     /** Mapa de select models disponíveis. */
     selectModels?: SelectModels<M>;
-    /** Select model padrão. */
-    defaultSelectModel?: Config extends { selectModels: infer SM } ? (keyof SM extends never ? string : Extract<keyof SM, string>) : string;
+    /** Select model padrão. Deve ser uma chave dos `selectModels`. */
+    defaultSelectModel?: string;
     /** Filtros globais aplicados às queries do repository. */
     requiredWhere?: WhereModel<M>;
     /** Relações gerenciadas automaticamente pelo `save` e pelo `patch`. */

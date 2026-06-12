@@ -96,7 +96,8 @@ export class VSRepository {
             let existsMode = false;
             let skipDuplicates;
             let ignoreSkipDuplicates = true;
-            let whereIndex
+            let whereIndex;
+            let prismaArgsIndex;
             const whereParams = [];
             const otherParams = [];
 
@@ -131,6 +132,16 @@ export class VSRepository {
                 ignoreOrderByAndPagination = false;
                 ignoreSelect = true;
                 method = 'count';
+            } else if(keyToMap.startsWith('countWhere')) {
+                keyToMapReplaced = keyToMap.replace('countWhere', '');
+                ignoreOrderByAndPagination = false;
+                ignoreWhere = true;
+                onlyBaseWheres = true;
+                ignoreSelect = true;
+                method = 'count';
+                whereIndex = 0;
+                otherParams.push('where');
+                argsCount += 1;
             } else if(keyToMap.startsWith('count')) {
                 keyToMapReplaced = keyToMap.replace('count', '');
                 ignoreOrderByAndPagination = false;
@@ -233,6 +244,22 @@ export class VSRepository {
                 keyToMapReplaced = keyToMap.replace('findBy', '');
                 ignoreOrderByAndPagination = false;
                 method = methods[originalKey].fbMode === 'one' ? 'findFirst' : 'findMany';
+            } else if(keyToMap === 'aggregate') {
+                keyToMapReplaced = keyToMap.replace('aggregate', '')
+                ignoreSelect = true;
+                ignoreWhere = true;
+                method = 'aggregate';
+                prismaArgsIndex = 0;
+                otherParams.push('prismaArgs');
+                argsCount++;
+            } else if(keyToMap === 'groupBy') {
+                keyToMapReplaced = keyToMap.replace('groupBy', '')
+                ignoreSelect = true;
+                ignoreWhere = true;
+                method = 'groupBy';
+                prismaArgsIndex = 0;
+                otherParams.push('prismaArgs');
+                argsCount++;
             } else {
                 throw new VSRepoBuildError(`[VSRepository] (build) Unknown method: ${keyToMap}.`);
             }
@@ -559,6 +586,8 @@ export class VSRepository {
             }
 
             buildInstance.vsrepocache.set(originalKey, (args, optionsSelectModel) => {
+                if (prismaArgsIndex !== undefined) return args.at(prismaArgsIndex);
+
                 const prismaArgs = {};
 
                 if(!ignoreSelect) {

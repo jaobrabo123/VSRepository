@@ -55,6 +55,7 @@ export const userVSRepo = setupVSRepo<UserGetPayload<{ include: { commonUser: tr
         findFirstOrThrowById: { map: true }
     },
 });
+prisma.user.aggregate()
 
 const userRepository = userVSRepo.build(prisma, {
     showWorking: true
