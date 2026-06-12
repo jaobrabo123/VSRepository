@@ -52,10 +52,12 @@ export const userVSRepo = setupVSRepo<UserGetPayload<{ include: { commonUser: tr
         findByNameContainsOptionalAndEmail: { map: true },
         findByCommonUserSome: { map: true },
         findManyByNameContainsInsensitiveOptionalPaginated: { map: true },
-        findFirstOrThrowById: { map: true }
+        findFirstOrThrowById: { map: true },
+        aggregate: { map: true },
+        groupBy: { map: true },
+        countWhere: { map: true }
     },
 });
-prisma.user.aggregate()
 
 const userRepository = userVSRepo.build(prisma, {
     showWorking: true

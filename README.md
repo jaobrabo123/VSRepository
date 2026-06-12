@@ -33,6 +33,7 @@ O VSRepository permite criar repositories fortemente tipados com:
   - [Filtros de relação](#filtros-de-relação)
   - [Sufixos de paginação e ordenação](#sufixos-de-paginação-e-ordenação)
   - [Configuração de métodos](#configuração-de-métodos)
+  - [Aggregate e GroupBy](#aggregate-e-groupby)
 - [Relações no save](#relações-no-save)
 - [Transações](#transações)
 - [Estendendo um repository](#estendendo-um-repository)
@@ -460,6 +461,7 @@ O prefixo do nome do método determina qual operação Prisma será chamada e qu
 | `findListWhere`           | `findMany`               | `T[]`                  | Recebe um objeto `where` explícito como argumento        |
 | `existsBy`                | `findFirst`              | `boolean`              | Retorna `true` se encontrar, `false` caso contrário      |
 | `countBy`                 | `count`                  | `number`               | Aceita campos como filtro                                |
+| `countWhere`              | `count`                  | `number`               | Recebe um objeto `where` explícito como argumento        |
 | `count`                   | `count`                  | `number`               | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`           |
 | `create`                  | `create`                 | `T`                    | Recebe `data` como argumento                             |
 | `createMany`              | `createMany`             | `{ count: number }`    | Recebe `data` como argumento; suporta `SkipDuplicates`                            |
@@ -470,6 +472,8 @@ O prefixo do nome do método determina qual operação Prisma será chamada e qu
 | `upsertBy`                | `upsert`                 | `T`                    | Recebe `update` e `create` como argumentos               |
 | `deleteBy`                | `delete`                 | `T`                    |                                                          |
 | `deleteManyBy`            | `deleteMany`             | `{ count: number }`    |                                                          |
+| `aggregate`               | `aggregate`              | `Dinâmico`               | Nome deve ser exato; recebe args nativos do Prisma; ignora `selectModels`, `pushWhere` e `requiredWhere` |
+| `groupBy`               | `groupBy`              | `Dinâmico[]`               | Nome deve ser exato; recebe args nativos do Prisma; ignora `selectModels`, `pushWhere` e `requiredWhere` |
 
 ---
 
@@ -719,6 +723,81 @@ methods: {
 
   // Nome personalizado precisa de proxyTo
   buscarPorEmailEPerfil: { map: true, proxyTo: "findByEmailAndPerfil" },
+}
+```
+
+---
+
+### Aggregate e GroupBy
+
+Para utilizar operações de agrupamento e agregação do Prisma (`aggregate` e `groupBy`), você deve expô-las explicitamente na configuração dos métodos dinâmicos (`methods`):
+
+```ts
+const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
+  tableName: "usuario",
+  pkName: "id",
+  methods: {
+    aggregate: { map: true },
+    groupBy: { map: true },
+  },
+}).build(prisma);
+```
+
+> [!NOTE]
+> Estes métodos devem ter exatamente esses nomes (`aggregate` e `groupBy`).
+> Ao contrário dos outros métodos dinâmicos, eles recebem argumentos nativos do Prisma e **ignoram** as configurações de `selectModels`, `pushWhere` e `requiredWhere`.
+
+#### Exemplo de uso do `aggregate`
+
+O método `aggregate` permite calcular valores agregados (como média, soma, mínimo, máximo, contagem) sobre os registros:
+
+```ts
+const resultado = await usuarioRepository.aggregate({
+  _count: {
+    _all: true,
+  },
+  _avg: {
+    idade: true,
+  },
+  _sum: {
+    saldo: true,
+  },
+  where: {
+    ativo: true,
+  },
+});
+
+console.log(resultado._count._all); // Total de usuários ativos
+console.log(resultado._avg.idade);   // Média de idade dos usuários ativos
+console.log(resultado._sum.saldo);   // Soma dos saldos dos usuários ativos
+```
+
+#### Exemplo de uso do `groupBy`
+
+O método `groupBy` permite agrupar registros por um ou mais campos para realizar operações de agregação em cada grupo:
+
+```ts
+const grupos = await usuarioRepository.groupBy({
+  by: ["status"],
+  _count: {
+    status: true,
+  },
+  _avg: {
+    idade: true,
+  },
+  having: {
+    idade: {
+      _avg: {
+        gt: 18,
+      },
+    },
+  },
+});
+
+for (const grupo of grupos) {
+  console.log(`Status: ${grupo.status}`);
+  console.log(`Quantidade: ${grupo._count.status}`);
+  console.log(`Média de Idade: ${grupo._avg.idade}`);
 }
 ```
 

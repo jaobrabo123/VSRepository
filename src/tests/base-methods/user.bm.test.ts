@@ -4,6 +4,17 @@ import userRepository from "../../repositories/user.repository"
 async function test() {
     const mockId = createId();
 
+    const resultGroupBy = await userRepository.groupBy({
+        by: "id",
+        take: 10
+    }, {})
+    console.log(resultGroupBy)
+
+    const resultCountWhere = await userRepository.countWhere({
+        email: "123"
+    })
+    console.log(resultCountWhere)
+
     // await userRepository.deleteManyBy();
 
     const saveUserWithId = await userRepository.save({

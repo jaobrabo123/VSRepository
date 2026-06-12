@@ -51,8 +51,9 @@ type ValidMethodPatterns =
     | `createManyAndReturn${string}` | `createMany${string}`
     | `create${string}` | `updateManyAndReturnBy${string}` | `updateManyBy${string}`
     | `updateBy${string}` | `upsertBy${string}` | `deleteManyBy${string}`
-    | `deleteBy${string}` | `countBy${string}` | `count${string}`
-    | `findWhere${string}` | `findListWhere${string}`;
+    | `deleteBy${string}` | `countBy${string}` | `count${string}` | `countWhere${string}`
+    | `findWhere${string}` | `findListWhere${string}`
+    | 'aggregate' | 'groupBy';
 
 type StringModifiers = 
     | 'NotStartsWith' | 'StartsWith' | 'NotEndsWith' | 'EndsWith' 
@@ -150,7 +151,7 @@ type ResolveReturnType<M extends string, TSelected> =
     M extends 'findMany' | 'createManyAndReturn' | 'updateManyAndReturnBy' | 'findListWhere' | 'findByList' ? TSelected[] :
     M extends 'findUnique' | 'findFirst' | 'findWhere' | 'findByOne' ? TSelected | null :
     M extends 'findUniqueOrThrow' | 'findFirstOrThrow' | 'create' | 'updateBy' | 'upsertBy' | 'deleteBy' ? TSelected :
-    M extends 'count' ? number : never;
+    M extends 'count' | 'countWhere' ? number : never;
 
 type ExtraArgs<M extends string, R extends string, I> = [
     ...(M extends 'upsertBy' ? [update: I extends { updateInput: infer U } ? U : unknown, create: I extends { createInput: infer C } ? C : unknown]
@@ -158,7 +159,7 @@ type ExtraArgs<M extends string, R extends string, I> = [
       : M extends 'updateBy' ? [data: I extends { updateInput: infer U } ? U : unknown]
       : M extends 'createMany' | 'createManyAndReturn' ? [data: I extends { createManyInput: infer CM } ? CM : unknown]
       : M extends 'updateManyBy' | 'updateManyAndReturnBy' ? [data: I extends { updateManyInput: infer UM } ? UM : unknown]
-      : M extends 'findWhere' | 'findListWhere' ? [where: I extends { whereInput: infer W } ? NonNullable<W> : unknown]
+      : M extends 'findWhere' | 'findListWhere' | 'countWhere' ? [where: I extends { whereInput: infer W } ? NonNullable<W> : unknown]
       : []),
     ...(R extends `${string}PaginatedAndOrdered` ? [pagination: PaginationOptions<I extends { cursorInput: infer C } ? C : unknown>, order: I extends { orderByInput: infer OB } ? OB : OrderOptions]
       : R extends `${string}OrderedAndPaginated` ? [order: I extends { orderByInput: infer OB } ? OB : OrderOptions, pagination: PaginationOptions<I extends { cursorInput: infer C } ? C : unknown>]
@@ -217,10 +218,10 @@ type MethodFn<MethodName extends string, T, M extends Prisma.ModelName, R extend
 type GetMappedMethod<K extends string, MethodConf> = 
     K extends `findBy${string}` ? (MethodConf extends { fbMode: 'one' } ? 'findByOne' : 'findByList') :
     K extends `existsBy${string}` ? 'existsBy' :
-    K extends `findUniqueBy${string}` ? 'findUnique' :
     K extends `findUniqueOrThrowBy${string}` ? 'findUniqueOrThrow' :
-    K extends `findFirstBy${string}` | `findFirst${string}` ? 'findFirst' :
+    K extends `findUniqueBy${string}` ? 'findUnique' :
     K extends `findFirstOrThrowBy${string}` | `findFirstOrThrow${string}` ? 'findFirstOrThrow' :
+    K extends `findFirstBy${string}` | `findFirst${string}` ? 'findFirst' :
     K extends `findManyBy${string}` | `findMany${string}` ? 'findMany' :
     K extends `createManyAndReturn${string}` ? 'createManyAndReturn' :
     K extends `createMany${string}` ? 'createMany' :
@@ -231,14 +232,26 @@ type GetMappedMethod<K extends string, MethodConf> =
     K extends `upsertBy${string}` ? 'upsertBy' :
     K extends `deleteManyBy${string}` ? 'deleteManyBy' :
     K extends `deleteBy${string}` ? 'deleteBy' :
+    K extends `countWhere${string}` ? 'countWhere' :
     K extends `countBy${string}` | `count${string}` ? 'count' :
     K extends `findListWhere${string}` ? 'findListWhere' :
     K extends `findWhere${string}` ? 'findWhere' :
+    K extends 'aggregate' ? 'aggregate' :
+    K extends 'groupBy' ? 'groupBy' :
     never;
 
 type ExtractPatternBase<K extends string> = 
     K extends `${string}By${infer R}` ? R :
-    K extends `findFirst${infer R}` | `findFirstOrThrow${infer R}` | `findMany${infer R}` | `createManyAndReturn${infer R}` | `createMany${infer R}` | `create${infer R}` | `count${infer R}` | `findWhere${infer R}` | `findListWhere${infer R}` ? R : '';
+    K extends `findFirstOrThrow${infer R}` ? R :
+    K extends `findFirst${infer R}` ? R :
+    K extends `findMany${infer R}` ? R :
+    K extends `createManyAndReturn${infer R}` ? R :
+    K extends `createMany${infer R}` ? R :
+    K extends `create${infer R}` ? R :
+    K extends `countWhere${infer R}` ? R :
+    K extends `count${infer R}` ? R :
+    K extends `findListWhere${infer R}` ? R :
+    K extends `findWhere${infer R}` ? R : '';
 
 type MethodFactory<T, M extends Prisma.ModelName, K extends string, SelectModels, DefaultSelect extends keyof SelectModels | false, I, MethodConf> = 
     MethodFn<GetMappedMethod<K, MethodConf>, T, M, ExtractPatternBase<K>, SelectModels, DefaultSelect, I>;
@@ -252,10 +265,28 @@ type ExtractSelectModels<Config> = Config extends { selectModels: infer SM } ? S
 type ExtractDefaultSelect<Config> = Config extends { defaultSelectModel: infer D } ? D : never;
 type ExtractRelations<Config> = Config extends { relations: infer R } ? (R extends object ? R : {}) : {};
 
+type AggregateMethod<M extends Prisma.ModelName> = <A extends Prisma.TypeMap['model'][M]['operations']['aggregate']['args']>(
+    prismaArgs: A, 
+    options?: { db?: ClientOrTransaction }
+) => Promise<Prisma.Result<PrismaDelegate<M>, A, 'aggregate'>>;
+
+type GroupByMethod<M extends Prisma.ModelName> = <A extends Prisma.TypeMap['model'][M]['operations']['groupBy']['args']>(
+    prismaArgs: A, 
+    options?: { db?: ClientOrTransaction }
+) => Promise<Prisma.Result<PrismaDelegate<M>, A, 'groupBy'>>;
+
 type DynamicMethods<T, M extends Prisma.ModelName, Config, I> = Config extends { methods: infer Methods }
     ? {
           [K in keyof Methods as Methods[K] extends { map: true } ? K : never]: K extends string
-              ? MethodFactory<T, M, Methods[K] extends { proxyTo: infer P extends string } ? P : K, ExtractSelectModels<Config>, ResolveSelectModel<Methods[K], Config, ExtractSelectModels<Config>>, I, Methods[K]>
+              ? (Methods[K] extends { proxyTo: infer P extends string } ? P : K) extends infer ResolvedKey
+                  ? ResolvedKey extends 'aggregate'
+                      ? AggregateMethod<M>
+                      : ResolvedKey extends 'groupBy'
+                      ? GroupByMethod<M>
+                      : ResolvedKey extends string
+                      ? MethodFactory<T, M, ResolvedKey, ExtractSelectModels<Config>, ResolveSelectModel<Methods[K], Config, ExtractSelectModels<Config>>, I, Methods[K]>
+                      : never
+                  : never
               : never;
       }
     : {};
