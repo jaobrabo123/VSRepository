@@ -94,7 +94,7 @@ type GetFieldType<T, S extends string, I> = ExtractFieldName<S> extends infer Fi
             ? T[FieldName][]
             : NonNullable<T[FieldName]> extends object | any[]
               ? I extends { whereInput: infer W }
-                  ? FieldName extends keyof NonNullable<W> ? NonNullable<W>[FieldName] : T[FieldName]
+                  ? FieldName extends keyof NonNullable<W> ? Exclude<NonNullable<W>[FieldName], undefined> : T[FieldName]
                   : T[FieldName]
               : T[FieldName]
         : ParseRelation<S> extends [infer Rel extends keyof T, any, infer Rest extends string]
