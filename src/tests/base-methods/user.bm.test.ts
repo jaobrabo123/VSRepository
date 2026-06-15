@@ -25,7 +25,7 @@ async function test() {
     });
     console.log("User saved with id:", saveUserWithId);
 
-    const getUser = await userRepository.rawById(mockId);
+    const getUser = await userRepository.findById(mockId);
     console.log('Get user:', getUser);
 
     console.log("Removed user:", await userRepository.remove(mockId));

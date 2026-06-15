@@ -55,12 +55,18 @@ type ValidMethodPatterns =
     | `findWhere${string}` | `findListWhere${string}`
     | 'aggregate' | 'groupBy';
 
-type StringModifiers = 
-    | 'NotStartsWith' | 'StartsWith' | 'NotEndsWith' | 'EndsWith' 
-    | 'NotContains' | 'Contains' | 'NotIn' | 'In' | 'Not';
-
 type StripModifier<S extends string> =
-  S extends `${infer Base}${StringModifiers}Insensitive` ? Base :
+  // Expansão explícita para resolver o problema do 'Insensitive'
+  S extends `${infer Base}NotStartsWithInsensitive` ? Base :
+  S extends `${infer Base}StartsWithInsensitive` ? Base :
+  S extends `${infer Base}NotEndsWithInsensitive` ? Base :
+  S extends `${infer Base}EndsWithInsensitive` ? Base :
+  S extends `${infer Base}NotContainsInsensitive` ? Base :
+  S extends `${infer Base}ContainsInsensitive` ? Base :
+  S extends `${infer Base}NotInInsensitive` ? Base :
+  S extends `${infer Base}InInsensitive` ? Base :
+  S extends `${infer Base}NotInsensitive` ? Base :
+  // Modificadores normais
   S extends `${infer Base}NotStartsWith` ? Base :
   S extends `${infer Base}StartsWith` ? Base :
   S extends `${infer Base}NotEndsWith` ? Base :
@@ -125,8 +131,6 @@ type MapToContractTypes<T, Arr extends string[], I> =
                 : never
         : [];
 
-type HasMultipleANDs<S extends string> = S extends `${string}AND${string}AND${string}` ? true : false;
-
 type SplitAllTokens<S extends string> =
     S extends `${infer L}AND${infer R}` ? [...SplitAllTokens<L>, ...SplitAllTokens<R>] :
     S extends `${infer L}And${infer R}` ? [...SplitAllTokens<L>, ...SplitAllTokens<R>] :
@@ -153,18 +157,26 @@ type ResolveReturnType<M extends string, TSelected> =
     M extends 'findUniqueOrThrow' | 'findFirstOrThrow' | 'create' | 'updateBy' | 'upsertBy' | 'deleteBy' ? TSelected :
     M extends 'count' | 'countWhere' ? number : never;
 
+type GetUpdateInput<I> = I extends { updateInput: infer U } ? U : unknown;
+type GetCreateInput<I> = I extends { createInput: infer C } ? C : unknown;
+type GetCreateManyInput<I> = I extends { createManyInput: infer CM } ? CM : unknown;
+type GetUpdateManyInput<I> = I extends { updateManyInput: infer UM } ? UM : unknown;
+type GetWhereInput<I> = I extends { whereInput: infer W } ? NonNullable<W> : unknown;
+type GetCursorInput<I> = I extends { cursorInput: infer C } ? C : unknown;
+type GetOrderByInput<I> = I extends { orderByInput: infer OB } ? OB : OrderOptions;
+
 type ExtraArgs<M extends string, R extends string, I> = [
-    ...(M extends 'upsertBy' ? [update: I extends { updateInput: infer U } ? U : unknown, create: I extends { createInput: infer C } ? C : unknown]
-      : M extends 'create' ? [data: I extends { createInput: infer C } ? C : unknown]
-      : M extends 'updateBy' ? [data: I extends { updateInput: infer U } ? U : unknown]
-      : M extends 'createMany' | 'createManyAndReturn' ? [data: I extends { createManyInput: infer CM } ? CM : unknown]
-      : M extends 'updateManyBy' | 'updateManyAndReturnBy' ? [data: I extends { updateManyInput: infer UM } ? UM : unknown]
-      : M extends 'findWhere' | 'findListWhere' | 'countWhere' ? [where: I extends { whereInput: infer W } ? NonNullable<W> : unknown]
+    ...(M extends 'upsertBy' ? [update: GetUpdateInput<I>, create: GetCreateInput<I>]
+      : M extends 'create' ? [data: GetCreateInput<I>]
+      : M extends 'updateBy' ? [data: GetUpdateInput<I>]
+      : M extends 'createMany' | 'createManyAndReturn' ? [data: GetCreateManyInput<I>]
+      : M extends 'updateManyBy' | 'updateManyAndReturnBy' ? [data: GetUpdateManyInput<I>]
+      : M extends 'findWhere' | 'findListWhere' | 'countWhere' ? [where: GetWhereInput<I>]
       : []),
-    ...(R extends `${string}PaginatedAndOrdered` ? [pagination: PaginationOptions<I extends { cursorInput: infer C } ? C : unknown>, order: I extends { orderByInput: infer OB } ? OB : OrderOptions]
-      : R extends `${string}OrderedAndPaginated` ? [order: I extends { orderByInput: infer OB } ? OB : OrderOptions, pagination: PaginationOptions<I extends { cursorInput: infer C } ? C : unknown>]
-      : R extends `${string}Paginated` ? [pagination: PaginationOptions<I extends { cursorInput: infer C } ? C : unknown>]
-      : R extends `${string}Ordered` ? [order: I extends { orderByInput: infer OB } ? OB : OrderOptions]
+    ...(R extends `${string}PaginatedAndOrdered` ? [pagination: PaginationOptions<GetCursorInput<I>>, order: GetOrderByInput<I>]
+      : R extends `${string}OrderedAndPaginated` ? [order: GetOrderByInput<I>, pagination: PaginationOptions<GetCursorInput<I>>]
+      : R extends `${string}Paginated` ? [pagination: PaginationOptions<GetCursorInput<I>>]
+      : R extends `${string}Ordered` ? [order: GetOrderByInput<I>]
       : [])
 ];
 
@@ -173,13 +185,17 @@ type PrismaDelegate<M extends Prisma.ModelName> = Uncapitalize<M> extends keyof 
 type FullModelType<M extends Prisma.ModelName> = 
   Prisma.Result<PrismaDelegate<M>, {}, 'findMany'> extends Array<infer U> ? U : never;
 
+type PrecomputedSelects<M extends Prisma.ModelName, SelectModels> = {
+    [S in keyof SelectModels]: Prisma.Result<PrismaDelegate<M>, { select: SelectModels[S] }, 'findMany'> extends Array<infer U> ? U : never
+};
+
 type SelectedModel<M extends Prisma.ModelName, S, SelectModels> = 
     [S] extends [false] 
         ? FullModelType<M>
         : [S] extends [never] 
             ? FullModelType<M> 
             : [S] extends [keyof SelectModels] 
-                ? (Prisma.Result<PrismaDelegate<M>, { select: SelectModels[S] }, 'findMany'> extends Array<infer U> ? U : never)
+                ? PrecomputedSelects<M, SelectModels>[S]
                 : FullModelType<M>;
 
 type CleanFields<R extends string> =
@@ -585,7 +601,7 @@ type InjectedSave<
      * @returns O registro salvo com tipos refinados conforme a entrada.
      */
     save<
-        O extends UpsertWithRelations<T, M, TRelations>, 
+        O, 
         S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'save', TSelects>
     >(
         obj: O & UpsertWithRelations<T, M, TRelations>, 
@@ -608,7 +624,7 @@ type InjectedPatch<
      * @returns O registro atualizado refinado conforme a entrada.
      */
     patch<
-        O extends UpdateWithRelations<T, M, TRelations>,
+        O,
         S extends keyof TSelects | false = ResolveMethodDefaultSelect<Config, C, 'patch', TSelects>
     >(
         pk: T[TPk extends keyof T ? TPk : never],
@@ -840,9 +856,7 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
     /** Mapa dos métodos dinâmicos e suas regras de validação. */
     methods?: {
         [K in keyof (Config extends { methods: infer Meth } ? Meth : {})]: K extends string
-            ? HasMultipleANDs<K> extends true
-                ? MethodConfig<M, Config extends { selectModels: infer SM } ? SM : any> & { proxyTo: ValidMethodPatterns }
-                : MethodConfig<M, Config extends { selectModels: infer SM } ? SM : any> & (K extends ValidMethodPatterns ? {} : { proxyTo: ValidMethodPatterns })
+            ? MethodConfig<M, Config extends { selectModels: infer SM } ? SM : any> & (K extends ValidMethodPatterns ? {} : { proxyTo: ValidMethodPatterns })
             : never;
     };
 };
