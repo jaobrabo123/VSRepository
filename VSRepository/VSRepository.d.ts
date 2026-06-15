@@ -208,9 +208,18 @@ export type MethodOptions<S> = {
 };
 
 /**
- * Versão de `MethodOptions` derivada de um mapa de select models.
+ * Versão de `MethodOptions` derivada diretamente de uma instância configurada de `VSRepository`.
+ *
+ * @template TRepo Instância de `VSRepository` configurada (use `typeof meuVSRepo`).
+ *
+ * @example
+ * const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()(config);
+ * type Opts = MethodOptionsModel<typeof usuarioVSRepo>;
  */
-export type MethodOptionsModel<T> = MethodOptions<keyof T | false>;
+export type MethodOptionsModel<TRepo> =
+    TRepo extends VSRepository<any, any, infer Config>
+        ? MethodOptions<keyof ExtractSelectModels<Config> | false>
+        : never;
 
 type MethodFn<MethodName extends string, T, M extends Prisma.ModelName, R extends string, SelectModels, DefaultSelect extends keyof SelectModels | false, I> = 
     <S extends keyof SelectModels | false = DefaultSelect>(...args: [...ExtractFields<T, CleanFields<R>, I>, ...ExtraArgs<MethodName, R, I>, options?: MethodOptions<S>]) => Promise<ResolveReturnType<MethodName, SelectedModel<M, S, SelectModels>>>;
@@ -494,7 +503,7 @@ type InjectedRemove<
 /**
  * Versão distributiva de `Omit`, preservando unions ao remover propriedades.
  */
-export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
+type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 type ExtractUnionProp<T, K extends PropertyKey> = T extends any ? (K extends keyof T ? T[K] : never) : never;
 
 type ExtractNestedCreateInput<M extends Prisma.ModelName, K extends PropertyKey> = 
@@ -514,7 +523,7 @@ type RelationPayload<TField, TRelationConfig, M extends Prisma.ModelName, K exte
  * Substitui os campos relacionais pelo formato compatível com os modos
  * configurados em `relations`.
  */
-export type UpsertWithRelations<T, M extends Prisma.ModelName, TRelations> = 
+type UpsertWithRelations<T, M extends Prisma.ModelName, TRelations> = 
     DistributiveOmit<ModelUpsertInput<M>, keyof TRelations> & {
         [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K], M, K>;
     };
@@ -542,10 +551,26 @@ type RelationUpdatePayload<TField, TRelationConfig, M extends Prisma.ModelName, 
  * Substitui os campos relacionais pelo formato compatível com os modos
  * configurados em `relations` para fluxos de Update.
  */
-export type UpdateWithRelations<T, M extends Prisma.ModelName, TRelations> = 
+type UpdateWithRelations<T, M extends Prisma.ModelName, TRelations> = 
     DistributiveOmit<PrismaModelInputs<M>['updateInput'], keyof TRelations> & {
         [K in Extract<keyof TRelations, keyof T>]?: RelationUpdatePayload<T[K], TRelations[K], M, K>;
     };
+
+/**
+ * Extrai o tipo de payload do método `save` a partir de uma instância de VSRepository configurada.
+ */
+export type SaveObject<TRepo> = 
+    TRepo extends VSRepository<infer T, infer M, infer Config>
+        ? UpsertWithRelations<T, M, Config extends { relations: infer R } ? (R extends object ? R : {}) : {}>
+        : never;
+
+/**
+ * Extrai o tipo de payload do método `patch` a partir de uma instância de VSRepository configurada.
+ */
+export type PacthObject<TRepo> = 
+    TRepo extends VSRepository<infer T, infer M, infer Config>
+        ? UpdateWithRelations<T, M, Config extends { relations: infer R } ? (R extends object ? R : {}) : {}>
+        : never;
 
 type InjectedSave<
     T, M extends Prisma.ModelName, Config, C extends BuildConfig<any> | undefined,
@@ -757,7 +782,7 @@ export type RepoConfig<T, M extends Prisma.ModelName, SM extends Record<string, 
  *
  * Combina métodos dinâmicos, métodos base e extensões personalizadas.
  */
-export type BuiltRepository<T extends object, M extends Prisma.ModelName, Config extends RepoConfig<T, M, any>, C extends BuildConfig<any> | undefined> = {
+type BuiltRepository<T extends object, M extends Prisma.ModelName, Config extends RepoConfig<T, M, any>, C extends BuildConfig<any> | undefined> = {
     /**
      * Estende o repository com métodos personalizados sem perder a tipagem.
      */

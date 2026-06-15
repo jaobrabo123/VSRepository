@@ -1018,8 +1018,9 @@ import type { MethodOptions, MethodOptionsModel } from "../../generated/vsrepo";
 // S = chave do select model ou false
 type Opts = MethodOptions<"public" | "minimal">;
 
-// MethodOptionsModel<T> — versão derivada do tipo do repository
-type OptsModel = MethodOptionsModel<typeof usuarioSelectModels>;
+// MethodOptionsModel<TRepo> — derivado diretamente de uma instância VSRepository configurada
+const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()(config);
+type OptsModel = MethodOptionsModel<typeof usuarioVSRepo>;
 ```
 
 ### Tipos de configuração
@@ -1031,7 +1032,6 @@ import type {
   BuildConfig,
   RepositoryRelations,
   ExtractRelationConfig,
-  UpsertWithRelations,
 } from "../../generated/vsrepo";
 
 // Configuração de um método dinâmico
@@ -1048,18 +1048,12 @@ type UsuarioRelations = RepositoryRelations<Usuario>;
 
 // Configuração de relação inferida a partir de um campo
 type PerfilRelationConfig = ExtractRelationConfig<Usuario["perfil"]>;
-
-// Payload do save com relações
-type UsuarioComRelacoes = UpsertWithRelations<Usuario, "usuario", typeof relations>;
 ```
 
 ### Tipo do repository construído
 
 ```ts
-import type { BuiltRepository, RepositoryOf } from "../../generated/vsrepo";
-
-// Tipo completo de um repository construído
-type MeuRepo = BuiltRepository<Usuario, "usuario", typeof config, typeof buildConfig>;
+import type { RepositoryOf } from "../../generated/vsrepo";
 
 // Inferência a partir de uma instância VSRepository (útil para injeção de dependência)
 const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()({ ... });
@@ -1080,14 +1074,30 @@ const extension = { buscarPorDominio: (dominio: string) => Promise<Usuario[]> };
 type UsuarioRepositoryExtended = RepositoryOf<typeof usuarioVSRepo, undefined, typeof extension>;
 ```
 
-### Tipo auxiliar
+### Tipos do payload dos métodos `save` e `patch`
+
+Use `SaveObject` e `PatchObject` para extrair o tipo do payload esperado pelos métodos `save` e `patch` diretamente a partir de uma instância `VSRepository` configurada. Esses tipos já levam em conta as relações configuradas.
 
 ```ts
-import type { DistributiveOmit } from "../../generated/vsrepo";
+import type { SaveObject, PacthObject } from "../../generated/vsrepo";
 
-// Omit distributivo — preserva unions ao omitir propriedades
-type SemEmail = DistributiveOmit<Usuario | Perfil, "email">;
+const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()({
+  tableName: "usuario",
+  pkName: "id",
+  relations: {
+    perfil: { pk: "id", mode: "oto", restriction: "set" },
+    postagens: { pk: "id", mode: "otm", restriction: "add" },
+  },
+});
+
+// Tipo do objeto aceito pelo .save()
+type UsuarioSavePayload = SaveObject<typeof usuarioVSRepo>;
+
+// Tipo do objeto aceito pelo .patch()
+type UsuarioPatchPayload = PacthObject<typeof usuarioVSRepo>;
 ```
+
+> Útil para tipar DTOs, funções auxiliares ou serviços que chamam `save`/`patch` e precisam do tipo correto do payload sem referenciar diretamente os tipos internos do Prisma.
 
 ---
 
