@@ -497,6 +497,8 @@ Os filtros são sufixos aplicados ao nome do campo dentro do método. O campo em
 | `GreaterThanEqual` | `gte`                 | sim                  |
 | `LessThan`         | `lt`                  | sim                  |
 | `LessThanEqual`    | `lte`                 | sim                  |
+| `Between`          | `gte` + `lte`         | sim (tupla `[min, max]`) |
+| `NotBetween`       | `not.gte` + `not.lte` | sim (tupla `[min, max]`) |
 | `IsNull`           | `null`                | não                  |
 | `IsNotNull`        | `not: null`           | não                  |
 | `IsTrue`           | `true`                | não                  |
@@ -509,6 +511,37 @@ Os filtros são sufixos aplicados ao nome do campo dentro do método. O campo em
 findByNomeContainsInsensitive    // { nome: { contains: valor, mode: 'insensitive' } }
 findByEmailStartsWithInsensitive // { email: { startsWith: valor, mode: 'insensitive' } }
 findByNomeInsensitive            // { nome: { equals: valor, mode: 'insensitive' } }
+```
+
+`Between` e `NotBetween` recebem uma **tupla `[minValue, maxValue]`** e são ideais para filtros de intervalo em números, datas ou qualquer campo comparável:
+
+```ts
+methods: {
+  findManyByIdadeBetween:          { map: true },
+  findManyBySalarioNotBetween:     { map: true },
+  findManyByCriadoEmBetween:       { map: true },
+}
+
+// Uso
+await usuarioRepository.findManyByIdadeBetween([18, 65]);
+await usuarioRepository.findManyBySalarioNotBetween([1000, 5000]);
+await usuarioRepository.findManyByCriadoEmBetween([new Date("2024-01-01"), new Date("2024-12-31")]);
+```
+
+Gera (`findManyByIdadeBetween`):
+
+```ts
+{
+  idade: { gte: 18, lte: 65 }
+}
+```
+
+Gera (`findManyBySalarioNotBetween`):
+
+```ts
+{
+  salario: { not: { gte: 1000, lte: 5000 } }
+}
 ```
 
 O sufixo `Optional` pode ser adicionado a qualquer campo para tornar o argumento opcional:
@@ -621,13 +654,17 @@ Exemplos:
 
 ```ts
 methods: {
-  findByPostagensSomeTituloContains:  { map: true },   // postagens: { some: { titulo: { contains: valor } } }
-  findByPerfilWith:                   { map: true },   // perfil: { is: {} }
-  findByPerfilWithout:                { map: true },   // perfil: { isNot: {} }
-  findByPostagensSome:                { map: true },   // postagens: { some: {} }
-  findByPostagensEveryAtivoIsTrue:    { map: true },   // postagens: { every: { ativo: true } }
+  findByPostagensSomeTituloContains:  { map: true },   // postagens: { some: { titulo: { contains: valor } } } >> (Busca usuários que o título de alguma postagem contém um valor)
+  findByPerfilWithDescricaoIsNotNull: { map: true },   // perfil: { is: { descricao: { not: null } } } >> (Busca usuários em que a descrição do perfil não é nula)
+  findByPerfilWithout:                { map: true },   // perfil: { isNot: {} } >> (Busca usuários sem perfil)
+  findByPostagensSome:                { map: true },   // postagens: { some: {} } >> (Busca usuários com alguma postagem)
+  findByPostagensEveryAtivoIsTrue:    { map: true },   // postagens: { every: { ativo: true } } >> (Busca usuários que todas as postagens estão ativas)
+  findByPostagensNone:                { map: true },   // postagens: { none: {} } >> (Busca usuários sem postagens)
 }
 ```
+
+> [!NOTE]
+> Teoricamente você pode usar `Every` sem `Field` (ele geraria { every: {} }), porém isso não produz um filtro efetivo. A condição é considerada verdadeira para qualquer relação, inclusive quando não existem registros relacionados, tornando o resultado equivalente a não aplicar filtro algum.
 
 ---
 

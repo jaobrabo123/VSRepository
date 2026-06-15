@@ -2,7 +2,6 @@ import prisma from "../db";
 import { setupVSRepo, type WhereModel, type SelectModels, type SelectModel } from "../../VSRepository/VSRepository";
 import { commonUserToRelationModel } from "./commonUser.repository";
 import type { UserGetPayload } from "../../generated/prisma/models";
-import type { User } from "@vsrepo/prisma/types";
 
 const userPublicModel = {
     id: true,
@@ -26,7 +25,9 @@ export const userRequiredWhere = {
     active: true
 } satisfies WhereModel<"User">;
 
-export const userVSRepo = setupVSRepo<UserGetPayload<{ include: { commonUser: true } }>, 'User'>()({
+type User = UserGetPayload<{ include: { commonUser: true } }>;
+
+export const userVSRepo = setupVSRepo<User, 'User'>()({
     tableName: 'user',
     pkName: 'id',
     selectModels: userSelectModels,
@@ -55,7 +56,8 @@ export const userVSRepo = setupVSRepo<UserGetPayload<{ include: { commonUser: tr
         findFirstOrThrowById: { map: true },
         aggregate: { map: true },
         groupBy: { map: true },
-        countWhere: { map: true }
+        countWhere: { map: true },
+        findByCommonUserWithoutCreatedAtNotBetweenOptional: { map: true }
     },
 });
 
@@ -69,4 +71,7 @@ const userRepository = userVSRepo.build(prisma, {
         return user[0];
     }
 }))
+
+console.log(await userRepository.findByCommonUserWithoutCreatedAtNotBetweenOptional([new Date(), new Date()]))
+
 export default userRepository;

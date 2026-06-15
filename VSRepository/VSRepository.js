@@ -101,7 +101,23 @@ export class VSRepository {
             const whereParams = [];
             const otherParams = [];
 
-            if(keyToMap.startsWith('findUniqueOrThrowBy')) {
+            if(keyToMap === 'aggregate') {
+                keyToMapReplaced = keyToMap.replace('aggregate', '')
+                ignoreSelect = true;
+                ignoreWhere = true;
+                method = 'aggregate';
+                prismaArgsIndex = 0;
+                otherParams.push('prismaArgs');
+                argsCount++;
+            } else if(keyToMap === 'groupBy') {
+                keyToMapReplaced = keyToMap.replace('groupBy', '')
+                ignoreSelect = true;
+                ignoreWhere = true;
+                method = 'groupBy';
+                prismaArgsIndex = 0;
+                otherParams.push('prismaArgs');
+                argsCount++;
+            } else if(keyToMap.startsWith('findUniqueOrThrowBy')) {
                 keyToMapReplaced = keyToMap.replace('findUniqueOrThrowBy', '');
                 method = 'findUniqueOrThrow';
             } else if(keyToMap.startsWith('findUniqueBy')) {
@@ -244,22 +260,6 @@ export class VSRepository {
                 keyToMapReplaced = keyToMap.replace('findBy', '');
                 ignoreOrderByAndPagination = false;
                 method = methods[originalKey].fbMode === 'one' ? 'findFirst' : 'findMany';
-            } else if(keyToMap === 'aggregate') {
-                keyToMapReplaced = keyToMap.replace('aggregate', '')
-                ignoreSelect = true;
-                ignoreWhere = true;
-                method = 'aggregate';
-                prismaArgsIndex = 0;
-                otherParams.push('prismaArgs');
-                argsCount++;
-            } else if(keyToMap === 'groupBy') {
-                keyToMapReplaced = keyToMap.replace('groupBy', '')
-                ignoreSelect = true;
-                ignoreWhere = true;
-                method = 'groupBy';
-                prismaArgsIndex = 0;
-                otherParams.push('prismaArgs');
-                argsCount++;
             } else {
                 throw new VSRepoBuildError(`[VSRepository] (build) Unknown method: ${keyToMap}.`);
             }
@@ -361,7 +361,15 @@ export class VSRepository {
                             keySplitedAnd = keySplitedAnd.replace('Optional', '');
                         }
 
-                        if(keySplitedAnd.includes('NotStartsWith')){
+                        if(keySplitedAnd.includes('NotBetween')){
+                            buildedWhere.pushProperty = 'not';
+                            buildedWhere.betweenMode = true;
+                            keySplitedAnd = keySplitedAnd.replace('NotBetween', '')
+                        } else if(keySplitedAnd.includes('Between')){
+                            buildedWhere.pushProperty = '$$$';
+                            buildedWhere.betweenMode = true;
+                            keySplitedAnd = keySplitedAnd.replace('Between', '')
+                        } else if(keySplitedAnd.includes('NotStartsWith')){
                             buildedWhere.pushProperty = 'not.startsWith';
                             keySplitedAnd = keySplitedAnd.replace('NotStartsWith', '')
                         } else if(keySplitedAnd.includes('StartsWith')){
@@ -562,7 +570,7 @@ export class VSRepository {
                     }
 
                     whereParams.push(argName);
-                    return { context, otherProps, argName, autoVal: arg.autoInjectVal };
+                    return { context, otherProps, argName, autoVal: arg.autoInjectVal, betweenMode: arg.betweenMode };
                 });
                 if(showWorking) {
                     console.log(`[VSRepository] (build) Where object resolved to ${keyToMap}:\n`, JSON.stringify(whereResolved, null, 2));
@@ -663,6 +671,10 @@ export class VSRepository {
                                 if(currentWhereRslvd.autoVal !== undefined) {
                                     current[context[i]] = currentWhereRslvd.autoVal;
                                     adjust++
+                                } else if (currentWhereRslvd.betweenMode && args[j - adjust] !== undefined) {
+                                    current[context[i]] = {};
+                                    current[context[i]]["gte"] = args[j - adjust][0];
+                                    current[context[i]]["lte"] = args[j - adjust][1];
                                 } else {
                                     current[context[i]] = args[j - adjust];
                                 }

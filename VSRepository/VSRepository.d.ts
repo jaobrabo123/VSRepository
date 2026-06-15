@@ -75,6 +75,8 @@ type StripModifier<S extends string> =
   S extends `${infer Base}Contains` ? Base :
   S extends `${infer Base}NotIn` ? Base :
   S extends `${infer Base}In` ? Base :
+  S extends `${infer Base}NotBetween` ? Base :
+  S extends `${infer Base}Between` ? Base :
   S extends `${infer Base}Not` ? Base :
   S extends `${infer Base}LessThanEqual` ? Base :
   S extends `${infer Base}LessThan` ? Base :
@@ -87,6 +89,8 @@ type ExtractFieldName<S extends string> = Uncapitalize<StripModifier<S>>;
 
 type IsArrayFilter<S extends string> = S extends `${string}${'NotIn' | 'In'}` ? true : false;
 
+type IsBetweenFilter<S extends string> = S extends `${string}${'NotBetween' | 'Between'}` ? true : false;
+
 type ParseRelation<S extends string> =
     S extends `${infer Rel}Without${infer Rest}` ? [Uncapitalize<Rel>, 'isNot', Rest] :
     S extends `${infer Rel}With${infer Rest}` ? [Uncapitalize<Rel>, 'is', Rest] :
@@ -98,11 +102,13 @@ type GetFieldType<T, S extends string, I> = ExtractFieldName<S> extends infer Fi
     ? FieldName extends keyof T
         ? IsArrayFilter<S> extends true
             ? T[FieldName][]
-            : NonNullable<T[FieldName]> extends object | any[]
-              ? I extends { whereInput: infer W }
-                  ? FieldName extends keyof NonNullable<W> ? Exclude<NonNullable<W>[FieldName], undefined> : T[FieldName]
-                  : T[FieldName]
-              : T[FieldName]
+            : IsBetweenFilter<S> extends true
+              ? [NonNullable<T[FieldName]>, NonNullable<T[FieldName]>]
+              : NonNullable<T[FieldName]> extends object | any[]
+                ? I extends { whereInput: infer W }
+                    ? FieldName extends keyof NonNullable<W> ? Exclude<NonNullable<W>[FieldName], undefined> : T[FieldName]
+                    : T[FieldName]
+                : T[FieldName]
         : ParseRelation<S> extends [infer Rel extends keyof T, any, infer Rest extends string]
             ? GetFieldType<NonNullable<T[Rel]> extends any[] ? NonNullable<T[Rel]>[number] : NonNullable<T[Rel]>, Rest, unknown>
             : unknown
@@ -144,7 +150,7 @@ type ExtractFields<T, R extends string, I> =
 
 type FilterNonEmpty<T extends unknown[]> = 
     T extends [infer First, ...infer Rest]
-        ? First extends '' 
+        ? [First] extends ['']
             ? FilterNonEmpty<Rest>
             : [First, ...FilterNonEmpty<Rest>]
         : [];
