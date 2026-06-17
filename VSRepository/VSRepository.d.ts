@@ -593,7 +593,7 @@ export type SaveObject<TInput, TRepo> =
 /**
  * Extrai o tipo de payload do método `patch` a partir de uma instância de VSRepository configurada.
  */
-export type PacthObject<TInput, TRepo> = 
+export type PatchObject<TInput, TRepo> = 
     TRepo extends VSRepository<infer T, infer M, infer Config>
         ? (Config extends { relations: infer R } ? (R extends object ? R : {}) : {}) extends infer TRelations
             ? DistributiveOmit<TInput, keyof TRelations> & {
