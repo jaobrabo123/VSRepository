@@ -2,7 +2,7 @@
 
 ![npm](https://img.shields.io/npm/v/vsrepo?style=flat-square)
 ![NPM License](https://img.shields.io/npm/l/vsrepo)
-![NPM Downloads](https://img.shields.io/npm/d18m/vsrepo.svg)
+![NPM Downloads](https://img.shields.io/npm/dt/vsrepo?style=flat-square)
 
 Biblioteca de repository pattern para projetos que usam **Prisma**, com suporte completo a **TypeScript** e **type inference** automático.
 
