@@ -1,7 +1,7 @@
 # VSRepository
 
 ![npm](https://img.shields.io/npm/v/vsrepo?style=flat-square)
-![license](https://img.shields.io/github/license/jaobrabo123/vsrepository?style=flat-square&v=1)
+![NPM License](https://img.shields.io/npm/l/vsrepo)
 ![NPM Downloads](https://img.shields.io/npm/d18m/vsrepo.svg)
 
 Biblioteca de repository pattern para projetos que usam **Prisma**, com suporte completo a **TypeScript** e **type inference** automático.
@@ -1113,10 +1113,11 @@ type UsuarioRepositoryExtended = RepositoryOf<typeof usuarioVSRepo, undefined, t
 
 ### Tipos do payload dos métodos `save` e `patch`
 
-Use `SaveObject` e `PatchObject` para extrair o tipo do payload esperado pelos métodos `save` e `patch` diretamente a partir de uma instância `VSRepository` configurada. Esses tipos já levam em conta as relações configuradas.
+Use `SaveObject` e `PatchObject` para extrair o tipo do payload esperado pelos métodos `save` e `patch` diretamente a partir de uma instância `VSRepository` configurada. Esses tipos combinam o input base do Prisma com as relações configuradas no repository.
 
 ```ts
-import type { SaveObject, PacthObject } from "../../generated/vsrepo";
+import type { SaveObject, PatchObject } from "../../generated/vsrepo";
+import type { Prisma } from "../../generated/prisma/client";
 
 const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()({
   tableName: "usuario",
@@ -1128,10 +1129,10 @@ const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()({
 });
 
 // Tipo do objeto aceito pelo .save()
-type UsuarioSavePayload = SaveObject<typeof usuarioVSRepo>;
+type UsuarioSavePayload = SaveObject<Prisma.UsuarioCreateInput, typeof usuarioVSRepo>;
 
 // Tipo do objeto aceito pelo .patch()
-type UsuarioPatchPayload = PacthObject<typeof usuarioVSRepo>;
+type UsuarioPatchPayload = PatchObject<Prisma.UsuarioUpdateInput, typeof usuarioVSRepo>;
 ```
 
 > Útil para tipar DTOs, funções auxiliares ou serviços que chamam `save`/`patch` e precisam do tipo correto do payload sem referenciar diretamente os tipos internos do Prisma.

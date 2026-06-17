@@ -550,15 +550,15 @@ type UpsertWithRelations<T, M extends Prisma.ModelName, TRelations> =
         [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K], M, K>;
     };
 
+type CleanNestedInput<T> = T extends any
+    ? T extends { data: infer D }
+        ? CleanNestedInput<Exclude<D, any[]>>
+        : Omit<T, 'where' | 'data'>
+    : never;
+
 type ExtractNestedUpdateInput<M extends Prisma.ModelName, K extends PropertyKey> = 
     NonNullable<ExtractUnionProp<PrismaModelInputs<M>['updateInput'], K>> extends { update?: infer U } 
-        ? (
-            Exclude<U, any[]> extends infer Obj 
-                ? Obj extends { where: any, data: infer D } 
-                    ? Exclude<D, any[]> 
-                    : Obj
-                : never
-          )
+        ? CleanNestedInput<Exclude<U, any[]>>
         : never;
 
 type RelationUpdatePayload<TField, TRelationConfig, M extends Prisma.ModelName, K extends PropertyKey> = NonNullable<TField> extends any[]
@@ -581,17 +581,25 @@ type UpdateWithRelations<T, M extends Prisma.ModelName, TRelations> =
 /**
  * Extrai o tipo de payload do método `save` a partir de uma instância de VSRepository configurada.
  */
-export type SaveObject<TRepo> = 
+export type SaveObject<TInput, TRepo> = 
     TRepo extends VSRepository<infer T, infer M, infer Config>
-        ? UpsertWithRelations<T, M, Config extends { relations: infer R } ? (R extends object ? R : {}) : {}>
+        ? (Config extends { relations: infer R } ? (R extends object ? R : {}) : {}) extends infer TRelations
+            ? DistributiveOmit<TInput, keyof TRelations> & {
+                  [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K], M, K>;
+              }
+            : never
         : never;
 
 /**
  * Extrai o tipo de payload do método `patch` a partir de uma instância de VSRepository configurada.
  */
-export type PacthObject<TRepo> = 
+export type PacthObject<TInput, TRepo> = 
     TRepo extends VSRepository<infer T, infer M, infer Config>
-        ? UpdateWithRelations<T, M, Config extends { relations: infer R } ? (R extends object ? R : {}) : {}>
+        ? (Config extends { relations: infer R } ? (R extends object ? R : {}) : {}) extends infer TRelations
+            ? DistributiveOmit<TInput, keyof TRelations> & {
+                  [K in Extract<keyof TRelations, keyof T>]?: RelationUpdatePayload<T[K], TRelations[K], M, K>;
+              }
+            : never
         : never;
 
 type InjectedSave<

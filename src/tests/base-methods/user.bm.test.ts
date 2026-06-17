@@ -1,8 +1,8 @@
-import { createId } from "@paralleldrive/cuid2"
+// import { createId } from "@paralleldrive/cuid2"
 import userRepository from "../../repositories/user.repository"
 
 async function test() {
-    const mockId = createId();
+    const mockId = crypto.randomUUID();
 
     const resultGroupBy = await userRepository.groupBy({
         by: "id",
@@ -44,11 +44,17 @@ async function test() {
         name: 'new user',
         userType: "COMMON",
         commonUser: {
-            id: createId(),
+            id: crypto.randomUUID(),
             birthDate: new Date('2000-12-10'),
-            image: 'url.com/imagem'
+            image: 'url.com/imagem',
         }
     }, {selectModel: 'commonUser'});
+
+    userRepository.patch("123", {
+        commonUser: {
+            
+        }
+    }).catch()
 
 
     console.log("Common user:", commonUser)
