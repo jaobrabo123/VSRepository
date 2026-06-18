@@ -862,7 +862,7 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
     /** Mapa de select models disponíveis. */
     selectModels?: SelectModels<M>;
     /** Select model padrão. Deve ser uma chave dos `selectModels`. */
-    defaultSelectModel?: string;
+    defaultSelectModel?: Extract<keyof (Config extends { selectModels: infer SM } ? SM : {}), string>;
     /** Filtros globais aplicados às queries do repository. */
     requiredWhere?: WhereModel<M>;
     /** Relações gerenciadas automaticamente pelo `save` e pelo `patch`. */
@@ -883,5 +883,5 @@ export declare function setupVSRepo<T extends object, M extends Prisma.ModelName
     const SM extends Record<string, SelectModel<M>>,
     const Config extends RepoConfig<T, M, SM>
 >(
-  config: Config & ValidateRepoConfig<T, M, Config>
+  config: Config extends ValidateRepoConfig<T, M, Config> ? Config : ValidateRepoConfig<T, M, Config>
 ) => VSRepository<T, M, Config>;
