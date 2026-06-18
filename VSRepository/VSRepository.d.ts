@@ -390,7 +390,7 @@ export type MethodConfig<M extends Prisma.ModelName, SelectModels = any> = {
     /** Define se o método será exposto no repository. */
     readonly map: boolean;
     /** Sobrescreve o `defaultSelectModel` apenas para este método. */
-    readonly selectModel?: keyof SelectModels | false;
+    readonly selectModel?: string | false;
     /** Controla se o método combina (`extending`) ou sobrescreve (`overwrite`) o `requiredWhere`. */
     readonly whereType?: 'overwrite' | 'extending';
     /** Redireciona a lógica para outro padrão de método válido. */
@@ -862,7 +862,7 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
     /** Mapa de select models disponíveis. */
     selectModels?: SelectModels<M>;
     /** Select model padrão. Deve ser uma chave dos `selectModels`. */
-    defaultSelectModel?: Extract<keyof (Config extends { selectModels: infer SM } ? SM : {}), string>;
+    defaultSelectModel?: string;
     /** Filtros globais aplicados às queries do repository. */
     requiredWhere?: WhereModel<M>;
     /** Relações gerenciadas automaticamente pelo `save` e pelo `patch`. */
@@ -883,7 +883,5 @@ export declare function setupVSRepo<T extends object, M extends Prisma.ModelName
     const SM extends Record<string, SelectModel<M>>,
     const Config extends RepoConfig<T, M, SM>
 >(
-    config: Config extends ValidateRepoConfig<T, M, Config>
-        ? Config & ValidateRepoConfig<T, M, Config>
-        : ValidateRepoConfig<T, M, Config>,
+  config: Config & ValidateRepoConfig<T, M, Config>
 ) => VSRepository<T, M, Config>;
