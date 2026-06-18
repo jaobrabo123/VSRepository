@@ -883,5 +883,7 @@ export declare function setupVSRepo<T extends object, M extends Prisma.ModelName
     const SM extends Record<string, SelectModel<M>>,
     const Config extends RepoConfig<T, M, SM>
 >(
-  config: Config extends ValidateRepoConfig<T, M, Config> ? Config : ValidateRepoConfig<T, M, Config>
+    config: Config extends ValidateRepoConfig<T, M, Config>
+        ? Config & ValidateRepoConfig<T, M, Config>
+        : ValidateRepoConfig<T, M, Config>,
 ) => VSRepository<T, M, Config>;
