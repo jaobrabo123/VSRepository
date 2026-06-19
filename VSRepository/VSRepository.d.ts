@@ -53,6 +53,8 @@ type ValidMethodPatterns =
     | `updateBy${string}` | `upsertBy${string}` | `deleteManyBy${string}`
     | `deleteBy${string}` | `countBy${string}` | `count${string}` | `countWhere${string}`
     | `findWhere${string}` | `findListWhere${string}`
+    | `existsWhere${string}` | `updateManyWhere${string}` | `deleteManyWhere${string}`
+    | `findOneWhere${string}` | `findOneBy${string}` | `updateManyAndReturnWhere${string}`
     | 'aggregate' | 'groupBy';
 
 type StripModifier<S extends string> =
@@ -156,10 +158,10 @@ type FilterNonEmpty<T extends unknown[]> =
         : [];
 
 type ResolveReturnType<M extends string, TSelected> =
-    M extends 'existsBy' ? boolean :
-    M extends 'createMany' | 'updateManyBy' | 'deleteManyBy' ? { count: number } :
-    M extends 'findMany' | 'createManyAndReturn' | 'updateManyAndReturnBy' | 'findListWhere' | 'findByList' ? TSelected[] :
-    M extends 'findUnique' | 'findFirst' | 'findWhere' | 'findByOne' ? TSelected | null :
+    M extends 'existsBy' | 'existsWhere' ? boolean :
+    M extends 'createMany' | 'updateManyBy' | 'deleteManyBy' | 'updateManyWhere' | 'deleteManyWhere' ? { count: number } :
+    M extends 'findMany' | 'createManyAndReturn' | 'updateManyAndReturnBy' | 'updateManyAndReturnWhere' | 'findListWhere' | 'findByList' ? TSelected[] :
+    M extends 'findUnique' | 'findFirst' | 'findWhere' | 'findByOne' | 'findOneBy' | 'findOneWhere' ? TSelected | null :
     M extends 'findUniqueOrThrow' | 'findFirstOrThrow' | 'create' | 'updateBy' | 'upsertBy' | 'deleteBy' ? TSelected :
     M extends 'count' | 'countWhere' ? number : never;
 
@@ -177,7 +179,8 @@ type ExtraArgs<M extends string, R extends string, I> = [
       : M extends 'updateBy' ? [data: GetUpdateInput<I>]
       : M extends 'createMany' | 'createManyAndReturn' ? [data: GetCreateManyInput<I>]
       : M extends 'updateManyBy' | 'updateManyAndReturnBy' ? [data: GetUpdateManyInput<I>]
-      : M extends 'findWhere' | 'findListWhere' | 'countWhere' ? [where: GetWhereInput<I>]
+      : M extends 'findWhere' | 'findListWhere' | 'countWhere' | 'existsWhere' | 'deleteManyWhere' | 'findOneWhere' ? [where: GetWhereInput<I>]
+      : M extends 'updateManyWhere' | 'updateManyAndReturnWhere' ? [where: GetWhereInput<I>, data: GetUpdateManyInput<I>]
       : []),
     ...(R extends `${string}PaginatedAndOrdered` ? [pagination: PaginationOptions<GetCursorInput<I>>, order: GetOrderByInput<I>]
       : R extends `${string}OrderedAndPaginated` ? [order: GetOrderByInput<I>, pagination: PaginationOptions<GetCursorInput<I>>]
@@ -248,7 +251,9 @@ type MethodFn<MethodName extends string, T, M extends Prisma.ModelName, R extend
 
 type GetMappedMethod<K extends string, MethodConf> = 
     K extends `findBy${string}` ? (MethodConf extends { fbMode: 'one' } ? 'findByOne' : 'findByList') :
+    K extends `findOneBy${string}` ? 'findOneBy' :
     K extends `existsBy${string}` ? 'existsBy' :
+    K extends `existsWhere${string}` ? 'existsWhere' :
     K extends `findUniqueOrThrowBy${string}` ? 'findUniqueOrThrow' :
     K extends `findUniqueBy${string}` ? 'findUnique' :
     K extends `findFirstOrThrowBy${string}` | `findFirstOrThrow${string}` ? 'findFirstOrThrow' :
@@ -258,14 +263,18 @@ type GetMappedMethod<K extends string, MethodConf> =
     K extends `createMany${string}` ? 'createMany' :
     K extends `create${string}` ? 'create' :
     K extends `updateManyAndReturnBy${string}` ? 'updateManyAndReturnBy' :
+    K extends `updateManyAndReturnWhere${string}` ? 'updateManyAndReturnWhere' :
     K extends `updateManyBy${string}` ? 'updateManyBy' :
+    K extends `updateManyWhere${string}` ? 'updateManyWhere' :
     K extends `updateBy${string}` ? 'updateBy' :
     K extends `upsertBy${string}` ? 'upsertBy' :
     K extends `deleteManyBy${string}` ? 'deleteManyBy' :
+    K extends `deleteManyWhere${string}` ? 'deleteManyWhere' :
     K extends `deleteBy${string}` ? 'deleteBy' :
     K extends `countWhere${string}` ? 'countWhere' :
     K extends `countBy${string}` | `count${string}` ? 'count' :
     K extends `findListWhere${string}` ? 'findListWhere' :
+    K extends `findOneWhere${string}` ? 'findOneWhere' :
     K extends `findWhere${string}` ? 'findWhere' :
     K extends 'aggregate' ? 'aggregate' :
     K extends 'groupBy' ? 'groupBy' :
@@ -282,10 +291,20 @@ type ExtractPatternBase<K extends string> =
     K extends `countWhere${infer R}` ? R :
     K extends `count${infer R}` ? R :
     K extends `findListWhere${infer R}` ? R :
-    K extends `findWhere${infer R}` ? R : '';
+    K extends `findOneWhere${infer R}` ? R :
+    K extends `findWhere${infer R}` ? R :
+    K extends `existsWhere${infer R}` ? R :
+    K extends `updateManyWhere${infer R}` ? R :
+    K extends `updateManyAndReturnWhere${infer R}` ? R :
+    K extends `deleteManyWhere${infer R}` ? R : '';
 
 type MethodFactory<T, M extends Prisma.ModelName, K extends string, SelectModels, DefaultSelect extends keyof SelectModels | false, I, MethodConf> = 
-    MethodFn<GetMappedMethod<K, MethodConf>, T, M, ExtractPatternBase<K>, SelectModels, DefaultSelect, I>;
+    K extends `findWhere${string}`
+        ? {
+            /** @deprecated Use findOneWhere em seu lugar. */
+            <S extends keyof SelectModels | false = DefaultSelect>(...args: [...ExtractFields<T, CleanFields<ExtractPatternBase<K>>, I>, ...ExtraArgs<GetMappedMethod<K, MethodConf>, ExtractPatternBase<K>, I>, options?: MethodOptions<S>]): Promise<ResolveReturnType<GetMappedMethod<K, MethodConf>, SelectedModel<M, S, SelectModels>>>;
+          }
+        : MethodFn<GetMappedMethod<K, MethodConf>, T, M, ExtractPatternBase<K>, SelectModels, DefaultSelect, I>;
 
 type ResolveSelectModel<MethodConf, GlobalConf, SelectModels> = 
     MethodConf extends { selectModel: infer S } ? (S extends false ? false : S extends keyof SelectModels ? S : never) : 
@@ -397,7 +416,10 @@ export type MethodConfig<M extends Prisma.ModelName, SelectModels = any> = {
     readonly proxyTo?: ValidMethodPatterns;
     /** Adiciona um `where` extra além do `requiredWhere`. */
     readonly pushWhere?: WhereModel<M>;
-    /** Define se `findBy` retorna um item (`one`) ou uma lista (`list`). */
+    /** 
+     * Define se `findBy` retorna um item (`one`) ou uma lista (`list`).
+     * @deprecated Use findOneBy se só quiser retornar um.
+     */
     readonly fbMode?: 'one' | 'list';
     /** Injeta uma ordenação fixa automaticamente na query. */
     readonly injectOrdenation?: OrdenationModel<M>;

@@ -43,11 +43,11 @@ export class VSRepository {
 
     extend(extensionFunc) {
         if(typeof extensionFunc !== 'function'){
-            throw new VSRepoExtendError(`[VSRepository] (extend) 'extensionFunc' must be a valid funcion.`);
+            throw new VSRepoExtendError(`[VSRepository] (${this.tableName}: extend) 'extensionFunc' must be a valid funcion.`);
         }
         const extension = extensionFunc(this);
         if(typeof extension !== 'object' || extension === null){
-            throw new VSRepoExtendError(`[VSRepository] (extend) The return of the 'extensionFunc' must be a valid object.`)
+            throw new VSRepoExtendError(`[VSRepository] (${this.tableName}: extend) The return of the 'extensionFunc' must be a valid object.`)
         }
 
         const extended = Object.assign(Object.create(this), extension);
@@ -61,7 +61,7 @@ export class VSRepository {
 
     build(prisma, config = { freeze: true, showWorking: false }) {
         if(typeof prisma !== 'object' || prisma === null) {
-            throw new VSRepoBuildError(`[VSRepository] (build) 'prisma' must be a valid Prisma Client.`);
+            throw new VSRepoBuildError(`[VSRepository] (${this.tableName}: build) 'prisma' must be a valid Prisma Client.`);
         }
 
         const buildInstance = Object.create(this);
@@ -76,7 +76,7 @@ export class VSRepository {
         const repositoryKeysToMap = Object.keys(methods);
 
         if(showWorking) {
-            console.log(`[VSRepository] (build) Keys to map:`, JSON.stringify(repositoryKeysToMap, null, 2));
+            console.log(`[VSRepository] (${buildInstance.tableName}: build) Keys to map:`, JSON.stringify(repositoryKeysToMap, null, 2));
         }
 
         for (let keyToMap of repositoryKeysToMap) {
@@ -170,6 +170,16 @@ export class VSRepository {
                 ignoreSelect = true;
                 existsMode = true;
                 method = 'findFirst';
+            } else if(keyToMap.startsWith('existsWhere')) {
+                keyToMapReplaced = keyToMap.replace('existsWhere', '');
+                ignoreSelect = true;
+                existsMode = true;
+                ignoreWhere = true;
+                onlyBaseWheres = true;
+                method = 'findFirst';
+                whereIndex = 0;
+                otherParams.push('where');
+                argsCount += 1;
             } else if(keyToMap.startsWith('findManyBy')) {
                 keyToMapReplaced = keyToMap.replace('findManyBy', '');
                 ignoreOrderByAndPagination = false;
@@ -210,6 +220,15 @@ export class VSRepository {
                 dataIndex = -2;
                 otherParams.push('data');
                 argsCount++;
+            } else if(keyToMap.startsWith('updateManyAndReturnWhere')) {
+                keyToMapReplaced = keyToMap.replace('updateManyAndReturnWhere', '')
+                ignoreWhere = true;
+                onlyBaseWheres = true;
+                method = 'updateManyAndReturn';
+                dataIndex = -2;
+                whereIndex = 0;
+                otherParams.push('where', 'data');
+                argsCount += 2;
             } else if(keyToMap.startsWith('updateManyBy')) {
                 keyToMapReplaced = keyToMap.replace('updateManyBy', '')
                 ignoreSelect = true;
@@ -217,6 +236,16 @@ export class VSRepository {
                 dataIndex = -2;
                 otherParams.push('data');
                 argsCount++;
+            } else if(keyToMap.startsWith('updateManyWhere')) {
+                keyToMapReplaced = keyToMap.replace('updateManyWhere', '')
+                ignoreSelect = true;
+                ignoreWhere = true;
+                onlyBaseWheres = true;
+                method = 'updateMany';
+                dataIndex = -2;
+                whereIndex = 0;
+                otherParams.push('where', 'data');
+                argsCount += 2;
             } else if(keyToMap.startsWith('updateBy')) {
                 keyToMapReplaced = keyToMap.replace('updateBy', '')
                 method = 'update';
@@ -235,11 +264,29 @@ export class VSRepository {
                 keyToMapReplaced = keyToMap.replace('deleteManyBy', '')
                 ignoreSelect = true;
                 method = 'deleteMany';
+            } else if(keyToMap.startsWith('deleteManyWhere')) {
+                keyToMapReplaced = keyToMap.replace('deleteManyWhere', '')
+                ignoreSelect = true;
+                ignoreWhere = true;
+                onlyBaseWheres = true;
+                method = 'deleteMany';
+                whereIndex = 0;
+                otherParams.push('where');
+                argsCount += 1;
             } else if(keyToMap.startsWith('deleteBy')) {
                 keyToMapReplaced = keyToMap.replace('deleteBy', '')
                 method = 'delete';
             } else if(keyToMap.startsWith('findWhere')) {
                 keyToMapReplaced = keyToMap.replace('findWhere', '');
+                ignoreOrderByAndPagination = false;
+                ignoreWhere = true;
+                onlyBaseWheres = true;
+                method = 'findFirst';
+                whereIndex = 0;
+                otherParams.push('where');
+                argsCount += 1;
+            } else if(keyToMap.startsWith('findOneWhere')) {
+                keyToMapReplaced = keyToMap.replace('findOneWhere', '');
                 ignoreOrderByAndPagination = false;
                 ignoreWhere = true;
                 onlyBaseWheres = true;
@@ -260,8 +307,12 @@ export class VSRepository {
                 keyToMapReplaced = keyToMap.replace('findBy', '');
                 ignoreOrderByAndPagination = false;
                 method = methods[originalKey].fbMode === 'one' ? 'findFirst' : 'findMany';
+            } else if(keyToMap.startsWith('findOneBy')) {
+                keyToMapReplaced = keyToMap.replace('findOneBy', '');
+                ignoreOrderByAndPagination = false;
+                method = 'findFirst';
             } else {
-                throw new VSRepoBuildError(`[VSRepository] (build) Unknown method: ${keyToMap}.`);
+                throw new VSRepoBuildError(`[VSRepository] (${buildInstance.tableName}: build) Unknown method: ${keyToMap}.`);
             }
 
 
@@ -573,7 +624,7 @@ export class VSRepository {
                     return { context, otherProps, argName, autoVal: arg.autoInjectVal, betweenMode: arg.betweenMode };
                 });
                 if(showWorking) {
-                    console.log(`[VSRepository] (build) Where object resolved to ${keyToMap}:\n`, JSON.stringify(whereResolved, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: build) Where object resolved to ${keyToMap}:\n`, JSON.stringify(whereResolved, null, 2));
                 }
             }
 
@@ -730,7 +781,7 @@ export class VSRepository {
                 let optionsSelectModel;
                 if(args.length < argsCount) {
                     const missingParams = whereParams.concat(otherParams).slice(args.length);
-                    throw new VSRepoRuntimeError(`[VSRepository] (runtime) Missing parameters: ${missingParams.join(', ')}`);
+                    throw new VSRepoRuntimeError(`[VSRepository] (${buildInstance.tableName}: runtime) Missing parameters: ${missingParams.join(', ')}`);
                 } else if(args.length > argsCount) {
                     const optionsArg = args[args.length - 1];
                     db = optionsArg.db ?? db;
@@ -743,8 +794,8 @@ export class VSRepository {
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing ${method} on ${buildInstance.tableName}.`);
-                    console.log(`[VSRepository] (runtime) Built arguments to ${method} on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executing ${method}.`);
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Built arguments to ${method}:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
 
@@ -754,7 +805,7 @@ export class VSRepository {
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (runtime) Executed ${method} on ${buildInstance.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executed ${method} (took: ${duration}ms).`);
                     }
 
                     if(existsMode) {
@@ -762,7 +813,7 @@ export class VSRepository {
                     }
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when executing ${method} on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Fatal error when executing ${method}:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
                 
@@ -788,8 +839,8 @@ export class VSRepository {
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing get on ${buildInstance.tableName}.`);
-                    console.log(`[VSRepository] (runtime) Built arguments to get on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executing get.`);
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Built arguments to get:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
 
@@ -799,12 +850,12 @@ export class VSRepository {
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (runtime) Executed get on ${buildInstance.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executed get (took: ${duration}ms).`);
                     }
 
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when trying to get on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Fatal error when trying to get:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }
@@ -827,8 +878,8 @@ export class VSRepository {
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing getOrThrow on ${buildInstance.tableName}.`);
-                    console.log(`[VSRepository] (runtime) Built arguments to getOrThrow on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executing getOrThrow.`);
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Built arguments to getOrThrow:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
 
@@ -838,12 +889,12 @@ export class VSRepository {
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (runtime) Executed getOrThrow on ${buildInstance.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executed getOrThrow (took: ${duration}ms).`);
                     }
 
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when trying to getOrThrow on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Fatal error when trying to getOrThrow:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }
@@ -866,8 +917,8 @@ export class VSRepository {
                 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing remove on ${buildInstance.tableName}.`);
-                    console.log(`[VSRepository] (runtime) Built arguments to remove on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executing remove.`);
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Built arguments to remove:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
                 try {
@@ -876,12 +927,12 @@ export class VSRepository {
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (runtime) Executed remove on ${buildInstance.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executed remove (took: ${duration}ms).`);
                     }
 
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when trying to remove on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Fatal error when trying to remove:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }
@@ -898,7 +949,7 @@ export class VSRepository {
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing save on ${buildInstance.tableName}.`);
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executing save.`);
                     start = performance.now();
                 }
 
@@ -1030,7 +1081,7 @@ export class VSRepository {
                         prismaArgs.where = where;
 
                         if(showWorking) {
-                            console.log(`[VSRepository] (runtime) Built arguments to save on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                            console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Built arguments to save:\n`, JSON.stringify(prismaArgs, null, 2));
                         }
 
                         result = await db[buildInstance.tableName].upsert(prismaArgs);
@@ -1081,7 +1132,7 @@ export class VSRepository {
                         }
 
                         if(showWorking) {
-                            console.log(`[VSRepository] (runtime) Built arguments to save on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                            console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Built arguments to save:\n`, JSON.stringify(prismaArgs, null, 2));
                         }
 
                         result = await db[buildInstance.tableName].create(prismaArgs);
@@ -1090,12 +1141,12 @@ export class VSRepository {
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (runtime) Executed save on ${buildInstance.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executed save (took: ${duration}ms).`);
                     }
 
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when trying to save on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Fatal error when trying to save:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             } 
@@ -1113,19 +1164,19 @@ export class VSRepository {
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing removeList on ${buildInstance.tableName}.`);
-                    console.log(`[VSRepository] (runtime) Built arguments to removeList on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executing removeList.`);
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Built arguments to removeList:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
                 try {
                     const result = await db[buildInstance.tableName].deleteMany(prismaArgs);
                     if(showWorking) {
                         const end = performance.now();
-                        console.log(`[VSRepository] (runtime) Executed removeList on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
+                        console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executed removeList (took: ${(end - start).toFixed(2)}ms).`);
                     }
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when trying to removeList on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Fatal error when trying to removeList:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }
@@ -1155,19 +1206,19 @@ export class VSRepository {
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing getAll on ${buildInstance.tableName}.`);
-                    console.log(`[VSRepository] (runtime) Built arguments to getAll on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executing getAll.`);
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Built arguments to getAll:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
                 try {
                     const result = await db[buildInstance.tableName].findMany(prismaArgs);
                     if(showWorking) {
                         const end = performance.now();
-                        console.log(`[VSRepository] (runtime) Executed getAll on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
+                        console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executed getAll (took: ${(end - start).toFixed(2)}ms).`);
                     }
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when trying to getAll on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Fatal error when trying to getAll:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }
@@ -1183,19 +1234,19 @@ export class VSRepository {
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing total on ${buildInstance.tableName}.`);
-                    console.log(`[VSRepository] (runtime) Built arguments to total on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executing total.`);
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Built arguments to total:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
                 try {
                     const result = await db[buildInstance.tableName].count(prismaArgs);
                     if(showWorking) {
                         const end = performance.now();
-                        console.log(`[VSRepository] (runtime) Executed total on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
+                        console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executed total (took: ${(end - start).toFixed(2)}ms).`);
                     }
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when trying to total on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Fatal error when trying to total:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }
@@ -1214,19 +1265,19 @@ export class VSRepository {
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing has on ${buildInstance.tableName}.`);
-                    console.log(`[VSRepository] (runtime) Built arguments to has on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executing has.`);
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Built arguments to has:\n`, JSON.stringify(prismaArgs, null, 2));
                     start = performance.now();
                 }
                 try {
                     const result = await db[buildInstance.tableName].findUnique(prismaArgs);
                     if(showWorking) {
                         const end = performance.now();
-                        console.log(`[VSRepository] (runtime) Executed has on ${buildInstance.tableName} (took: ${(end - start).toFixed(2)}ms).`);
+                        console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executed has (took: ${(end - start).toFixed(2)}ms).`);
                     }
                     return !!result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when trying to has on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Fatal error when trying to has:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             }
@@ -1243,7 +1294,7 @@ export class VSRepository {
 
                 let start;
                 if(showWorking){
-                    console.log(`[VSRepository] (runtime) Executing patch on ${buildInstance.tableName}.`);
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executing patch.`);
                     start = performance.now();
                 }
 
@@ -1364,7 +1415,7 @@ export class VSRepository {
                     prismaArgs.where = where;
 
                     if(showWorking) {
-                        console.log(`[VSRepository] (runtime) Built arguments to patch on ${buildInstance.tableName}:\n`, JSON.stringify(prismaArgs, null, 2));
+                        console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Built arguments to patch:\n`, JSON.stringify(prismaArgs, null, 2));
                     }
 
                     result = await db[buildInstance.tableName].update(prismaArgs);
@@ -1372,12 +1423,12 @@ export class VSRepository {
                     if(showWorking) {
                         const end = performance.now();
                         const duration = (end - start).toFixed(2);
-                        console.log(`[VSRepository] (runtime) Executed patch on ${buildInstance.tableName} (took: ${duration}ms).`);
+                        console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Executed patch (took: ${duration}ms).`);
                     }
 
                     return result;
                 } catch (err) {
-                    console.log(`[VSRepository] (runtime) Fatal error when trying to patch on ${buildInstance.tableName}:\n`, JSON.stringify({ prismaArgs }, null, 2));
+                    console.log(`[VSRepository] (${buildInstance.tableName}: runtime) Fatal error when trying to patch:\n`, JSON.stringify({ prismaArgs }, null, 2));
                     throw err;
                 }
             } 

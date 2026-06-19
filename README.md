@@ -362,7 +362,7 @@ usuarioVSRepo.build(prisma, {
       ignoreRequiredWhere: false, // Aplica o requiredWhere no remove (padrão = false)
     },
     save: {
-      ignoreRequiredWhere: true,  // Não aplica requiredWhere no save
+      ignoreRequiredWhere: true,  // Não aplica requiredWhere no upsert do save
     },
     patch: {
       defaultSelect: "minimal",
@@ -433,10 +433,10 @@ Métodos dinâmicos são definidos na propriedade `methods` e têm seus comporta
 
 ```ts
 methods: {
-  findByEmail:           { map: true, fbMode: "one" },
-  findManyPaginated:     { map: true },
-  updateById:            { map: true },
-  deleteManyByIdIn:      { map: true, whereType: "overwrite" },
+  findOneByEmail:     { map: true },
+  findManyPaginated:  { map: true },
+  updateById:         { map: true },
+  deleteManyByIdIn:   { map: true },
 }
 ```
 
@@ -448,7 +448,8 @@ O prefixo do nome do método determina qual operação Prisma será chamada e qu
 
 | Prefixo                   | Operação Prisma          | Retorno                | Observações                                              |
 | ------------------------- | ------------------------ | ---------------------- | -------------------------------------------------------- |
-| `findBy`                  | `findMany` / `findFirst` | `T[]` ou `T \| null`   | Padrão é lista; use `fbMode: "one"` para retorno único   |
+| `findBy`                  | `findMany` / `findFirst` | `T[]` ou `T \| null`   | Padrão é lista; use `fbMode: "one"` (obsoleto, use `findOneBy`) para retorno único |
+| `findOneBy`               | `findFirst`              | `T \| null`            | Faz o mesmo que `findBy` com `fbMode: "one"`. Retorno único. |
 | `findUniqueBy`            | `findUnique`             | `T \| null`            |                                                          |
 | `findUniqueOrThrowBy`     | `findUniqueOrThrow`      | `T`                    | Lança erro se não encontrar                                  |
 | `findFirstBy`             | `findFirst`              | `T \| null`            | Aceita campos como filtro                                |
@@ -457,9 +458,11 @@ O prefixo do nome do método determina qual operação Prisma será chamada e qu
 | `findFirstOrThrow`        | `findFirstOrThrow`       | `T`                    | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`; lança erro se não encontrar |
 | `findManyBy`              | `findMany`               | `T[]`                  | Aceita campos como filtro                                |
 | `findMany`                | `findMany`               | `T[]`                  | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`           |
-| `findWhere`               | `findFirst`              | `T \| null`            | Recebe um objeto `where` explícito como argumento        |
+| `findWhere`               | `findFirst`              | `T \| null`            | (**Obsoleto, use `findOneWhere`**) Recebe um objeto `where` explícito como argumento |
+| `findOneWhere`            | `findFirst`              | `T \| null`            | Recebe um objeto `where` explícito como argumento                     |
 | `findListWhere`           | `findMany`               | `T[]`                  | Recebe um objeto `where` explícito como argumento        |
 | `existsBy`                | `findFirst`              | `boolean`              | Retorna `true` se encontrar, `false` caso contrário      |
+| `existsWhere`             | `findFirst`              | `boolean`              | Recebe um objeto `where` explícito como argumento e retorna se existe |
 | `countBy`                 | `count`                  | `number`               | Aceita campos como filtro                                |
 | `countWhere`              | `count`                  | `number`               | Recebe um objeto `where` explícito como argumento        |
 | `count`                   | `count`                  | `number`               | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`           |
@@ -468,10 +471,13 @@ O prefixo do nome do método determina qual operação Prisma será chamada e qu
 | `createManyAndReturn`     | `createManyAndReturn`    | `T[]`                  | Recebe `data` como argumento; suporta `SkipDuplicates`   |
 | `updateBy`                | `update`                 | `T`                    | Recebe `data` como argumento                             |
 | `updateManyBy`            | `updateMany`             | `{ count: number }`    | Recebe `data` como argumento                             |
+| `updateManyWhere`         | `updateMany`             | `{ count: number }`    | Recebe um objeto `where` e um objeto `data` como argumentos           |
 | `updateManyAndReturnBy`   | `updateManyAndReturn`    | `T[]`                  | Recebe `data` como argumento                             |
+| `updateManyAndReturnWhere` | `updateManyAndReturn`    | `T[]`                  | Recebe um objeto `where` e um objeto `data` como argumentos           |
 | `upsertBy`                | `upsert`                 | `T`                    | Recebe `update` e `create` como argumentos               |
 | `deleteBy`                | `delete`                 | `T`                    |                                                          |
 | `deleteManyBy`            | `deleteMany`             | `{ count: number }`    |                                                          |
+| `deleteManyWhere`         | `deleteMany`             | `{ count: number }`    | Recebe um objeto `where` explícito como argumento                     |
 | `aggregate`               | `aggregate`              | `Dinâmico`               | Nome deve ser exato; recebe args nativos do Prisma; ignora `selectModels`, `pushWhere` e `requiredWhere` |
 | `groupBy`               | `groupBy`              | `Dinâmico[]`               | Nome deve ser exato; recebe args nativos do Prisma; ignora `selectModels`, `pushWhere` e `requiredWhere` |
 
@@ -556,7 +562,7 @@ findByNomeOptionalAndEmail // nome é opcional (pode ser passado como undefined 
 
 | Operador  | Uso no nome                  | Exemplo                          |
 | --------- | ---------------------------- | -------------------------------- |
-| `And`     | entre dois campos            | `findByIdAndEmail`               |
+| `And`     | entre dois campos            | `findOneByIdAndEmail`               |
 | `Or`      | entre dois campos            | `findByNomeOrEmail`              |
 | `AND`     | separa bloco final em `AND`  | `findByEmailOrNameANDActiveStatus` |
 
@@ -570,20 +576,20 @@ Exemplo:
 
 ```ts
 methods: {
-  findByIdAndEmail:   { map: true, fbMode: "one" },
+  findOneByIdAndEmail:   { map: true },
   findByNomeOrEmail:  { map: true },
   findUniqueByIdOrEmailAndNome: { map: true },
   findByEmailOrNameANDActiveStatusAndIdadeGreaterThan: { map: true }
 }
 
 // Uso
-await usuarioRepository.findByIdAndEmail(1, "joao@email.com");
+await usuarioRepository.findOneByIdAndEmail(1, "joao@email.com");
 await usuarioRepository.findByNomeOrEmail("Joao", "joao@email.com");
 await usuarioRepository.findUniqueByIdOrEmailAndNome(1, "joao@email.com", "Joao");
 await usuarioRepository.findByEmailOrNameANDActiveStatusAndIdadeGreaterThan("joao@email.com", "Joao", true, 17)
 ```
 
-Gera (`findByIdAndEmail`):
+Gera (`findOneByIdAndEmail`):
 
 ```ts
 {
@@ -638,6 +644,12 @@ Gera (`findByEmailOrNameANDActiveStatusAndIdadeGreaterThan`):
 
 Permitem filtrar por campos de modelos relacionados.
 
+> [!IMPORTANT]
+> - **Tipagem de relação**: Para que o TypeScript reconheça os tipos dos campos de relação nos métodos dinâmicos, o tipo genérico da entidade passado no `setupVSRepo` deve incluir as relações estruturadas (ex: usando `UsuarioGetPayload<{ include: { perfil: true, postagens: true } }>` do Prisma).
+> - **Compatibilidade de sufixos**:
+>   - Os sufixos `Some`, `Every` e `None` só funcionam para relações **to-many** (`many-to-many` e `one-to-many`).
+>   - Os sufixos `With` e `Without` só funcionam para relações **to-one** (`one-to-one` e `many-to-one`).
+
 | Sufixo de relação      | Operador Prisma | Observação                                         |
 | ---------------------- | --------------- | -------------------------------------------------- |
 | `Some`                 | `some: {}`      | Relação tem *algum* registro                       |
@@ -664,7 +676,7 @@ methods: {
 ```
 
 > [!NOTE]
-> Teoricamente você pode usar `Every` sem `Field` (ele geraria { every: {} }), porém isso não produz um filtro efetivo. A condição é considerada verdadeira para qualquer relação, inclusive quando não existem registros relacionados, tornando o resultado equivalente a não aplicar filtro algum.
+> Teoricamente você pode usar `Every` sem `Field` (ele geraria { every: { } }), porém isso não produz um filtro efetivo. A condição é considerada verdadeira para qualquer relação, inclusive quando não existem registros relacionados, tornando o resultado equivalente a não aplicar filtro algum.
 
 ---
 
@@ -733,7 +745,7 @@ Cada entrada em `methods` aceita as seguintes opções:
 | `map`               | `boolean`                       | —            | **Obrigatório.** Define se o método será exposto no repository.                                             |
 | `whereType`         | `'extending'` \| `'overwrite'`  | `extending`  | `extending` combina com `requiredWhere`. `overwrite` ignora o `requiredWhere`.                      |
 | `selectModel`       | `keyof SelectModels \| false`   | —            | Sobrescreve o `defaultSelectModel` para este método.                                                        |
-| `fbMode`            | `'one'` \| `'list'`             | `'list'`     | Somente para `findBy`. `'one'` retorna `T \| null`; `'list'` retorna `T[]`.                                 |
+| `fbMode`            | `'one'` \| `'list'`             | `'list'`     | (**Obsoleto. Use `findOneBy`**) Somente para `findBy`. `'one'` retorna `T \| null`; `'list'` retorna `T[]`. |
 | `proxyTo`           | `Padrão de método válido`           | —            | Delega a lógica para outro padrão de método válido. Útil para methods com nomes personalizados.       |
 | `pushWhere`         | `WhereModel<M>`                 | —            | Where extra adicionado à query além do `requiredWhere`.                                                     |
 | `injectOrdenation`  | `OrdenationModel<M>`            | —            | Ordenação fixa injetada automaticamente na query.                                                           |
@@ -743,8 +755,8 @@ Exemplos:
 
 ```ts
 methods: {
-  // Retorna um único resultado em vez de array
-  findByEmail: { map: true, fbMode: "one" },
+  // Retorna um único resultado
+  findOneByEmail: { map: true },
 
   // Ignora o requiredWhere
   deleteManyByIdIn: { map: true, whereType: "overwrite" },
@@ -878,7 +890,6 @@ await usuarioRepository.save({
   email: "maria@email.com",
   senha: "password",
   perfil: {
-    id: 1,
     bio: "Bio da Maria",
   },
   postagens: [
@@ -888,7 +899,6 @@ await usuarioRepository.save({
 
 await usuarioRepository.patch(1, {
   perfil: {
-    id: 1,
     bio: "Bio atualizada",
   },
   postagens: [
@@ -983,8 +993,8 @@ try {
 
 | Classe               | Quando é lançada                                        |
 | -------------------- | ------------------------------------------------------- |
-| `VSRepoConfigError`  | Configuração inválida em `setupVSRepo`       |
-| `VSRepoBuildError`   | Nome de método inválido ou desconhecido no `build`      |
+| `VSRepoConfigError`  | Configuração inválida em `setupVSRepo`                  |
+| `VSRepoBuildError`   | Nome de método ou configuração inválida no `build`      |
 | `VSRepoExtendError`  | Argumento inválido em `extend`                          |
 | `VSRepoRuntimeError` | Erro em tempo de execução durante uma operação          |
 

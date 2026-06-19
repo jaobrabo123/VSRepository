@@ -57,7 +57,9 @@ export const userVSRepo = setupVSRepo<User, 'User'>()({
         aggregate: { map: true },
         groupBy: { map: true },
         countWhere: { map: true },
-        findByCommonUserWithoutCreatedAtNotBetweenOptional: { map: true }
+        findByCommonUserWithoutCreatedAtNotBetweenOptional: { map: true },
+        findWherePaginated: {map: true, },
+        findByCommonUser: { map: true }
     },
 });
 
@@ -72,6 +74,6 @@ const userRepository = userVSRepo.build(prisma, {
     }
 }))
 
-console.log(await userRepository.findByCommonUserWithoutCreatedAtNotBetweenOptional([new Date(), new Date()]))
+console.log(await userRepository.findByCommonUser({}))
 
 export default userRepository;

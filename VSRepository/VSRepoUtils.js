@@ -81,7 +81,7 @@ export function validateConfig(config) {
     if(!configParsed.success) {
         const firstIssue = configParsed.error.issues[0];
         const path = firstIssue.path.length ? firstIssue.path.join(".") : "config";
-        throw new VSRepoConfigError(`[VSRepository] (config) ${path}: ${firstIssue.message}`)
+        throw new VSRepoConfigError(`[VSRepository] (${config.tableName}: config) ${path}: ${firstIssue.message}`)
     }
 
     return configParsed.data;
@@ -123,6 +123,11 @@ export function validateBuildConfig(buildConfig, buildInstance) {
                 defaultSelect: defaultSelectSchema,
                 ignoreRequiredWhere: ignoreRequiredWhereSchema
             }).optional(),
+            patch: z.strictObject({
+                active: activeSchema,
+                defaultSelect: defaultSelectSchema,
+                ignoreRequiredWhere: ignoreRequiredWhereSchema
+            }).optional(),
             removeList: z.strictObject({
                 active: activeSchema,
                 ignoreRequiredWhere: ignoreRequiredWhereSchema
@@ -143,7 +148,7 @@ export function validateBuildConfig(buildConfig, buildInstance) {
     if(!buildConfigParsed.success) {
         const firstIssue = buildConfigParsed.error.issues[0];
         const path = firstIssue.path.length ? firstIssue.path.join(".") : "config";
-        throw new VSRepoBuildError(`[VSRepository] (build) ${path}: ${firstIssue.message}`)
+        throw new VSRepoBuildError(`[VSRepository] (${config.tableName}: build) ${path}: ${firstIssue.message}`)
     }
 
     return buildConfigParsed.data;

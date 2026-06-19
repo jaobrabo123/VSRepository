@@ -1,8 +1,8 @@
 # VSRepository
 
 ![npm](https://img.shields.io/npm/v/vsrepo?style=flat-square)
-![license](https://img.shields.io/github/license/jaobrabo123/vsrepository?style=flat-square&v=1)
-![NPM Downloads](https://img.shields.io/npm/d18m/vsrepo.svg)
+![NPM License](https://img.shields.io/npm/l/vsrepo)
+![NPM Downloads](https://img.shields.io/npm/dt/vsrepo?style=flat-square)
 
 Biblioteca de repository pattern para projetos que usam **Prisma**, com suporte completo a **TypeScript** e **type inference** automático.
 
@@ -33,6 +33,7 @@ O VSRepository permite criar repositories fortemente tipados com:
   - [Filtros de relação](#filtros-de-relação)
   - [Sufixos de paginação e ordenação](#sufixos-de-paginação-e-ordenação)
   - [Configuração de métodos](#configuração-de-métodos)
+  - [Aggregate e GroupBy](#aggregate-e-groupby)
 - [Relações no save](#relações-no-save)
 - [Transações](#transações)
 - [Estendendo um repository](#estendendo-um-repository)
@@ -447,7 +448,8 @@ O prefixo do nome do método determina qual operação Prisma será chamada e qu
 
 | Prefixo                   | Operação Prisma          | Retorno                | Observações                                              |
 | ------------------------- | ------------------------ | ---------------------- | -------------------------------------------------------- |
-| `findBy`                  | `findMany` / `findFirst` | `T[]` ou `T \| null`   | Padrão é lista; use `fbMode: "one"` para retorno único   |
+| `findBy`                  | `findMany` / `findFirst` | `T[]` ou `T \| null`   | Padrão é lista; use `fbMode: "one"` (depreciado, use `findOneBy`) para retorno único |
+| `findOneBy`               | `findFirst`              | `T \| null`            | Faz o mesmo que `findBy` com `fbMode: "one"`. Retorno único. |
 | `findUniqueBy`            | `findUnique`             | `T \| null`            |                                                          |
 | `findUniqueOrThrowBy`     | `findUniqueOrThrow`      | `T`                    | Lança erro se não encontrar                                  |
 | `findFirstBy`             | `findFirst`              | `T \| null`            | Aceita campos como filtro                                |
@@ -456,10 +458,13 @@ O prefixo do nome do método determina qual operação Prisma será chamada e qu
 | `findFirstOrThrow`        | `findFirstOrThrow`       | `T`                    | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`; lança erro se não encontrar |
 | `findManyBy`              | `findMany`               | `T[]`                  | Aceita campos como filtro                                |
 | `findMany`                | `findMany`               | `T[]`                  | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`           |
-| `findWhere`               | `findFirst`              | `T \| null`            | Recebe um objeto `where` explícito como argumento        |
+| `findWhere`               | `findFirst`              | `T \| null`            | (**Depreciado, use `findOneWhere`**) Recebe um objeto `where` explícito como argumento |
+| `findOneWhere`            | `findFirst`              | `T \| null`            | Recebe um objeto `where` explícito como argumento                     |
 | `findListWhere`           | `findMany`               | `T[]`                  | Recebe um objeto `where` explícito como argumento        |
 | `existsBy`                | `findFirst`              | `boolean`              | Retorna `true` se encontrar, `false` caso contrário      |
+| `existsWhere`             | `findFirst`              | `boolean`              | Recebe um objeto `where` explícito como argumento e retorna se existe |
 | `countBy`                 | `count`                  | `number`               | Aceita campos como filtro                                |
+| `countWhere`              | `count`                  | `number`               | Recebe um objeto `where` explícito como argumento        |
 | `count`                   | `count`                  | `number`               | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`           |
 | `create`                  | `create`                 | `T`                    | Recebe `data` como argumento                             |
 | `createMany`              | `createMany`             | `{ count: number }`    | Recebe `data` como argumento; suporta `SkipDuplicates`                            |
@@ -467,9 +472,14 @@ O prefixo do nome do método determina qual operação Prisma será chamada e qu
 | `updateBy`                | `update`                 | `T`                    | Recebe `data` como argumento                             |
 | `updateManyBy`            | `updateMany`             | `{ count: number }`    | Recebe `data` como argumento                             |
 | `updateManyAndReturnBy`   | `updateManyAndReturn`    | `T[]`                  | Recebe `data` como argumento                             |
+| `updateManyAndReturnWhere` | `updateManyAndReturn`    | `T[]`                  | Recebe um objeto `where` e um objeto `data` como argumentos           |
+| `updateManyWhere`         | `updateMany`             | `{ count: number }`    | Recebe um objeto `where` e um objeto `data` como argumentos           |
 | `upsertBy`                | `upsert`                 | `T`                    | Recebe `update` e `create` como argumentos               |
 | `deleteBy`                | `delete`                 | `T`                    |                                                          |
 | `deleteManyBy`            | `deleteMany`             | `{ count: number }`    |                                                          |
+| `deleteManyWhere`         | `deleteMany`             | `{ count: number }`    | Recebe um objeto `where` explícito como argumento                     |
+| `aggregate`               | `aggregate`              | `Dinâmico`               | Nome deve ser exato; recebe args nativos do Prisma; ignora `selectModels`, `pushWhere` e `requiredWhere` |
+| `groupBy`               | `groupBy`              | `Dinâmico[]`               | Nome deve ser exato; recebe args nativos do Prisma; ignora `selectModels`, `pushWhere` e `requiredWhere` |
 
 ---
 
@@ -493,6 +503,8 @@ Os filtros são sufixos aplicados ao nome do campo dentro do método. O campo em
 | `GreaterThanEqual` | `gte`                 | sim                  |
 | `LessThan`         | `lt`                  | sim                  |
 | `LessThanEqual`    | `lte`                 | sim                  |
+| `Between`          | `gte` + `lte`         | sim (tupla `[min, max]`) |
+| `NotBetween`       | `not.gte` + `not.lte` | sim (tupla `[min, max]`) |
 | `IsNull`           | `null`                | não                  |
 | `IsNotNull`        | `not: null`           | não                  |
 | `IsTrue`           | `true`                | não                  |
@@ -505,6 +517,37 @@ Os filtros são sufixos aplicados ao nome do campo dentro do método. O campo em
 findByNomeContainsInsensitive    // { nome: { contains: valor, mode: 'insensitive' } }
 findByEmailStartsWithInsensitive // { email: { startsWith: valor, mode: 'insensitive' } }
 findByNomeInsensitive            // { nome: { equals: valor, mode: 'insensitive' } }
+```
+
+`Between` e `NotBetween` recebem uma **tupla `[minValue, maxValue]`** e são ideais para filtros de intervalo em números, datas ou qualquer campo comparável:
+
+```ts
+methods: {
+  findManyByIdadeBetween:          { map: true },
+  findManyBySalarioNotBetween:     { map: true },
+  findManyByCriadoEmBetween:       { map: true },
+}
+
+// Uso
+await usuarioRepository.findManyByIdadeBetween([18, 65]);
+await usuarioRepository.findManyBySalarioNotBetween([1000, 5000]);
+await usuarioRepository.findManyByCriadoEmBetween([new Date("2024-01-01"), new Date("2024-12-31")]);
+```
+
+Gera (`findManyByIdadeBetween`):
+
+```ts
+{
+  idade: { gte: 18, lte: 65 }
+}
+```
+
+Gera (`findManyBySalarioNotBetween`):
+
+```ts
+{
+  salario: { not: { gte: 1000, lte: 5000 } }
+}
 ```
 
 O sufixo `Optional` pode ser adicionado a qualquer campo para tornar o argumento opcional:
@@ -601,6 +644,12 @@ Gera (`findByEmailOrNameANDActiveStatusAndIdadeGreaterThan`):
 
 Permitem filtrar por campos de modelos relacionados.
 
+> [!IMPORTANT]
+> - **Tipagem de relação**: Para que o TypeScript reconheça os tipos dos campos de relação nos métodos dinâmicos, o tipo genérico da entidade passado no `setupVSRepo` deve incluir as relações estruturadas (ex: usando `UsuarioGetPayload<{ include: { perfil: true, postagens: true } }>` do Prisma).
+> - **Compatibilidade de sufixos**:
+>   - Os sufixos `Some`, `Every` e `None` só funcionam para relações **to-many** (`many-to-many` e `one-to-many`).
+>   - Os sufixos `With` e `Without` só funcionam para relações **to-one** (`one-to-one` e `many-to-one`).
+
 | Sufixo de relação      | Operador Prisma | Observação                                         |
 | ---------------------- | --------------- | -------------------------------------------------- |
 | `Some`                 | `some: {}`      | Relação tem *algum* registro                       |
@@ -617,13 +666,17 @@ Exemplos:
 
 ```ts
 methods: {
-  findByPostagensSomeTituloContains:  { map: true },   // postagens: { some: { titulo: { contains: valor } } }
-  findByPerfilWith:                   { map: true },   // perfil: { is: {} }
-  findByPerfilWithout:                { map: true },   // perfil: { isNot: {} }
-  findByPostagensSome:                { map: true },   // postagens: { some: {} }
-  findByPostagensEveryAtivoIsTrue:    { map: true },   // postagens: { every: { ativo: true } }
+  findByPostagensSomeTituloContains:  { map: true },   // postagens: { some: { titulo: { contains: valor } } } >> (Busca usuários que o título de alguma postagem contém um valor)
+  findByPerfilWithDescricaoIsNotNull: { map: true },   // perfil: { is: { descricao: { not: null } } } >> (Busca usuários em que a descrição do perfil não é nula)
+  findByPerfilWithout:                { map: true },   // perfil: { isNot: {} } >> (Busca usuários sem perfil)
+  findByPostagensSome:                { map: true },   // postagens: { some: {} } >> (Busca usuários com alguma postagem)
+  findByPostagensEveryAtivoIsTrue:    { map: true },   // postagens: { every: { ativo: true } } >> (Busca usuários que todas as postagens estão ativas)
+  findByPostagensNone:                { map: true },   // postagens: { none: {} } >> (Busca usuários sem postagens)
 }
 ```
+
+> [!NOTE]
+> Teoricamente você pode usar `Every` sem `Field` (ele geraria { every: {} }), porém isso não produz um filtro efetivo. A condição é considerada verdadeira para qualquer relação, inclusive quando não existem registros relacionados, tornando o resultado equivalente a não aplicar filtro algum.
 
 ---
 
@@ -692,7 +745,7 @@ Cada entrada em `methods` aceita as seguintes opções:
 | `map`               | `boolean`                       | —            | **Obrigatório.** Define se o método será exposto no repository.                                             |
 | `whereType`         | `'extending'` \| `'overwrite'`  | `extending`  | `extending` combina com `requiredWhere`. `overwrite` ignora o `requiredWhere`.                      |
 | `selectModel`       | `keyof SelectModels \| false`   | —            | Sobrescreve o `defaultSelectModel` para este método.                                                        |
-| `fbMode`            | `'one'` \| `'list'`             | `'list'`     | Somente para `findBy`. `'one'` retorna `T \| null`; `'list'` retorna `T[]`.                                 |
+| `fbMode`            | `'one'` \| `'list'`             | `'list'`     | **Depreciado. Use `findOneBy`.** Somente para `findBy`. `'one'` retorna `T \| null`; `'list'` retorna `T[]`. |
 | `proxyTo`           | `Padrão de método válido`           | —            | Delega a lógica para outro padrão de método válido. Útil para methods com nomes personalizados.       |
 | `pushWhere`         | `WhereModel<M>`                 | —            | Where extra adicionado à query além do `requiredWhere`.                                                     |
 | `injectOrdenation`  | `OrdenationModel<M>`            | —            | Ordenação fixa injetada automaticamente na query.                                                           |
@@ -719,6 +772,81 @@ methods: {
 
   // Nome personalizado precisa de proxyTo
   buscarPorEmailEPerfil: { map: true, proxyTo: "findByEmailAndPerfil" },
+}
+```
+
+---
+
+### Aggregate e GroupBy
+
+Para utilizar operações de agrupamento e agregação do Prisma (`aggregate` e `groupBy`), você deve expô-las explicitamente na configuração dos métodos dinâmicos (`methods`):
+
+```ts
+const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
+  tableName: "usuario",
+  pkName: "id",
+  methods: {
+    aggregate: { map: true },
+    groupBy: { map: true },
+  },
+}).build(prisma);
+```
+
+> [!NOTE]
+> Estes métodos devem ter exatamente esses nomes (`aggregate` e `groupBy`).
+> Ao contrário dos outros métodos dinâmicos, eles recebem argumentos nativos do Prisma e **ignoram** as configurações de `selectModels`, `pushWhere` e `requiredWhere`.
+
+#### Exemplo de uso do `aggregate`
+
+O método `aggregate` permite calcular valores agregados (como média, soma, mínimo, máximo, contagem) sobre os registros:
+
+```ts
+const resultado = await usuarioRepository.aggregate({
+  _count: {
+    _all: true,
+  },
+  _avg: {
+    idade: true,
+  },
+  _sum: {
+    saldo: true,
+  },
+  where: {
+    ativo: true,
+  },
+});
+
+console.log(resultado._count._all); // Total de usuários ativos
+console.log(resultado._avg.idade);   // Média de idade dos usuários ativos
+console.log(resultado._sum.saldo);   // Soma dos saldos dos usuários ativos
+```
+
+#### Exemplo de uso do `groupBy`
+
+O método `groupBy` permite agrupar registros por um ou mais campos para realizar operações de agregação em cada grupo:
+
+```ts
+const grupos = await usuarioRepository.groupBy({
+  by: ["status"],
+  _count: {
+    status: true,
+  },
+  _avg: {
+    idade: true,
+  },
+  having: {
+    idade: {
+      _avg: {
+        gt: 18,
+      },
+    },
+  },
+});
+
+for (const grupo of grupos) {
+  console.log(`Status: ${grupo.status}`);
+  console.log(`Quantidade: ${grupo._count.status}`);
+  console.log(`Média de Idade: ${grupo._avg.idade}`);
 }
 ```
 
@@ -939,8 +1067,9 @@ import type { MethodOptions, MethodOptionsModel } from "../../generated/vsrepo";
 // S = chave do select model ou false
 type Opts = MethodOptions<"public" | "minimal">;
 
-// MethodOptionsModel<T> — versão derivada do tipo do repository
-type OptsModel = MethodOptionsModel<typeof usuarioSelectModels>;
+// MethodOptionsModel<TRepo> — derivado diretamente de uma instância VSRepository configurada
+const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()(config);
+type OptsModel = MethodOptionsModel<typeof usuarioVSRepo>;
 ```
 
 ### Tipos de configuração
@@ -952,7 +1081,6 @@ import type {
   BuildConfig,
   RepositoryRelations,
   ExtractRelationConfig,
-  UpsertWithRelations,
 } from "../../generated/vsrepo";
 
 // Configuração de um método dinâmico
@@ -969,18 +1097,12 @@ type UsuarioRelations = RepositoryRelations<Usuario>;
 
 // Configuração de relação inferida a partir de um campo
 type PerfilRelationConfig = ExtractRelationConfig<Usuario["perfil"]>;
-
-// Payload do save com relações
-type UsuarioComRelacoes = UpsertWithRelations<Usuario, "usuario", typeof relations>;
 ```
 
 ### Tipo do repository construído
 
 ```ts
-import type { BuiltRepository, RepositoryOf } from "../../generated/vsrepo";
-
-// Tipo completo de um repository construído
-type MeuRepo = BuiltRepository<Usuario, "usuario", typeof config, typeof buildConfig>;
+import type { RepositoryOf } from "../../generated/vsrepo";
 
 // Inferência a partir de uma instância VSRepository (útil para injeção de dependência)
 const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()({ ... });
@@ -1001,14 +1123,31 @@ const extension = { buscarPorDominio: (dominio: string) => Promise<Usuario[]> };
 type UsuarioRepositoryExtended = RepositoryOf<typeof usuarioVSRepo, undefined, typeof extension>;
 ```
 
-### Tipo auxiliar
+### Tipos do payload dos métodos `save` e `patch`
+
+Use `SaveObject` e `PatchObject` para extrair o tipo do payload esperado pelos métodos `save` e `patch` diretamente a partir de uma instância `VSRepository` configurada. Esses tipos combinam o input base do Prisma com as relações configuradas no repository.
 
 ```ts
-import type { DistributiveOmit } from "../../generated/vsrepo";
+import type { SaveObject, PatchObject } from "../../generated/vsrepo";
+import type { Prisma } from "../../generated/prisma/client";
 
-// Omit distributivo — preserva unions ao omitir propriedades
-type SemEmail = DistributiveOmit<Usuario | Perfil, "email">;
+const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()({
+  tableName: "usuario",
+  pkName: "id",
+  relations: {
+    perfil: { pk: "id", mode: "oto", restriction: "set" },
+    postagens: { pk: "id", mode: "otm", restriction: "add" },
+  },
+});
+
+// Tipo do objeto aceito pelo .save()
+type UsuarioSavePayload = SaveObject<Prisma.UsuarioCreateInput, typeof usuarioVSRepo>;
+
+// Tipo do objeto aceito pelo .patch()
+type UsuarioPatchPayload = PatchObject<Prisma.UsuarioUpdateInput, typeof usuarioVSRepo>;
 ```
+
+> Útil para tipar DTOs, funções auxiliares ou serviços que chamam `save`/`patch` e precisam do tipo correto do payload sem referenciar diretamente os tipos internos do Prisma.
 
 ---
 
