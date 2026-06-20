@@ -6,6 +6,8 @@ coverage/
 .nyc_output/
 
 src/
+examples/
+example/
 
 # Prisma
 prisma/
@@ -37,3 +39,4 @@ tsconfig.json
 # Misc
 *.local
 
+.prettierrc

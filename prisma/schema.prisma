@@ -9,89 +9,61 @@ datasource db {
   provider = "postgresql"
 }
 
-enum ROLES {
-  VIEWER
-  MODIFIER
-  CIENTIST
-  ALL
-}
-
-enum SECTORS {
-  HUMAN_RESOURCES
-  FINANCE
-  MARKETING
-  SALES
-  INFORMATION_TECHNOLOGY
-}
-
-enum USER_TYPE {
+enum UserType {
   ADMIN
   COMMON
+
+  @@map("user_type")
 }
 
 model User {
-  id         String      @id @default(cuid(2))
-  name       String      @db.VarChar(150)
-  email      String      @unique @db.VarChar(254)
-  password   String?     @db.VarChar(255)
-  active     Boolean     @default(true)
-  userType   USER_TYPE
-  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
-  admin      Admin?
-  commonUser CommonUser?
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String    @db.VarChar(150)
+  email       String    @unique @db.VarChar(254)
+  password    String    @db.VarChar(255)
+  userType    UserType  @map("user_type")
+  active      Boolean   @default(true)
+  likesVSRepo Boolean   @map("likes_vs_repo")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  address     Address?
+  products    Product[]
 
   @@map("user")
 }
 
-model CommonUser {
-  id        String   @id @default(cuid(2))
-  biography String?  @db.VarChar(300)
-  birthDate DateTime @map("birth_date")
-  image     String   @db.VarChar(255)
-  followers Int      @default(0)
+model Address {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  city      String   @db.VarChar(255)
+  state     String   @db.VarChar(100)
+  country   String   @db.VarChar(100)
+  userId    String   @unique @map("user_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  userId    String   @unique @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  post      Post[]
-
-  @@map("common_user_profile")
-}
-
-model Admin {
-  id        String   @id @default(cuid(2))
-  role      ROLES[]
-  sector    SECTORS
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  userId    String   @unique @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("admin")
+  @@map("address")
 }
 
-model Post {
-  id           String     @id @default(cuid(2))
-  title        String     @db.VarChar(200)
-  content      String     @db.Text
-  publicated   Boolean    @default(false)
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
-  commonUserId String     @map("common_user_id")
-  commonUser   CommonUser @relation(fields: [commonUserId], references: [id], onDelete: Cascade)
-  postTags     PostTag[]
-
-  @@map("post")
-}
-
-model PostTag {
-  id          String   @id @default(cuid(2))
-  name        String   @unique @db.VarChar(50)
-  description String?  @db.VarChar(200)
+model Product {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @db.VarChar(150)
+  description String?  @db.VarChar(1000)
+  price       Decimal  @db.Decimal(10, 2)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  posts       Post[]
+  userId      String   @map("user_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags        Tag[]
 
-  @@map("post_tag")
+  @@map("product")
+}
+
+model Tag {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String    @unique @db.VarChar(30)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  products  Product[]
+
+  @@map("tag")
 }

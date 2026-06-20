@@ -20,14 +20,15 @@ const GENERATED_HEADER = `/**
 
 `;
 
-const command = args[0]?.startsWith('-') ? 'generate' : args[0] ?? 'generate';
-const commandArgs = command === 'generate' && args[0] !== command ? args : args.slice(1);
+const command = args[0] || 'generate';
 
 if (command !== 'generate') {
   console.error(`Comando desconhecido: ${command}`);
-  console.error('Uso: vsrepo generate --output <dir-output> --prisma <path-prisma>');
+  console.error('Use: vsrepo generate --output <dir-output> --prisma <path-prisma>');
   process.exit(1);
 }
+
+const commandArgs = command === args[0] ? args.slice(1) : args;
 
 const outputFlagIndex = commandArgs.findIndex((arg) => arg === '--output' || arg === '-o');
 const prismaFlagIndex = commandArgs.findIndex((arg) => arg === '--prisma' || arg === '-p');
@@ -194,8 +195,8 @@ if (fs.existsSync(readmeSource)) {
 }
 
 console.log('\nVSRepository gerado com tipagem do Prisma.');
-console.log(`Output: ${outputDir}`);
-console.log(`Prisma usado em: ${prismaTargetPath}`);
+console.log(`Output: ${path.relative(workspaceRoot, outputDir)}`);
+console.log(`Prisma usado em: ${path.relative(workspaceRoot, prismaTargetPath)}`);
 
 function stripKnownExtension(inputPath) {
   return inputPath.replace(/\.(?:d\.ts|ts|js|mjs|cjs)$/i, '');
