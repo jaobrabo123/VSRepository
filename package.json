@@ -1,6 +1,6 @@
 {
   "name": "vsrepo",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "Uma biblioteca de repository pattern para Prisma",
   "homepage": "https://github.com/jaobrabo123/VSRepository#readme",
   "repository": {
