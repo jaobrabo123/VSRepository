@@ -1217,7 +1217,7 @@ Para reportar problemas ou sugerir novas funcionalidades, abra uma **Issue**.
 
 ## Requisitos
 
-- Node.js 16+ (ESM)
+- Node.js 18+ (ESM)
 - Prisma
 - TypeScript (opcional, mas fortemente recomendado)
 - `"moduleResolution": "bundler"` ou `"nodenext"` no tsconfig

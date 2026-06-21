@@ -981,7 +981,7 @@ export class VSRepository {
                                         }
                                     } else if (field !== undefined) {
                                         const relationFieldPk = field[relationPk];
-                                        if(relationFieldPk){
+                                        if(relationFieldPk != null){
                                             const connectOrCreate = {
                                                 where: { [relationPk]: relationFieldPk },
                                                 create: field
@@ -1113,7 +1113,7 @@ export class VSRepository {
                                     }
                                 } else {
                                     const relationFieldPk = field[relationPk];
-                                    if(relationFieldPk !== undefined) {
+                                    if(relationFieldPk != null) {
                                         prismaArgs.data[key] = {
                                             connectOrCreate: {
                                                 where: { [relationPk]: relationFieldPk },
@@ -1324,7 +1324,7 @@ export class VSRepository {
                                     }
                                 } else if (field !== undefined) {
                                     const relationFieldPk = field[relationPk];
-                                    if(relationFieldPk){
+                                    if(relationFieldPk != null){
                                         const connectOrCreate = {
                                             where: { [relationPk]: relationFieldPk },
                                             create: field
