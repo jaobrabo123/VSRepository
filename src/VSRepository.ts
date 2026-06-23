@@ -244,6 +244,9 @@ export class VSRepository {
                 };
             }
         }
+
+        if (validatedConfig.freeze) Object.freeze(buildInstance);
+        return buildInstance;
     }
 }
 

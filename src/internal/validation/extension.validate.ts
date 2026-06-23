@@ -1,5 +1,4 @@
-import { VSRepoExtendError } from "../../../generated/vsrepo";
-import { VSRepository } from "../../VSRepository";
+import { VSRepoExtendError, VSRepository } from "../../VSRepository";
 import { isObject } from "./is-object.validate";
 
 export function validateExtension(extensionFunc: unknown, repo: VSRepository) {

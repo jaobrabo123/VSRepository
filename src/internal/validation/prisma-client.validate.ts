@@ -1,5 +1,4 @@
-import { VSRepoBuildError } from "../../../generated/vsrepo";
-import { VSRepository } from "../../VSRepository";
+import { VSRepoBuildError, VSRepository } from "../../VSRepository";
 import { isObject } from "./is-object.validate";
 
 

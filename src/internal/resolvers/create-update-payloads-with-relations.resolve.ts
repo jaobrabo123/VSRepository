@@ -37,7 +37,7 @@ export function resolveCreateUpdatePayloadsWithRelations(
                 if (field === null) {
                     if (relation.mode === "oto" && relation.restriction === "set") {
                         updatePayload[key] = { delete: true };
-                    } else if (relation.mode === "mto" && relation.nullAble) {
+                    } else if (relation.mode === "mto" && (relation.nullAble || relation.nullable)) {
                         updatePayload[key] = { disconnect: true };
                     }
                 } else if (field !== undefined) {

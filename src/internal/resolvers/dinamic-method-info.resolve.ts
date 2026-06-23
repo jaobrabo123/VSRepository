@@ -219,14 +219,14 @@ export function resolveDinamicMethodInfo(instance: RepositoryBuildInstance, dina
         dinamicMethodInfo.whereIndex = 0;
         dinamicMethodInfo.otherParams.push("where");
         dinamicMethodInfo.argsCount += 1;
-    } else if (dinamicMethod.startsWith("findBy")) {
-        dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("findBy", "");
-        dinamicMethodInfo.ignoreOrderByAndPagination = false;
-        dinamicMethodInfo.method = instance.methods?.[originalKey]?.fbMode === "one" ? "findFirst" : "findMany";
     } else if (dinamicMethod.startsWith("findOneBy")) {
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("findOneBy", "");
         dinamicMethodInfo.ignoreOrderByAndPagination = false;
         dinamicMethodInfo.method = "findFirst";
+    } else if (dinamicMethod.startsWith("findBy")) {
+        dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("findBy", "");
+        dinamicMethodInfo.ignoreOrderByAndPagination = false;
+        dinamicMethodInfo.method = instance.methods?.[originalKey]?.fbMode === "one" ? "findFirst" : "findMany";
     } else {
         throw new VSRepoBuildError(
             `[VSRepository] (${instance.tableName}: build) Unknown method: ${dinamicMethod}.`,
