@@ -1,12 +1,4 @@
-/**
- * ! THIS FILE IS AUTO-GENERATED.
- * ! DO NOT EDIT MANUALLY.
- */
-/* eslint-disable */
-/* biome-ignore-all lint: generated file */
-// @ts-nocheck
-
-import { Prisma, PrismaClient } from '../prisma/client';
+import { Prisma, PrismaClient } from '@vsrepo/prisma/types';
 import { Decimal, JsonValue } from '@prisma/client/runtime/client';
 
 /**

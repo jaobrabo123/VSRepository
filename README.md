@@ -8,11 +8,12 @@ Biblioteca de repository pattern para projetos que usam **Prisma**, com suporte 
 
 O VSRepository permite criar repositories fortemente tipados com:
 
-- **Métodos base** automáticos: `get`, `getOrThrow`, `save`, `remove`, `removeList`, `getAll`, `total`, `has`
+- **Métodos base** automáticos: `get`, `getOrThrow`, `getList`, `save`, `saveList`, `remove`, `removeList`, `patch`, `patchList`, `merge`, `getAll`, `total`, `has`
+- **Soft-delete nativo**: `softRemove`, `softRemoveList`, `restore`, `restoreList`
 - **Métodos dinâmicos** inferidos pelo nome: `findByEmail`, `findManyPaginated`, `updateById`, `deleteManyByIdIn`
 - **Select models** reutilizáveis para diferentes projeções de dados
 - **Type safety** em 100% das operações
-- **Transações** nativas do Prisma
+- **Transações** nativas do Prisma (automáticas em `saveList` e `patchList`)
 - **Extensibilidade** com métodos personalizados
 
 ---
@@ -24,8 +25,13 @@ O VSRepository permite criar repositories fortemente tipados com:
 - [Uso básico](#uso-básico)
 - [Integração com NestJS](#integração-com-nestjs)
 - [Métodos base](#métodos-base)
+  - [Soft-delete](#soft-delete)
+  - [Operações em lote](#operações-em-lote)
+  - [Merge](#merge)
+  - [Configurando os métodos base](#configurando-os-métodos-base)
 - [Select Models](#select-models)
 - [Required Where](#requiredwhere)
+- [Opção `see`](#opção-see)
 - [Métodos dinâmicos](#métodos-dinâmicos)
   - [Prefixos disponíveis](#prefixos-disponíveis)
   - [Filtros de campo](#filtros-de-campo)
@@ -130,7 +136,7 @@ import prisma from "../configs/db";
 import { setupVSRepo } from "../../generated/vsrepo";
 import type { Usuario } from "../../generated/prisma/client";
 
-const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
+const usuarioRepository = setupVSRepo<Usuario, "usuario">()(({
   tableName: "usuario",
   pkName: "id",
   selectModels: {
@@ -183,7 +189,7 @@ import { setupVSRepo } from "../../../generated/vsrepo";
 const userVSRepo = setupVSRepo<
     UserGetPayload<{ include: { profile: true } }>,
     "User"
->()({
+>()(({
     tableName: "user",
     pkName: "id",
     selectModels: {
@@ -291,31 +297,6 @@ export class UserService {
 }
 ```
 
-### Usando em um controller
-
-```ts
-// src/resources/user/user.controller.ts
-import { Controller, Get, Post, Body, Param, Patch, Delete } from "@nestjs/common";
-import { UserService } from "./user.service";
-
-@Controller("users")
-export class UserController {
-    constructor(private readonly userService: UserService) {}
-
-    @Get(":id")
-    async getUser(@Param("id") id: string) {
-        return this.userService.getUserById(id);
-    }
-
-    @Post()
-    async createUser(
-        @Body() data: { email: string; password: string; name: string }
-    ) {
-        return this.userService.createUser(data);
-    }
-}
-```
-
 **Benefícios desta abordagem:**
 
 - ✅ Type-safe repositories com injeção de dependência
@@ -330,26 +311,99 @@ export class UserController {
 
 Ao chamar `.build(prisma)` os métodos base abaixo são automaticamente disponibilizados:
 
-| Método       | Descrição                                  |
-| ------------ | ------------------------------------------ |
-| `get(pk)`    | Busca um registro pela primary key         |
-| `getOrThrow(pk)` | Busca um registro pela primary key e lança erro se não encontrar |
-| `save(obj)`  | Cria ou atualiza (se o objeto passado tiver a `pk` faz `upsert`, se não faz `create`) |
-| `patch(pk, obj)` | Atualiza parcialmente um registro pela primary key (equivalente ao `update` com payload parcial) |
-| `remove(pk)` | Remove um registro pela primary key        |
-| `removeList(pks)`  | Remove vários registros pela lista de primary keys — retorna `{ count }`   |
-| `getAll()` | Retorna todos os registros (aceita `pagination` e `order` no `options`)  |
-| `total()`  | Retorna o total de registros |
-| `has(pk)`          | Verifica existência de um registro pela primary key — retorna `boolean`   |
+| Método                   | Descrição                                                                                                   |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `get(pk)`                | Busca um registro pela primary key                                                                          |
+| `getOrThrow(pk)`         | Busca um registro pela primary key; lança `VSRepoRuntimeError` (code `"20727"`) se não encontrado          |
+| `getList(pks)`           | Busca múltiplos registros por uma lista de primary keys                                                     |
+| `save(obj)`              | Cria ou atualiza — se o objeto tiver a `pk` faz `upsert`, caso contrário faz `create`                      |
+| `saveList(objs)`         | Salva um array de objetos em uma única transação automática                                                 |
+| `patch(pk, obj)`         | Atualiza parcialmente um registro pela primary key                                                          |
+| `patchList(tuples)`      | Atualiza parcialmente múltiplos registros via array de tuplas `[pk, obj]` em transação automática          |
+| `merge(pk, obj)`         | Busca um registro e faz um deep merge em memória — **não persiste**, retorna o objeto mesclado             |
+| `remove(pk)`             | Remove um registro pela primary key                                                                         |
+| `removeList(pks)`        | Remove vários registros pela lista de primary keys — retorna `{ count }`                                   |
+| `getAll()`               | Retorna todos os registros (aceita `pagination` e `order` no `options`)                                     |
+| `total()`                | Retorna o total de registros                                                                                |
+| `has(pk)`                | Verifica existência de um registro pela primary key — retorna `boolean`                                    |
 
 Todos aceitam `options` como último argumento.
+
+### Soft-delete
+
+Quando `softRemovekName` está configurado no repository, os seguintes métodos adicionais ficam disponíveis:
+
+| Método                     | Descrição                                                                         |
+| -------------------------- | --------------------------------------------------------------------------------- |
+| `softRemove(pk)`           | Marca um registro como removido preenchendo `softRemovekName` com a data atual    |
+| `softRemoveList(pks)`      | Marca múltiplos registros como removidos em lote                                  |
+| `restore(pk)`              | Restaura um registro soft-deletado, limpando o campo `softRemovekName`            |
+| `restoreList(pks)`         | Restaura múltiplos registros soft-deletados em lote                               |
+
+```ts
+const usuarioRepository = setupVSRepo<Usuario, "usuario">()(({
+  tableName: "usuario",
+  pkName: "id",
+  softRemovekName: "deletedAt", // deve ser um campo DateTime no schema do Prisma
+}).build(prisma);
+
+await usuarioRepository.softRemove(1);
+await usuarioRepository.restore(1);
+```
+
+> O campo informado em `softRemovekName` **deve** ser do tipo `DateTime` no schema do Prisma. O VSRepository valida isso no momento do `build` e lança `VSRepoBuildError` se o tipo for incorreto.
+
+### Operações em lote
+
+`saveList` e `patchList` executam todas as operações automaticamente dentro de uma única transação do Prisma. Se alguma falhar, todas as anteriores são revertidas.
+
+```ts
+// saveList — cria ou atualiza múltiplos objetos em transação automática
+const usuarios = await usuarioRepository.saveList([
+  { nome: "Maria", email: "maria@email.com" },
+  { id: 2, nome: "João Atualizado" },
+]);
+
+// patchList — atualiza parcialmente múltiplos registros via tuplas [pk, obj]
+const atualizados = await usuarioRepository.patchList([
+  [1, { ativo: false }],
+  [2, { nome: "Novo Nome" }],
+]);
+```
+
+Quando você já está dentro de uma transação existente, passe-a em `options.db`. Nesse caso, o `db` deve ser um `DbTransaction` (não o cliente principal), pois o método não cria uma transação própria:
+
+```ts
+await prisma.$transaction(async (tx) => {
+  await usuarioRepository.saveList([{ nome: "Maria" }], { db: tx });
+  await usuarioRepository.patchList([[1, { ativo: false }]], { db: tx });
+});
+```
+
+### Merge
+
+O método `merge` busca um registro pela PK e mescla profundamente (`deepmerge`) o objeto fornecido com os dados existentes **em memória**. Ele **não persiste** as alterações — retorna o resultado mesclado para que você decida o que fazer com ele.
+
+```ts
+const existente = await usuarioRepository.get(1);
+// existente: { id: 1, nome: "Maria", perfil: { bio: "Olá", idade: 25 } }
+
+const mesclado = await usuarioRepository.merge(1, {
+  perfil: { bio: "Bio atualizada" },
+});
+// mesclado: { id: 1, nome: "Maria", perfil: { bio: "Bio atualizada", idade: 25 } }
+
+// Para persistir, passe para save ou patch:
+await usuarioRepository.save(mesclado);
+```
+
+Retorna `null` se o registro não for encontrado.
 
 ### Configurando os métodos base
 
 ```ts
 usuarioVSRepo.build(prisma, {
-  freeze: true,        // Congela o objeto (padrão = true)
-  showWorking: true,  // Exibe logs do VSRepository no console, ótimo para debugar as queries criadas e os objetos passados para o prisma
+  showWorking: true,  // Exibe logs do VSRepository no console, ótimo para debugar
 
   baseMethods: {
     get: {
@@ -359,17 +413,21 @@ usuarioVSRepo.build(prisma, {
     remove: {
       active: true,
       defaultSelect: "minimal",
-      ignoreRequiredWhere: false, // Aplica o requiredWhere no remove (padrão = false)
+      ignoreRequiredWhere: false,
     },
     save: {
-      ignoreRequiredWhere: true,  // Não aplica requiredWhere no upsert do save
+      ignoreRequiredWhere: true,
     },
     patch: {
       defaultSelect: "minimal",
     },
     has: {
       active: false, // Desativa o 'has' (padrão = true)
-    }
+    },
+    softRemove: {
+      active: true,
+      defaultSelect: "minimal",
+    },
   },
 });
 ```
@@ -423,7 +481,36 @@ const usuarios = await usuarioRepository.findMany();
 const usuario = await usuarioRepository.findByEmail("joao@email.com");
 ```
 
-Útil para soft-deletes, multi-tenancy e filtros globais de qualquer natureza.
+Útil para soft-deletes manuais, multi-tenancy e filtros globais de qualquer natureza.
+
+---
+
+## Opção `see`
+
+Quando `softRemovekName` está configurado, todos os métodos base aceitam a opção `see` para controlar a visibilidade de registros soft-deletados:
+
+| Valor       | Comportamento                                                 |
+| ----------- | ------------------------------------------------------------- |
+| `"active"`  | Retorna apenas registros **não** removidos (padrão)           |
+| `"removed"` | Retorna apenas registros removidos                            |
+| `"all"`     | Retorna todos os registros, independentemente do status       |
+
+```ts
+// Retorna apenas usuários ativos (padrão)
+const ativos = await usuarioRepository.getAll();
+
+// Retorna apenas usuários removidos
+const removidos = await usuarioRepository.getAll({ see: "removed" });
+
+// Retorna todos
+const todos = await usuarioRepository.getAll({ see: "all" });
+
+// Funciona em qualquer método base
+const usuario = await usuarioRepository.get(id, { see: "all" });
+const existe = await usuarioRepository.has(id, { see: "removed" });
+```
+
+> A opção `see` funciona independentemente do `requiredWhere` — ela é aplicada em cima do filtro de soft-delete, não o substitui.
 
 ---
 
@@ -446,40 +533,40 @@ methods: {
 
 O prefixo do nome do método determina qual operação Prisma será chamada e quais argumentos serão esperados.
 
-| Prefixo                   | Operação Prisma          | Retorno                | Observações                                              |
-| ------------------------- | ------------------------ | ---------------------- | -------------------------------------------------------- |
-| `findBy`                  | `findMany` / `findFirst` | `T[]` ou `T \| null`   | Padrão é lista; use `fbMode: "one"` (obsoleto, use `findOneBy`) para retorno único |
-| `findOneBy`               | `findFirst`              | `T \| null`            | Faz o mesmo que `findBy` com `fbMode: "one"`. Retorno único. |
-| `findUniqueBy`            | `findUnique`             | `T \| null`            |                                                          |
-| `findUniqueOrThrowBy`     | `findUniqueOrThrow`      | `T`                    | Lança erro se não encontrar                                  |
-| `findFirstBy`             | `findFirst`              | `T \| null`            | Aceita campos como filtro                                |
-| `findFirstOrThrowBy`      | `findFirstOrThrow`       | `T`                    | Aceita campos como filtro; lança erro se não encontrar       |
-| `findFirst`               | `findFirst`              | `T \| null`            | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`          |
-| `findFirstOrThrow`        | `findFirstOrThrow`       | `T`                    | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`; lança erro se não encontrar |
-| `findManyBy`              | `findMany`               | `T[]`                  | Aceita campos como filtro                                |
-| `findMany`                | `findMany`               | `T[]`                  | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`           |
-| `findWhere`               | `findFirst`              | `T \| null`            | (**Obsoleto, use `findOneWhere`**) Recebe um objeto `where` explícito como argumento |
-| `findOneWhere`            | `findFirst`              | `T \| null`            | Recebe um objeto `where` explícito como argumento                     |
-| `findListWhere`           | `findMany`               | `T[]`                  | Recebe um objeto `where` explícito como argumento        |
-| `existsBy`                | `findFirst`              | `boolean`              | Retorna `true` se encontrar, `false` caso contrário      |
-| `existsWhere`             | `findFirst`              | `boolean`              | Recebe um objeto `where` explícito como argumento e retorna se existe |
-| `countBy`                 | `count`                  | `number`               | Aceita campos como filtro                                |
-| `countWhere`              | `count`                  | `number`               | Recebe um objeto `where` explícito como argumento        |
-| `count`                   | `count`                  | `number`               | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`           |
-| `create`                  | `create`                 | `T`                    | Recebe `data` como argumento                             |
-| `createMany`              | `createMany`             | `{ count: number }`    | Recebe `data` como argumento; suporta `SkipDuplicates`                            |
-| `createManyAndReturn`     | `createManyAndReturn`    | `T[]`                  | Recebe `data` como argumento; suporta `SkipDuplicates`   |
-| `updateBy`                | `update`                 | `T`                    | Recebe `data` como argumento                             |
-| `updateManyBy`            | `updateMany`             | `{ count: number }`    | Recebe `data` como argumento                             |
-| `updateManyWhere`         | `updateMany`             | `{ count: number }`    | Recebe um objeto `where` e um objeto `data` como argumentos           |
-| `updateManyAndReturnBy`   | `updateManyAndReturn`    | `T[]`                  | Recebe `data` como argumento                             |
-| `updateManyAndReturnWhere` | `updateManyAndReturn`    | `T[]`                  | Recebe um objeto `where` e um objeto `data` como argumentos           |
-| `upsertBy`                | `upsert`                 | `T`                    | Recebe `update` e `create` como argumentos               |
-| `deleteBy`                | `delete`                 | `T`                    |                                                          |
-| `deleteManyBy`            | `deleteMany`             | `{ count: number }`    |                                                          |
-| `deleteManyWhere`         | `deleteMany`             | `{ count: number }`    | Recebe um objeto `where` explícito como argumento                     |
-| `aggregate`               | `aggregate`              | `Dinâmico`               | Nome deve ser exato; recebe args nativos do Prisma; ignora `selectModels`, `pushWhere` e `requiredWhere` |
-| `groupBy`               | `groupBy`              | `Dinâmico[]`               | Nome deve ser exato; recebe args nativos do Prisma; ignora `selectModels`, `pushWhere` e `requiredWhere` |
+| Prefixo                    | Operação Prisma           | Retorno                | Observações                                                              |
+| -------------------------- | ------------------------- | ---------------------- | ------------------------------------------------------------------------ |
+| `findOneBy`                | `findFirst`               | `T \| null`            | Retorno único.                                                           |
+| `findBy`                   | `findMany` / `findFirst`  | `T[]` ou `T \| null`   | Padrão é lista; use `fbMode: "one"` para retorno único (**obsoleto**, use `findOneBy`)      |
+| `findUniqueBy`             | `findUnique`              | `T \| null`            |                                                                          |
+| `findUniqueOrThrowBy`      | `findUniqueOrThrow`       | `T`                    | Lança erro se não encontrar                                              |
+| `findFirstBy`              | `findFirst`               | `T \| null`            | Aceita campos como filtro                                                |
+| `findFirstOrThrowBy`       | `findFirstOrThrow`        | `T`                    | Aceita campos como filtro; lança erro se não encontrar                   |
+| `findFirst`                | `findFirst`               | `T \| null`            | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`            |
+| `findFirstOrThrow`         | `findFirstOrThrow`        | `T`                    | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`; lança erro se não encontrar |
+| `findManyBy`               | `findMany`                | `T[]`                  | Aceita campos como filtro                                                |
+| `findMany`                 | `findMany`                | `T[]`                  | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`            |
+| `findOneWhere`             | `findFirst`               | `T \| null`            | Recebe um objeto `where` explícito como argumento                        |
+| `findWhere`                | `findFirst`               | `T \| null`            | (**Obsoleto, use `findOneWhere`**) Recebe um objeto `where` explícito    |
+| `findListWhere`            | `findMany`                | `T[]`                  | Recebe um objeto `where` explícito como argumento                        |
+| `existsBy`                 | `findFirst`               | `boolean`              | Retorna `true` se encontrar, `false` caso contrário                      |
+| `existsWhere`              | `findFirst`               | `boolean`              | Recebe um objeto `where` explícito e retorna se existe                   |
+| `countBy`                  | `count`                   | `number`               | Aceita campos como filtro                                                |
+| `countWhere`               | `count`                   | `number`               | Recebe um objeto `where` explícito como argumento                        |
+| `count`                    | `count`                   | `number`               | Sem filtros de campo; aplica só `requiredWhere` e `pushWhere`            |
+| `create`                   | `create`                  | `T`                    | Recebe `data` como argumento                                             |
+| `createMany`               | `createMany`              | `{ count: number }`    | Recebe `data` como argumento; suporta `SkipDuplicates`                   |
+| `createManyAndReturn`      | `createManyAndReturn`     | `T[]`                  | Recebe `data` como argumento; suporta `SkipDuplicates`                   |
+| `updateBy`                 | `update`                  | `T`                    | Recebe `data` como argumento                                             |
+| `updateManyBy`             | `updateMany`              | `{ count: number }`    | Recebe `data` como argumento                                             |
+| `updateManyWhere`          | `updateMany`              | `{ count: number }`    | Recebe um objeto `where` e um objeto `data` como argumentos              |
+| `updateManyAndReturnBy`    | `updateManyAndReturn`     | `T[]`                  | Recebe `data` como argumento                                             |
+| `updateManyAndReturnWhere` | `updateManyAndReturn`     | `T[]`                  | Recebe um objeto `where` e um objeto `data` como argumentos              |
+| `upsertBy`                 | `upsert`                  | `T`                    | Recebe `update` e `create` como argumentos                               |
+| `deleteBy`                 | `delete`                  | `T`                    |                                                                          |
+| `deleteManyBy`             | `deleteMany`              | `{ count: number }`    |                                                                          |
+| `deleteManyWhere`          | `deleteMany`              | `{ count: number }`    | Recebe um objeto `where` explícito como argumento                        |
+| `aggregate`                | `aggregate`               | `Dinâmico`             | Nome deve ser exato; recebe args nativos do Prisma; ignora `selectModels`, `pushWhere` e `requiredWhere` |
+| `groupBy`                  | `groupBy`                 | `Dinâmico[]`           | Nome deve ser exato; recebe args nativos do Prisma; ignora `selectModels`, `pushWhere` e `requiredWhere` |
 
 ---
 
@@ -487,29 +574,29 @@ O prefixo do nome do método determina qual operação Prisma será chamada e qu
 
 Os filtros são sufixos aplicados ao nome do campo dentro do método. O campo em si vem capitalizado logo após o prefixo (ou após `By`).
 
-| Sufixo             | Operador Prisma       | Argumento necessário |
-| ------------------ | --------------------- | -------------------- |
-| *(sem sufixo)*     | igualdade (`=`)       | sim                  |
-| `Not`              | `not`                 | sim                  |
-| `In`               | `in`                  | sim (array)          |
-| `NotIn`            | `notIn`               | sim (array)          |
-| `Contains`         | `contains`            | sim                  |
-| `NotContains`      | `not.contains`        | sim                  |
-| `StartsWith`       | `startsWith`          | sim                  |
-| `NotStartsWith`    | `not.startsWith`      | sim                  |
-| `EndsWith`         | `endsWith`            | sim                  |
-| `NotEndsWith`      | `not.endsWith`        | sim                  |
-| `GreaterThan`      | `gt`                  | sim                  |
-| `GreaterThanEqual` | `gte`                 | sim                  |
-| `LessThan`         | `lt`                  | sim                  |
-| `LessThanEqual`    | `lte`                 | sim                  |
-| `Between`          | `gte` + `lte`         | sim (tupla `[min, max]`) |
-| `NotBetween`       | `not.gte` + `not.lte` | sim (tupla `[min, max]`) |
-| `IsNull`           | `null`                | não                  |
-| `IsNotNull`        | `not: null`           | não                  |
-| `IsTrue`           | `true`                | não                  |
-| `IsFalse`          | `false`               | não                  |
-| `Insensitive`      | `mode: 'insensitive'` | combinador           |
+| Sufixo             | Operador Prisma       | Argumento necessário      |
+| ------------------ | --------------------- | ------------------------- |
+| *(sem sufixo)*     | igualdade (`=`)       | sim                       |
+| `Not`              | `not`                 | sim                       |
+| `In`               | `in`                  | sim (array)               |
+| `NotIn`            | `notIn`               | sim (array)               |
+| `Contains`         | `contains`            | sim                       |
+| `NotContains`      | `not.contains`        | sim                       |
+| `StartsWith`       | `startsWith`          | sim                       |
+| `NotStartsWith`    | `not.startsWith`      | sim                       |
+| `EndsWith`         | `endsWith`            | sim                       |
+| `NotEndsWith`      | `not.endsWith`        | sim                       |
+| `GreaterThan`      | `gt`                  | sim                       |
+| `GreaterThanEqual` | `gte`                 | sim                       |
+| `LessThan`         | `lt`                  | sim                       |
+| `LessThanEqual`    | `lte`                 | sim                       |
+| `Between`          | `gte` + `lte`         | sim (tupla `[min, max]`)  |
+| `NotBetween`       | `not.gte` + `not.lte` | sim (tupla `[min, max]`)  |
+| `IsNull`           | `null`                | não                       |
+| `IsNotNull`        | `not: null`           | não                       |
+| `IsTrue`           | `true`                | não                       |
+| `IsFalse`          | `false`               | não                       |
+| `Insensitive`      | `mode: 'insensitive'` | combinador                |
 
 `Insensitive` é um combinador e pode ser usado junto com outro filtro de texto:
 
@@ -519,41 +606,24 @@ findByEmailStartsWithInsensitive // { email: { startsWith: valor, mode: 'insensi
 findByNomeInsensitive            // { nome: { equals: valor, mode: 'insensitive' } }
 ```
 
-`Between` e `NotBetween` recebem uma **tupla `[minValue, maxValue]`** e são ideais para filtros de intervalo em números, datas ou qualquer campo comparável:
+`Between` e `NotBetween` recebem uma **tupla `[minValue, maxValue]`**:
 
 ```ts
 methods: {
-  findManyByIdadeBetween:          { map: true },
-  findManyBySalarioNotBetween:     { map: true },
-  findManyByCriadoEmBetween:       { map: true },
+  findManyByIdadeBetween:      { map: true },
+  findManyBySalarioNotBetween: { map: true },
+  findManyByCriadoEmBetween:   { map: true },
 }
 
-// Uso
 await usuarioRepository.findManyByIdadeBetween([18, 65]);
 await usuarioRepository.findManyBySalarioNotBetween([1000, 5000]);
 await usuarioRepository.findManyByCriadoEmBetween([new Date("2024-01-01"), new Date("2024-12-31")]);
 ```
 
-Gera (`findManyByIdadeBetween`):
-
-```ts
-{
-  idade: { gte: 18, lte: 65 }
-}
-```
-
-Gera (`findManyBySalarioNotBetween`):
-
-```ts
-{
-  salario: { not: { gte: 1000, lte: 5000 } }
-}
-```
-
 O sufixo `Optional` pode ser adicionado a qualquer campo para tornar o argumento opcional:
 
 ```ts
-findByNomeOptionalAndEmail // nome é opcional (pode ser passado como undefined no parâmetro), email é obrigatório
+findByNomeOptionalAndEmail // nome é opcional, email é obrigatório
 ```
 
 ---
@@ -562,14 +632,14 @@ findByNomeOptionalAndEmail // nome é opcional (pode ser passado como undefined 
 
 | Operador  | Uso no nome                  | Exemplo                          |
 | --------- | ---------------------------- | -------------------------------- |
-| `And`     | entre dois campos            | `findOneByIdAndEmail`               |
+| `And`     | entre dois campos            | `findOneByIdAndEmail`            |
 | `Or`      | entre dois campos            | `findByNomeOrEmail`              |
 | `AND`     | separa bloco final em `AND`  | `findByEmailOrNameANDActiveStatus` |
 
 `AND` (em capslock) tem uma regra específica:
 
 - Só pode existir **um** `AND` por método.
-- Todos os campos (conectados por `And`) **depois** de `AND` são injetados dentro de `AND: []`.
+- Todos os campos depois de `AND` são injetados dentro de `AND: []`.
 - Depois de um `AND` não pode ter `Or`.
 
 Exemplo:
@@ -582,45 +652,10 @@ methods: {
   findByEmailOrNameANDActiveStatusAndIdadeGreaterThan: { map: true }
 }
 
-// Uso
 await usuarioRepository.findOneByIdAndEmail(1, "joao@email.com");
 await usuarioRepository.findByNomeOrEmail("Joao", "joao@email.com");
 await usuarioRepository.findUniqueByIdOrEmailAndNome(1, "joao@email.com", "Joao");
 await usuarioRepository.findByEmailOrNameANDActiveStatusAndIdadeGreaterThan("joao@email.com", "Joao", true, 17)
-```
-
-Gera (`findOneByIdAndEmail`):
-
-```ts
-{
-  id: 1,
-  email: "joao@email.com"
-}
-```
-
-Gera (`findByNomeOrEmail`):
-
-```ts
-{
-  OR: [
-    { nome: "Joao" },
-    { email: "joao@email.com" }
-  ]
-}
-```
-
-Gera (`findUniqueByIdOrEmailAndNome`):
-
-```ts
-{
-  OR: [
-    { id: 1 },
-    {
-      email: "joao@email.com",
-      nome: "Joao"
-    }
-  ]
-}
 ```
 
 Gera (`findByEmailOrNameANDActiveStatusAndIdadeGreaterThan`):
@@ -662,27 +697,11 @@ Permitem filtrar por campos de modelos relacionados.
 | `Without`              | `isNot: {}`     | Relação não existe (é null)                        |
 | `WithoutField`         | `isNot.field`   | Filtra campo dentro da relação com negação         |
 
-Exemplos:
-
-```ts
-methods: {
-  findByPostagensSomeTituloContains:  { map: true },   // postagens: { some: { titulo: { contains: valor } } } >> (Busca usuários que o título de alguma postagem contém um valor)
-  findByPerfilWithDescricaoIsNotNull: { map: true },   // perfil: { is: { descricao: { not: null } } } >> (Busca usuários em que a descrição do perfil não é nula)
-  findByPerfilWithout:                { map: true },   // perfil: { isNot: {} } >> (Busca usuários sem perfil)
-  findByPostagensSome:                { map: true },   // postagens: { some: {} } >> (Busca usuários com alguma postagem)
-  findByPostagensEveryAtivoIsTrue:    { map: true },   // postagens: { every: { ativo: true } } >> (Busca usuários que todas as postagens estão ativas)
-  findByPostagensNone:                { map: true },   // postagens: { none: {} } >> (Busca usuários sem postagens)
-}
-```
-
-> [!NOTE]
-> Teoricamente você pode usar `Every` sem `Field` (ele geraria { every: { } }), porém isso não produz um filtro efetivo. A condição é considerada verdadeira para qualquer relação, inclusive quando não existem registros relacionados, tornando o resultado equivalente a não aplicar filtro algum.
-
 ---
 
 ### Sufixos de paginação e ordenação
 
-Aplicados ao **final** do nome do método (após os filtros de campo), eles injetam automaticamente os argumentos de paginação e ordenação.
+Aplicados ao **final** do nome do método, eles injetam automaticamente os argumentos de paginação e ordenação.
 
 | Sufixo                | Argumentos adicionais         |
 | --------------------- | ----------------------------- |
@@ -697,43 +716,6 @@ Para `createMany` e `createManyAndReturn`, o sufixo `SkipDuplicates` está dispo
 | ----------------- | ---------------------------------------- |
 | `SkipDuplicates`  | Ignora registros duplicados na inserção  |
 
-Exemplos completos:
-
-```ts
-methods: {
-  findManyPaginated:                    { map: true },
-  findManyByAtivoOrderedAndPaginated:   { map: true },
-  findByEmailOrderedAndPaginated:       { map: true },
-  createManyAndReturnSkipDuplicates:    { map: true },
-}
-
-// Uso
-await usuarioRepository.findManyPaginated({ skip: 0, take: 10 });
-
-await usuarioRepository.findManyByAtivoOrderedAndPaginated(
-  true,
-  { dataCriacao: "desc" },
-  { skip: 0, take: 10 }
-);
-```
-
-`PaginationOptions`:
-
-```ts
-type PaginationOptions<TCursor = unknown> = {
-  skip?: number;
-  take?: number;
-  cursor?: TCursor;
-};
-```
-
-`OrderOptions`:
-
-```ts
-type OrderOptions = OrderPattern | OrderPattern[];
-// Exemplo: { dataCriacao: "desc" } ou [{ dataCriacao: "desc" }, { nome: "asc" }]
-```
-
 ---
 
 ### Configuração de métodos
@@ -743,46 +725,20 @@ Cada entrada em `methods` aceita as seguintes opções:
 | Opção               | Tipo                            | Padrão       | Descrição                                                                                                    |
 | ------------------- | ------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------ |
 | `map`               | `boolean`                       | —            | **Obrigatório.** Define se o método será exposto no repository.                                             |
-| `whereType`         | `'extending'` \| `'overwrite'`  | `extending`  | `extending` combina com `requiredWhere`. `overwrite` ignora o `requiredWhere`.                      |
+| `whereType`         | `'extending'` \| `'overwrite'`  | `extending`  | `extending` combina com `requiredWhere`. `overwrite` ignora o `requiredWhere`.                               |
 | `selectModel`       | `keyof SelectModels \| false`   | —            | Sobrescreve o `defaultSelectModel` para este método.                                                        |
 | `fbMode`            | `'one'` \| `'list'`             | `'list'`     | (**Obsoleto. Use `findOneBy`**) Somente para `findBy`. `'one'` retorna `T \| null`; `'list'` retorna `T[]`. |
-| `proxyTo`           | `Padrão de método válido`           | —            | Delega a lógica para outro padrão de método válido. Útil para methods com nomes personalizados.       |
+| `proxyTo`           | `Padrão de método válido`       | —            | Delega a lógica para outro padrão de método válido.                                                         |
 | `pushWhere`         | `WhereModel<M>`                 | —            | Where extra adicionado à query além do `requiredWhere`.                                                     |
 | `injectOrdenation`  | `OrdenationModel<M>`            | —            | Ordenação fixa injetada automaticamente na query.                                                           |
 | `injectPagination`  | `PaginationModel<M>`            | —            | Paginação fixa injetada automaticamente na query.                                                           |
-
-Exemplos:
-
-```ts
-methods: {
-  // Retorna um único resultado
-  findOneByEmail: { map: true },
-
-  // Ignora o requiredWhere
-  deleteManyByIdIn: { map: true, whereType: "overwrite" },
-
-  // Usa um select model específico neste método
-  findManyByAtivo: { map: true, selectModel: "minimal" },
-
-  // Adiciona um where extra além do requiredWhere
-  findManyByPerfil: { map: true, pushWhere: { deletedAt: null } },
-
-  // Ordenação fixa sem precisar passar como argumento
-  findManyPaginado: { map: true, injectOrdenation: { dataCriacao: "desc" } },
-
-  // Nome personalizado precisa de proxyTo
-  buscarPorEmailEPerfil: { map: true, proxyTo: "findByEmailAndPerfil" },
-}
-```
 
 ---
 
 ### Aggregate e GroupBy
 
-Para utilizar operações de agrupamento e agregação do Prisma (`aggregate` e `groupBy`), você deve expô-las explicitamente na configuração dos métodos dinâmicos (`methods`):
-
 ```ts
-const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
+const usuarioRepository = setupVSRepo<Usuario, "usuario">()(({
   tableName: "usuario",
   pkName: "id",
   methods: {
@@ -796,65 +752,11 @@ const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
 > Estes métodos devem ter exatamente esses nomes (`aggregate` e `groupBy`).
 > Ao contrário dos outros métodos dinâmicos, eles recebem argumentos nativos do Prisma e **ignoram** as configurações de `selectModels`, `pushWhere` e `requiredWhere`.
 
-#### Exemplo de uso do `aggregate`
-
-O método `aggregate` permite calcular valores agregados (como média, soma, mínimo, máximo, contagem) sobre os registros:
-
-```ts
-const resultado = await usuarioRepository.aggregate({
-  _count: {
-    _all: true,
-  },
-  _avg: {
-    idade: true,
-  },
-  _sum: {
-    saldo: true,
-  },
-  where: {
-    ativo: true,
-  },
-});
-
-console.log(resultado._count._all); // Total de usuários ativos
-console.log(resultado._avg.idade);   // Média de idade dos usuários ativos
-console.log(resultado._sum.saldo);   // Soma dos saldos dos usuários ativos
-```
-
-#### Exemplo de uso do `groupBy`
-
-O método `groupBy` permite agrupar registros por um ou mais campos para realizar operações de agregação em cada grupo:
-
-```ts
-const grupos = await usuarioRepository.groupBy({
-  by: ["status"],
-  _count: {
-    status: true,
-  },
-  _avg: {
-    idade: true,
-  },
-  having: {
-    idade: {
-      _avg: {
-        gt: 18,
-      },
-    },
-  },
-});
-
-for (const grupo of grupos) {
-  console.log(`Status: ${grupo.status}`);
-  console.log(`Quantidade: ${grupo._count.status}`);
-  console.log(`Média de Idade: ${grupo._avg.idade}`);
-}
-```
-
 ---
 
 ## Relações no save
 
-Configure relações para que o `save` as gerencie automaticamente. Essas mesmas relações também são usadas no `patch`. Para que as relações apareçam no autocomplete, o tipo genérico deve incluir as relações usando `GetPayload`:
+Configure relações para que o `save` e o `patch` as gerenciem automaticamente (`saveList` e `pacthList` também gerenciam as relations automaticamente).
 
 ```ts
 import type { Prisma } from "../../generated/prisma/client";
@@ -863,7 +765,7 @@ type Usuario = Prisma.usuarioGetPayload<{
   include: { perfil: true; postagens: true };
 }>;
 
-const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
+const usuarioRepository = setupVSRepo<Usuario, "usuario">()(({
   tableName: "usuario",
   pkName: "id",
 
@@ -882,33 +784,6 @@ const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
 }).build(prisma);
 ```
 
-Exemplos de uso com relações:
-
-```ts
-await usuarioRepository.save({
-  nome: "Maria",
-  email: "maria@email.com",
-  senha: "password",
-  perfil: {
-    bio: "Bio da Maria",
-  },
-  postagens: [
-    { titulo: "Primeiro post", conteudo: "Olá!" },
-  ],
-});
-
-await usuarioRepository.patch(1, {
-  perfil: {
-    bio: "Bio atualizada",
-  },
-  postagens: [
-    { id: 10, titulo: "Post revisado", conteudo: "Conteúdo ajustado" },
-  ],
-});
-```
-
-> **Dica:** Se o tipo genérico não incluir `include: { relação: true }`, o VSRepository ainda funcionará, mas o autocomplete não sugerirá as relações no `save`. O tipo recomendado é sempre `GetPayload<{ include: { /* suas relações */ } }>` para melhor experiência de desenvolvimento.
-
 **Modos de relação:**
 
 | Modo  | Relação      |
@@ -924,6 +799,23 @@ await usuarioRepository.patch(1, {
 | --------- | ----------------------------------------------------------- |
 | `set`     | Substitui completamente (remove os que não foram enviados)  |
 | `add`     | Adiciona/atualiza sem remover os existentes                 |
+
+**Relação `mto` com nullable:**
+
+Use `nullable` (letra minúscula) para permitir a desvinculação de uma relação many-to-one:
+
+```ts
+relations: {
+  categoria: {
+    pk: "id",
+    mode: "mto",
+    restriction: "set",
+    nullable: true, // permite passar null para desvincular
+  },
+}
+```
+
+> **Nota:** `nullAble` (com A maiúsculo) ainda é aceito por compatibilidade, mas está **obsoleto**. Prefira `nullable`.
 
 ---
 
@@ -945,28 +837,38 @@ await usuarioRepository.prisma.$transaction(async (tx) => {
 });
 ```
 
-Observe que é possível diferentes repositories participarem da mesma transação.
+Para `saveList` e `patchList`, o campo `db` deve ser um `DbTransaction` (não o cliente principal):
+
+```ts
+await prisma.$transaction(async (tx) => {
+  // CORRETO: tx é uma DbTransaction
+  await usuarioRepository.saveList([{ nome: "Maria" }], { db: tx });
+
+  // ERRADO: não passe o prisma diretamente
+  // await usuarioRepository.saveList([{ nome: "Maria" }], { db: prisma });
+});
+```
 
 ---
 
 ## Estendendo um repository
 
 ```ts
-const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
+const usuarioRepository = setupVSRepo<Usuario, "usuario">()(({
   tableName: "usuario",
   pkName: "id",
   methods: {
-    findByEmailEndsWith: { map: true, fbMode: "one" },
+    findOneByEmailEndsWith: { map: true },
   },
 })
   .build(prisma)
   .extend((repo) => ({
     buscarAtivosPorDominio: async (dominio: string) => {
-      return repo.findByEmailEndsWith(`@${dominio}`);
+      return repo.findOneByEmailEndsWith(`@${dominio}`);
     },
 
     ativarMultiplos: async (ids: string[]) => {
-      return repo.updateManyByIdIn(ids, { ativo: true });
+      return repo.patchList(ids.map(id => [id, { ativo: true }]));
     },
   }));
 ```
@@ -975,15 +877,17 @@ const usuarioRepository = setupVSRepo<Usuario, "usuario">()({
 
 ## Tratamento de erros
 
-O VSRepository lança `VSRepoError` e suas subclasses em situações específicas (OBS: Erros do Prisma não são sobrescritos como `VSRepoError`):
+O VSRepository lança `VSRepoError` e suas subclasses em situações específicas (erros do Prisma não são sobrescritos):
 
 ```ts
-import { VSRepoError } from "../../generated/vsrepo";
+import { VSRepoError, VSRepoRuntimeError } from "../../generated/vsrepo";
 
 try {
-  const usuario = await usuarioRepository.get();
+  const usuario = await usuarioRepository.getOrThrow(id);
 } catch (error) {
-  if (error instanceof VSRepoError) {
+  if (error instanceof VSRepoRuntimeError && error.code === "20727") {
+    // Registro não encontrado pelo getOrThrow
+  } else if (error instanceof VSRepoError) {
     console.error("Erro no repository:", error.message);
   }
 }
@@ -991,27 +895,35 @@ try {
 
 **Subclasses disponíveis:**
 
-| Classe               | Quando é lançada                                        |
-| -------------------- | ------------------------------------------------------- |
-| `VSRepoConfigError`  | Configuração inválida em `setupVSRepo`                  |
-| `VSRepoBuildError`   | Nome de método ou configuração inválida no `build`      |
-| `VSRepoExtendError`  | Argumento inválido em `extend`                          |
-| `VSRepoRuntimeError` | Erro em tempo de execução durante uma operação          |
+| Classe               | Quando é lançada                                                  |
+| -------------------- | ----------------------------------------------------------------- |
+| `VSRepoConfigError`  | Configuração inválida em `setupVSRepo`                            |
+| `VSRepoBuildError`   | Nome de método, tipo de campo ou configuração inválida no `build` |
+| `VSRepoExtendError`  | Argumento inválido em `extend`                                    |
+| `VSRepoRuntimeError` | Erro em tempo de execução durante uma operação                    |
+
+`VSRepoRuntimeError` possui a propriedade `code` para identificação programática. O código `"20727"` é lançado pelo `getOrThrow` quando o registro não é encontrado.
 
 ---
 
 ## Tipos utilitários
-
-O VSRepository exporta os seguintes tipos para uso nas suas aplicações:
 
 ### Tipos de cliente
 
 ```ts
 import type { DbClient, DbTransaction, ClientOrTransaction } from "../../generated/vsrepo";
 
-type DbClient           = PrismaClient;
-type DbTransaction      = Prisma.TransactionClient;
+type DbClient            = PrismaClient;
+type DbTransaction       = Prisma.TransactionClient;
 type ClientOrTransaction = DbClient | DbTransaction;
+```
+
+### Tipo de visibilidade soft-delete
+
+```ts
+import type { SeeMode } from "../../generated/vsrepo";
+
+type SeeMode = "active" | "removed" | "all";
 ```
 
 ### Tipos derivados do modelo Prisma
@@ -1024,36 +936,8 @@ import type {
   OrdenationModel,
   PaginationModel,
   ModelUpsertInput,
+  PrismaModelInputs,
 } from "../../generated/vsrepo";
-
-// Select de um campo específico
-type UsuarioSelect = SelectModel<"usuario">;
-
-// Mapa de selects nomeados
-type UsuarioSelectModels = SelectModels<"usuario">;
-
-// Where clause do modelo
-type UsuarioWhere = WhereModel<"usuario">;
-
-// OrderBy do modelo
-type UsuarioOrder = OrdenationModel<"usuario">;
-
-// Opções de paginação com cursor tipado
-type UsuarioPagination = PaginationModel<"usuario">;
-
-// Payload de criação do modelo (para upsert)
-type UsuarioUpsertInput = ModelUpsertInput<"usuario">;
-```
-
-### Todos os inputs do modelo
-
-```ts
-import type { PrismaModelInputs } from "../../generated/vsrepo";
-
-type UsuarioInputs = PrismaModelInputs<"usuario">;
-// Contém:
-//   select, createInput, createManyInput, updateInput, updateManyInput,
-//   whereInput, orderByInput, cursorInput, upsertCreateInput, upsertUpdateInput
 ```
 
 ### Tipos de opções de método
@@ -1062,10 +946,9 @@ type UsuarioInputs = PrismaModelInputs<"usuario">;
 import type { MethodOptions, MethodOptionsModel } from "../../generated/vsrepo";
 
 // MethodOptions<S> — opções passadas nos métodos do repository
-// S = chave do select model ou false
 type Opts = MethodOptions<"public" | "minimal">;
 
-// MethodOptionsModel<TRepo> — derivado diretamente de uma instância VSRepository configurada
+// MethodOptionsModel<TRepo> — derivado de uma instância VSRepository configurada
 const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()(config);
 type OptsModel = MethodOptionsModel<typeof usuarioVSRepo>;
 ```
@@ -1080,21 +963,6 @@ import type {
   RepositoryRelations,
   ExtractRelationConfig,
 } from "../../generated/vsrepo";
-
-// Configuração de um método dinâmico
-type MeuMethodConfig = MethodConfig<"usuario", typeof meuSelectModels>;
-
-// Configuração completa do repository
-type MeuRepoConfig = RepoConfig<Usuario, "usuario">;
-
-// Configuração do build
-type MeuBuildConfig = BuildConfig<"public" | "minimal">;
-
-// Tipo de relações inferidas automaticamente
-type UsuarioRelations = RepositoryRelations<Usuario>;
-
-// Configuração de relação inferida a partir de um campo
-type PerfilRelationConfig = ExtractRelationConfig<Usuario["perfil"]>;
 ```
 
 ### Tipo do repository construído
@@ -1102,7 +970,6 @@ type PerfilRelationConfig = ExtractRelationConfig<Usuario["perfil"]>;
 ```ts
 import type { RepositoryOf } from "../../generated/vsrepo";
 
-// Inferência a partir de uma instância VSRepository (útil para injeção de dependência)
 const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()({ ... });
 type UsuarioRepository = RepositoryOf<typeof usuarioVSRepo>;
 ```
@@ -1111,41 +978,24 @@ type UsuarioRepository = RepositoryOf<typeof usuarioVSRepo>;
 
 ```ts
 type RepositoryOf<TRepo, C extends BuildConfig | undefined = undefined, E = unknown>
-//                        ^ BuildConfig (opcional)                       ^ tipo do extend (opcional)
 ```
 
-Exemplo com extend tipado:
-
-```ts
-const extension = { buscarPorDominio: (dominio: string) => Promise<Usuario[]> };
-type UsuarioRepositoryExtended = RepositoryOf<typeof usuarioVSRepo, undefined, typeof extension>;
-```
-
-### Tipos do payload dos métodos `save` e `patch`
-
-Use `SaveObject` e `PatchObject` para extrair o tipo do payload esperado pelos métodos `save` e `patch` diretamente a partir de uma instância `VSRepository` configurada. Esses tipos combinam o input base do Prisma com as relações configuradas no repository.
+### Tipos do payload de `save` e `patch`
 
 ```ts
 import type { SaveObject, PatchObject } from "../../generated/vsrepo";
-import type { Prisma } from "../../generated/prisma/client";
 
-const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()({
+const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()(({
   tableName: "usuario",
   pkName: "id",
   relations: {
     perfil: { pk: "id", mode: "oto", restriction: "set" },
-    postagens: { pk: "id", mode: "otm", restriction: "add" },
   },
 });
 
-// Tipo do objeto aceito pelo .save()
-type UsuarioSavePayload = SaveObject<Prisma.UsuarioCreateInput, typeof usuarioVSRepo>;
-
-// Tipo do objeto aceito pelo .patch()
+type UsuarioSavePayload  = SaveObject<Prisma.UsuarioCreateInput, typeof usuarioVSRepo>;
 type UsuarioPatchPayload = PatchObject<Prisma.UsuarioUpdateInput, typeof usuarioVSRepo>;
 ```
-
-> Útil para tipar DTOs, funções auxiliares ou serviços que chamam `save`/`patch` e precisam do tipo correto do payload sem referenciar diretamente os tipos internos do Prisma.
 
 ---
 
@@ -1155,12 +1005,13 @@ type UsuarioPatchPayload = PatchObject<Prisma.UsuarioUpdateInput, typeof usuario
 
 ```ts
 setupVSRepo<TPayload, TTableName>()({
-  tableName: Uncapitalize<M>;         // Nome da tabela no Prisma
-  pkName: keyof T;                    // Nome da primary key
-  selectModels?: SelectModels<M>;     // Projeções de dados nomeadas
-  defaultSelectModel?: keyof SM;      // Select aplicado por padrão
-  requiredWhere?: WhereModel<M>;      // Filtros sempre aplicados
-  relations?: RepositoryRelations<T>; // Configuração de relações
+  tableName: Uncapitalize<M>;          // Nome da tabela no Prisma
+  pkName: keyof T;                     // Nome da primary key
+  softRemovekName?: keyof T & string;  // Campo DateTime para soft-delete (opcional)
+  selectModels?: SelectModels<M>;      // Projeções de dados nomeadas
+  defaultSelectModel?: keyof SM;       // Select aplicado por padrão
+  requiredWhere?: WhereModel<M>;       // Filtros sempre aplicados
+  relations?: RepositoryRelations<T>;  // Configuração de relações
   methods?: Record<string, MethodConfig<M, SM>>; // Métodos dinâmicos
 });
 ```
@@ -1169,22 +1020,26 @@ setupVSRepo<TPayload, TTableName>()({
 
 ```ts
 vsRepo.build(prisma, {
-  freeze?: boolean;        // Congela o objeto (default = true)
   showWorking?: boolean;   // Exibe logs internos no console (default = false)
 
-  // `active` serve para definir se o método vai existir depois do build (default = true)
-  // `defaultSelect` serve para definir qual `selectModel` esse método vai usar por default (default = `defaultSelectModel` definido no `setupVSRepo`)
-  // `ignoreRequiredWhere` serve para definir se o método vai ignorar o `requiredWhere` definido no `setupVSRepo` (default = false)
   baseMethods?: {
-    // Métodos que podem utilizar um `defaultSelect`
-    get?:       { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    getOrThrow?:{ active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    remove?:    { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    save?:      { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    patch?:     { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    getAll?:    { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    // Métodos que podem utilizar um defaultSelect
+    get?:             { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    getOrThrow?:      { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    getList?:         { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    remove?:          { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    save?:            { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    saveList?:        { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    patch?:           { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    patchList?:       { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    merge?:           { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    getAll?:          { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    softRemove?:      { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    softRemoveList?:  { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    restore?:         { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
+    restoreList?:     { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
 
-    // Métodos que NÃO aceitam `defaultSelect`
+    // Métodos que NÃO aceitam defaultSelect
     removeList?: { active?: boolean; ignoreRequiredWhere?: boolean };
     total?:      { active?: boolean; ignoreRequiredWhere?: boolean };
     has?:        { active?: boolean; ignoreRequiredWhere?: boolean };
@@ -1248,3 +1103,7 @@ Para reportar problemas ou sugerir novas funcionalidades, abra uma **Issue**.
 **`proxyTo` obrigatório** — Nomes fora dos moldes (ex.: `buscarPorEmail`) não são parseados diretamente. Use `proxyTo: "findByEmail"` nesses casos.
 
 **Select model retorna campos inesperados** — Verifique se o select model define exatamente os campos que o seu tipo TypeScript espera. Campos com `false` não serão retornados pelo Prisma.
+
+**`softRemovekName` lança erro no build** — O campo informado deve ser do tipo `DateTime` no schema do Prisma. Tipos como `Boolean` ou `String` não são aceitos.
+
+**`saveList`/`patchList` com `db` inválido** — O campo `db` nestes métodos aceita apenas `DbTransaction` (retorno de `prisma.$transaction`), não o cliente principal. Passar o `PrismaClient` diretamente causará comportamento inesperado.

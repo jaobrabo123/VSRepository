@@ -82,7 +82,7 @@ async function baseMethodsTest() {
         const unknownUser = await userRepository.getOrThrow(crypto.randomUUID());
         console.log("\nEsse log não vai aparecer:", unknownUser);
     } catch (error: any) {
-        console.log("\nErro esperado do Prisma:", error.message);
+        console.log("\nErro esperado:", error.message);
     }
 
     // * Podemos também remover um usuário específico com o "remove"

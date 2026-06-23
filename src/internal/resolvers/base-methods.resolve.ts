@@ -106,11 +106,19 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
 
     // * GET ALL
     if (baseMethods.getAll.active) {
-        instance.getAll = async (options?: unknown) => {
+        instance.getAll = async (options?: any) => {
+            if (options !== undefined && !isObject(options))
+                throw new VSRepoRuntimeError(
+                    `[VSRepository] (${tableName}: runtime) 'options' must be a valid object.`,
+                );
+
+            const { pagination, order, ...restOptions } = options ?? {};
             const { db, prismaArgs } = resolveDbAndPrismaArgs({
                 instance,
                 baseConfig: baseMethods.getAll,
-                options,
+                options: restOptions,
+                pagination,
+                ordenation: order,
             });
 
             const start = showWorking

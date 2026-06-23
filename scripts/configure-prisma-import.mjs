@@ -69,10 +69,10 @@ const packageRoot = installedPackageExists
   ? installedNodeModulesPath
   : path.resolve(scriptDirectory, '..');
 
-const sourceDir = path.join(packageRoot, 'VSRepository');
+const sourceDir = path.join(packageRoot, 'src');
 
 if (!fs.existsSync(sourceDir)) {
-  console.error(`Nao foi possivel localizar a pasta VSRepository em: ${sourceDir}`);
+  console.error(`Nao foi possivel localizar a pasta src em: ${sourceDir}`);
   process.exit(1);
 }
 

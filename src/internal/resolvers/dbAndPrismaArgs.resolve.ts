@@ -25,7 +25,7 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
         skipDuplicates,
     } = data;
 
-    const validatedOptions = alreadyValidatedOptions
+    const validatedOptions = (alreadyValidatedOptions && options)
         ? (options as MethodOptions)
         : validateMethodOptions(options, instance);
 

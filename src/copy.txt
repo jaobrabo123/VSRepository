@@ -1,12 +1,4 @@
-/**
- * ! THIS FILE IS AUTO-GENERATED.
- * ! DO NOT EDIT MANUALLY.
- */
-/* eslint-disable */
-/* biome-ignore-all lint: generated file */
-// @ts-nocheck
-
-import { Prisma, PrismaClient } from '../prisma/client';
+import { Prisma, PrismaClient } from '@vsrepo/prisma/types';
 import { Decimal, JsonValue } from '@prisma/client/runtime/client';
 
 /**
@@ -603,26 +595,26 @@ type UpdateWithRelations<T, M extends Prisma.ModelName, TRelations> =
 
 /**
  * Extrai o tipo de payload do método `save` a partir de uma instância de VSRepository configurada.
+ *
+ * @example
+ * const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()(config);
+ * type UsuarioSavePayload = SaveObject<typeof usuarioVSRepo>;
  */
-export type SaveObject<TInput, TRepo> = 
+export type SaveObject<TRepo> =
     TRepo extends VSRepository<infer T, infer M, infer Config>
-        ? (Config extends { relations: infer R } ? (R extends object ? R : {}) : {}) extends infer TRelations
-            ? DistributiveOmit<TInput, keyof TRelations> & {
-                  [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K], M, K>;
-              }
-            : never
+        ? UpsertWithRelations<T, M, ExtractRelations<Config>>
         : never;
 
 /**
  * Extrai o tipo de payload do método `patch` a partir de uma instância de VSRepository configurada.
+ *
+ * @example
+ * const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()(config);
+ * type UsuarioPatchPayload = PatchObject<typeof usuarioVSRepo>;
  */
-export type PatchObject<TInput, TRepo> = 
+export type PatchObject<TRepo> =
     TRepo extends VSRepository<infer T, infer M, infer Config>
-        ? (Config extends { relations: infer R } ? (R extends object ? R : {}) : {}) extends infer TRelations
-            ? DistributiveOmit<TInput, keyof TRelations> & {
-                  [K in Extract<keyof TRelations, keyof T>]?: RelationUpdatePayload<T[K], TRelations[K], M, K>;
-              }
-            : never
+        ? UpdateWithRelations<T, M, ExtractRelations<Config>>
         : never;
 
 
@@ -635,102 +627,7 @@ type _Def<Config> = ExtractDefaultSelect<Config>;
 type _Rel<Config> = ExtractRelations<Config>;
 type _Soft<Config> = ExtractSoftRemovekName<Config>;
 
-// ─── tipo mapeado refatorado — otimizado para o compilador TS ────────────────
-
-type AllBaseMethods<
-    T,
-    M extends Prisma.ModelName,
-    Config,
-    C extends BuildConfig<any> | undefined,
-    TSelects  = _Sel<Config>,
-    TDefault  = _Def<Config>,
-    TPk       = ExtractPkName<T, Config>,
-    TRelations = _Rel<Config>,
-    TSoftKey  = _Soft<Config>,
-    I         = PrismaModelInputs<M>
-> = {
-    /** Busca um registro pela chave primária (PK). */
-    get: <S extends keyof TSelects | false = _DS<Config, C, 'get', TSelects>>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault> | null>;
-
-    /** Busca um registro pela PK e lança `VSRepoRuntimeError` se não encontrado. */
-    getOrThrow: <S extends keyof TSelects | false = _DS<Config, C, 'getOrThrow', TSelects>>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>>;
-
-    /** Busca múltiplos registros por uma lista de chaves primárias (PKs). */
-    getList: <S extends keyof TSelects | false = _DS<Config, C, 'getList', TSelects>>(
-        pks: _Pk<T, Config>[], options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
-
-    /** Remove um registro identificado pela chave primária (PK). */
-    remove: <S extends keyof TSelects | false = _DS<Config, C, 'remove', TSelects>>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>>;
-
-    /** Insere ou atualiza (upsert) um registro. */
-    save: <S extends keyof TSelects | false = _DS<Config, C, 'save', TSelects>>(
-        obj: UpsertWithRelations<T, M, TRelations>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>>;
-
-    /** Salva um array de objetos em uma única transação automática. */
-    saveList: <S extends keyof TSelects | false = _DS<Config, C, 'saveList', TSelects>>(
-        objs: UpsertWithRelations<T, M, TRelations>[], options?: Omit<MethodOptions<S>, 'db'> & { db?: DbTransaction }
-    ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
-
-    /** Atualiza parcialmente (patch) um registro existente pela chave primária (PK). */
-    patch: <S extends keyof TSelects | false = _DS<Config, C, 'patch', TSelects>>(
-        pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>>;
-
-    /** Atualiza parcialmente múltiplos registros via tuplas `[pk, obj]` em transação automática. */
-    patchList: <S extends keyof TSelects | false = _DS<Config, C, 'patchList', TSelects>>(
-        tuples: [pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>][], options?: Omit<MethodOptions<S>, 'db'> & { db?: DbTransaction }
-    ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
-
-    /** Busca um registro pela PK e faz deep merge com o objeto fornecido **em memória**. */
-    merge: <S extends keyof TSelects | false = _DS<Config, C, 'merge', TSelects>>(
-        pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault> | null>;
-
-    /** Remove múltiplos registros pelas suas chaves primárias. */
-    removeList: (pks: _Pk<T, Config>[], options?: { db?: ClientOrTransaction }) => Promise<{ count: number }>;
-
-    /** Busca todos os registros (respeita `requiredWhere` quando aplicado). */
-    getAll: <S extends keyof TSelects | false = _DS<Config, C, 'getAll', TSelects>>(
-        options?: MethodOptions<S> & {
-            pagination?: PaginationOptions<I extends { cursorInput: infer Curs } ? Curs : unknown>;
-            order?: I extends { orderByInput: infer OB } ? OB : OrderOptions;
-        }
-    ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
-
-    /** Retorna a quantidade total de registros. */
-    total: (options?: { db?: ClientOrTransaction; see?: SeeMode }) => Promise<number>;
-
-    /** Verifica se um registro existe pela chave primária (PK). */
-    has: (pk: _Pk<T, Config>, options?: { db?: ClientOrTransaction; see?: SeeMode }) => Promise<boolean>;
-
-    /** Marca um registro como removido (soft-delete). */
-    softRemove: <S extends keyof TSelects | false = _DS<Config, C, 'softRemove', TSelects>>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>>;
-
-    /** Marca múltiplos registros como removidos (soft-delete) em lote. */
-    softRemoveList: <S extends keyof TSelects | false = _DS<Config, C, 'softRemoveList', TSelects>>(
-        pks: _Pk<T, Config>[], options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
-
-    /** Restaura um registro marcado como removido (soft-delete). */
-    restore: <S extends keyof TSelects | false = _DS<Config, C, 'restore', TSelects>>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>>;
-
-    /** Restaura múltiplos registros marcados como removidos (soft-delete) em lote. */
-    restoreList: <S extends keyof TSelects | false = _DS<Config, C, 'restoreList', TSelects>>(
-        pks: _Pk<T, Config>[], options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
-};
+// ─── tipo mapeado único — sem cadeia de interseções ─────────────────────────
 
 type InjectedBaseMethods<
     T,
@@ -743,26 +640,202 @@ type InjectedBaseMethods<
     TRelations = _Rel<Config>,
     TSoftKey  = _Soft<Config>,
     I         = PrismaModelInputs<M>
-> = Pick<
-    AllBaseMethods<T, M, Config, C, TSelects, TDefault, TPk, TRelations, TSoftKey, I>,
-    | (C extends { baseMethods: { get:          { active: false } } } ? never : 'get')
-    | (C extends { baseMethods: { getOrThrow:   { active: false } } } ? never : 'getOrThrow')
-    | (C extends { baseMethods: { getList:      { active: false } } } ? never : 'getList')
-    | (C extends { baseMethods: { remove:       { active: false } } } ? never : 'remove')
-    | (C extends { baseMethods: { save:         { active: false } } } ? never : 'save')
-    | (C extends { baseMethods: { saveList:     { active: false } } } ? never : 'saveList')
-    | (C extends { baseMethods: { patch:        { active: false } } } ? never : 'patch')
-    | (C extends { baseMethods: { patchList:    { active: false } } } ? never : 'patchList')
-    | (C extends { baseMethods: { merge:        { active: false } } } ? never : 'merge')
-    | (C extends { baseMethods: { removeList:   { active: false } } } ? never : 'removeList')
-    | (C extends { baseMethods: { getAll:       { active: false } } } ? never : 'getAll')
-    | (C extends { baseMethods: { total:        { active: false } } } ? never : 'total')
-    | (C extends { baseMethods: { has:          { active: false } } } ? never : 'has')
-    | ([TSoftKey] extends [never] ? never : C extends { baseMethods: { softRemove:     { active: false } } } ? never : 'softRemove')
-    | ([TSoftKey] extends [never] ? never : C extends { baseMethods: { softRemoveList: { active: false } } } ? never : 'softRemoveList')
-    | ([TSoftKey] extends [never] ? never : C extends { baseMethods: { restore:        { active: false } } } ? never : 'restore')
-    | ([TSoftKey] extends [never] ? never : C extends { baseMethods: { restoreList:    { active: false } } } ? never : 'restoreList')
->;
+> = {
+    [K in
+        | (C extends { baseMethods: { get:          { active: false } } } ? never : 'get')
+        | (C extends { baseMethods: { getOrThrow:   { active: false } } } ? never : 'getOrThrow')
+        | (C extends { baseMethods: { getList:      { active: false } } } ? never : 'getList')
+        | (C extends { baseMethods: { remove:       { active: false } } } ? never : 'remove')
+        | (C extends { baseMethods: { save:         { active: false } } } ? never : 'save')
+        | (C extends { baseMethods: { saveList:     { active: false } } } ? never : 'saveList')
+        | (C extends { baseMethods: { patch:        { active: false } } } ? never : 'patch')
+        | (C extends { baseMethods: { patchList:    { active: false } } } ? never : 'patchList')
+        | (C extends { baseMethods: { merge:        { active: false } } } ? never : 'merge')
+        | (C extends { baseMethods: { removeList:   { active: false } } } ? never : 'removeList')
+        | (C extends { baseMethods: { getAll:       { active: false } } } ? never : 'getAll')
+        | (C extends { baseMethods: { total:        { active: false } } } ? never : 'total')
+        | (C extends { baseMethods: { has:          { active: false } } } ? never : 'has')
+        | ([TSoftKey] extends [never] ? never : C extends { baseMethods: { softRemove:     { active: false } } } ? never : 'softRemove')
+        | ([TSoftKey] extends [never] ? never : C extends { baseMethods: { softRemoveList: { active: false } } } ? never : 'softRemoveList')
+        | ([TSoftKey] extends [never] ? never : C extends { baseMethods: { restore:        { active: false } } } ? never : 'restore')
+        | ([TSoftKey] extends [never] ? never : C extends { baseMethods: { restoreList:    { active: false } } } ? never : 'restoreList')
+    ]:
+        K extends 'get' ?
+            /**
+             * Busca um registro pela chave primária (PK).
+             * @param pk Chave primária do registro.
+             * @param options Opções adicionais (`selectModel`, `db`, `see`).
+             * @returns O registro selecionado ou `null` se não encontrado.
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'get', TSelects>>(
+                pk: _Pk<T, Config>, options?: MethodOptions<S>
+            ) => Promise<_Ret<M, TSelects, S, TDefault> | null>
+        : K extends 'getOrThrow' ?
+            /**
+             * Busca um registro pela PK e lança `VSRepoRuntimeError` (code `"20727"`) se não encontrado.
+             * @param pk Chave primária do registro.
+             * @param options Opções adicionais (`selectModel`, `db`, `see`).
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'getOrThrow', TSelects>>(
+                pk: _Pk<T, Config>, options?: MethodOptions<S>
+            ) => Promise<_Ret<M, TSelects, S, TDefault>>
+        : K extends 'getList' ?
+            /**
+             * Busca múltiplos registros por uma lista de chaves primárias (PKs).
+             * @param pks Lista de chaves primárias.
+             * @param options Opções adicionais (`selectModel`, `db`, `see`).
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'getList', TSelects>>(
+                pks: _Pk<T, Config>[], options?: MethodOptions<S>
+            ) => Promise<_Ret<M, TSelects, S, TDefault>[]>
+        : K extends 'remove' ?
+            /**
+             * Remove um registro identificado pela chave primária (PK).
+             * @param pk Chave primária do registro a ser removido.
+             * @param options Opções adicionais (`selectModel`, `db`).
+             * @returns O registro removido.
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'remove', TSelects>>(
+                pk: _Pk<T, Config>, options?: MethodOptions<S>
+            ) => Promise<_Ret<M, TSelects, S, TDefault>>
+        : K extends 'save' ?
+            /**
+             * Insere ou atualiza (upsert) um registro.
+             * Se o objeto contiver a `pkName`, executa `upsert`; caso contrário, `create`.
+             * @param obj Payload para criação/atualização. Aceita campos de relações configuradas.
+             * @param options Opções adicionais (`selectModel`, `db`).
+             * @returns O registro salvo.
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'save', TSelects>>(
+                obj: UpsertWithRelations<T, M, TRelations>,
+                options?: MethodOptions<S>
+            ) => Promise<_Ret<M, TSelects, S, TDefault>>
+        : K extends 'saveList' ?
+            /**
+             * Salva um array de objetos em uma única transação automática.
+             * @param objs Array de payloads para criação/atualização.
+             * @param options `db` deve ser `DbTransaction`, não o cliente principal.
+             * @returns Array com os registros salvos na mesma ordem dos objetos de entrada.
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'saveList', TSelects>>(
+                objs: UpsertWithRelations<T, M, TRelations>[],
+                options?: Omit<MethodOptions<S>, 'db'> & { db?: DbTransaction }
+            ) => Promise<_Ret<M, TSelects, S, TDefault>[]>
+        : K extends 'patch' ?
+            /**
+             * Atualiza parcialmente (patch) um registro existente pela chave primária (PK).
+             * @param pk Chave primária do registro.
+             * @param obj Objeto parcial com os campos a atualizar.
+             * @param options Opções adicionais (`selectModel`, `db`).
+             * @returns O registro atualizado.
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'patch', TSelects>>(
+                pk: _Pk<T, Config>,
+                obj: UpdateWithRelations<T, M, TRelations>,
+                options?: MethodOptions<S>
+            ) => Promise<_Ret<M, TSelects, S, TDefault>>
+        : K extends 'patchList' ?
+            /**
+             * Atualiza parcialmente múltiplos registros via tuplas `[pk, obj]` em transação automática.
+             * @param tuples Array de tuplas `[pk, obj]`.
+             * @param options `db` deve ser `DbTransaction`, não o cliente principal.
+             * @returns Array com os registros atualizados na mesma ordem das tuplas.
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'patchList', TSelects>>(
+                tuples: [pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>][],
+                options?: Omit<MethodOptions<S>, 'db'> & { db?: DbTransaction }
+            ) => Promise<_Ret<M, TSelects, S, TDefault>[]>
+        : K extends 'merge' ?
+            /**
+             * Busca um registro pela PK e faz deep merge com o objeto fornecido **em memória**.
+             * Não persiste — retorna o objeto mesclado para que você decida o que fazer com ele.
+             * @param pk Chave primária do registro.
+             * @param obj Objeto com os campos a mesclar.
+             * @param options Opções adicionais (`selectModel`, `db`, `see`).
+             * @returns O registro com deep merge aplicado, ou `null` se não encontrado.
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'merge', TSelects>>(
+                pk: _Pk<T, Config>,
+                obj: UpdateWithRelations<T, M, TRelations>,
+                options?: MethodOptions<S>
+            ) => Promise<_Ret<M, TSelects, S, TDefault> | null>
+        : K extends 'removeList' ?
+            /**
+             * Remove múltiplos registros pelas suas chaves primárias.
+             * @param pks Lista de chaves primárias a remover.
+             * @param options Opções adicionais (`db`).
+             * @returns Objeto com a contagem de registros removidos.
+             */
+            (pks: _Pk<T, Config>[], options?: { db?: ClientOrTransaction }) => Promise<{ count: number }>
+        : K extends 'getAll' ?
+            /**
+             * Busca todos os registros (respeita `requiredWhere` quando aplicado).
+             * @param options Opções adicionais incluindo `pagination`, `order`, `see`, `db` e `selectModel`.
+             * @returns Lista dos registros encontrados.
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'getAll', TSelects>>(
+                options?: MethodOptions<S> & {
+                    pagination?: PaginationOptions<I extends { cursorInput: infer Curs } ? Curs : unknown>;
+                    order?: I extends { orderByInput: infer OB } ? OB : OrderOptions;
+                }
+            ) => Promise<_Ret<M, TSelects, S, TDefault>[]>
+        : K extends 'total' ?
+            /**
+             * Retorna a quantidade total de registros, respeitando `requiredWhere` quando aplicado.
+             * @param options Opções adicionais (`db`, `see`).
+             * @returns Número total de registros.
+             */
+            (options?: { db?: ClientOrTransaction; see?: SeeMode }) => Promise<number>
+        : K extends 'has' ?
+            /**
+             * Verifica se um registro existe pela chave primária (PK).
+             * @param pk Chave primária a verificar.
+             * @param options Opções adicionais (`db`, `see`).
+             * @returns `true` se existir, `false` caso contrário.
+             */
+            (pk: _Pk<T, Config>, options?: { db?: ClientOrTransaction; see?: SeeMode }) => Promise<boolean>
+        : K extends 'softRemove' ?
+            /**
+             * Marca um registro como removido (soft-delete) preenchendo `softRemovekName` com a data atual.
+             * @param pk Chave primária do registro.
+             * @param options Opções adicionais (`selectModel`, `db`).
+             * @returns O registro atualizado.
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'softRemove', TSelects>>(
+                pk: _Pk<T, Config>, options?: MethodOptions<S>
+            ) => Promise<_Ret<M, TSelects, S, TDefault>>
+        : K extends 'softRemoveList' ?
+            /**
+             * Marca múltiplos registros como removidos (soft-delete) em lote.
+             * @param pks Lista de chaves primárias.
+             * @param options Opções adicionais (`selectModel`, `db`).
+             * @returns Array com os registros atualizados.
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'softRemoveList', TSelects>>(
+                pks: _Pk<T, Config>[], options?: MethodOptions<S>
+            ) => Promise<_Ret<M, TSelects, S, TDefault>[]>
+        : K extends 'restore' ?
+            /**
+             * Restaura um registro marcado como removido (soft-delete), limpando `softRemovekName`.
+             * @param pk Chave primária do registro.
+             * @param options Opções adicionais (`selectModel`, `db`).
+             * @returns O registro restaurado.
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'restore', TSelects>>(
+                pk: _Pk<T, Config>, options?: MethodOptions<S>
+            ) => Promise<_Ret<M, TSelects, S, TDefault>>
+        : K extends 'restoreList' ?
+            /**
+             * Restaura múltiplos registros marcados como removidos (soft-delete) em lote.
+             * @param pks Lista de chaves primárias.
+             * @param options Opções adicionais (`selectModel`, `db`).
+             * @returns Array com os registros restaurados.
+             */
+            <S extends keyof TSelects | false = _DS<Config, C, 'restoreList', TSelects>>(
+                pks: _Pk<T, Config>[], options?: MethodOptions<S>
+            ) => Promise<_Ret<M, TSelects, S, TDefault>[]>
+        : never
+};
 
 
 /**
@@ -862,17 +935,19 @@ export type RepoConfig<T, M extends Prisma.ModelName, SM extends Record<string, 
  *
  * Combina métodos dinâmicos, métodos base e extensões personalizadas.
  */
-type BuiltRepository<T extends object, M extends Prisma.ModelName, Config extends RepoConfig<T, M, any>, C extends BuildConfig<any> | undefined> = {
-    /**
-     * Estende o repository com métodos personalizados sem perder a tipagem.
-     */
-    extend<E>(extensionFunc: (repo: BuiltRepository<T, M, Config, C>) => E): BuiltRepository<T, M, Config, C> & E;
+type BuiltRepository<T extends object, M extends Prisma.ModelName, Config extends RepoConfig<T, M, any>, C extends BuildConfig<any> | undefined> = Simplify<
+    {
+        /**
+         * Estende o repository com métodos personalizados sem perder a tipagem.
+         */
+        extend<E>(extensionFunc: (repo: BuiltRepository<T, M, Config, C>) => E): Simplify<BuiltRepository<T, M, Config, C> & E>;
 
-    /**
-     * Instância do Prisma Client passada no `build`.
-     */
-    readonly prisma: DbClient;
-} & DynamicMethods<T, M, Config, PrismaModelInputs<M>> & InjectedBaseMethods<T, M, Config, C>;
+        /**
+         * Instância do Prisma Client passada no `build`.
+         */
+        readonly prisma: DbClient;
+    } & DynamicMethods<T, M, Config, PrismaModelInputs<M>> & InjectedBaseMethods<T, M, Config, C>
+>;
 
 /**
  * Fábrica tipada de repositories baseada na configuração do modelo Prisma.

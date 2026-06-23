@@ -1,12 +1,4 @@
 /**
- * ! THIS FILE IS AUTO-GENERATED.
- * ! DO NOT EDIT MANUALLY.
- */
-/* eslint-disable */
-/* biome-ignore-all lint: generated file */
-// @ts-nocheck
-
-/**
  * Tipos literais que representam os códigos de erro internos da biblioteca.
  */
 export type VSRepoErrorType = 

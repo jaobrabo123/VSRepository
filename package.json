@@ -7,28 +7,28 @@
     "type": "git",
     "url": "git+https://github.com/jaobrabo123/VSRepository.git"
   },
-  "main": "./VSRepository/index.js",
-  "types": "./VSRepository/index.d.ts",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./VSRepository/index.d.ts",
-      "import": "./VSRepository/index.js",
-      "require": "./VSRepository/index.js"
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js",
+      "require": "./src/index.js"
     },
     "./VSRepository": {
-      "types": "./VSRepository/VSRepository.d.ts",
-      "import": "./VSRepository/VSRepository.js",
-      "require": "./VSRepository/VSRepository.js"
+      "types": "./src/VSRepository.d.ts",
+      "import": "./src/VSRepository.ts",
+      "require": "./src/VSRepository.ts"
     },
     "./VSRepoError": {
-      "types": "./VSRepository/VSRepoError.d.ts",
-      "import": "./VSRepository/VSRepoError.js",
-      "require": "./VSRepository/VSRepoError.js"
+      "types": "./src/VSRepoError.d.ts",
+      "import": "./src/VSRepoError.ts",
+      "require": "./src/VSRepoError.ts"
     }
   },
   "type": "module",
   "files": [
-    "VSRepository",
+    "src",
     "scripts"
   ],
   "bin": {
@@ -55,7 +55,6 @@
     "@prisma/client": "^7.8.0"
   },
   "devDependencies": {
-    "@paralleldrive/cuid2": "^3.3.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@types/node": "^25.6.0",

@@ -17,7 +17,7 @@ export function validateMethodOptions(
         see: z.enum(["active", "removed", "all"]).default("active"),
     });
 
-    const optionsParsed = optionsSchema.safeParse(options);
+    const optionsParsed = optionsSchema.safeParse(options ?? {});
 
     if (!optionsParsed.success) {
         const firstIssue = optionsParsed.error.issues[0];

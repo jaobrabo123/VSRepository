@@ -110,12 +110,13 @@ export class VSRepository {
 
                 if (!dinamicMethodInfo.ignoreWhere) {
                     resolvePrettyWheres(dinamicMethodInfo, dinamicMethodWhereOps);
-                    logger(
-                        `Where object resolved to ${methodToMap}:`,
-                        "build",
-                        buildInstance.tableName,
-                        dinamicMethodWhereOps.prettyWheres,
-                    );
+                    if (showWorking)
+                        logger(
+                            `Where object resolved to ${methodToMap}:`,
+                            "build",
+                            buildInstance.tableName,
+                            dinamicMethodWhereOps.prettyWheres,
+                        );
                 }
 
                 let select: object | undefined = undefined;

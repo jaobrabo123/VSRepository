@@ -5,7 +5,7 @@ tests/
 coverage/
 .nyc_output/
 
-src/
+# src/
 examples/
 example/
 
@@ -14,6 +14,7 @@ prisma/
 
 # Local envs and editor settings
 .env
+.env.example
 .env.local
 .vscode/
 .idea/
@@ -42,3 +43,5 @@ tsconfig.json
 .prettierrc
 
 teste.js
+
+VSRepository/

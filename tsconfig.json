@@ -8,6 +8,7 @@
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "esnext",
+    "moduleResolution": "bundler",
     "target": "esnext",
     // For nodejs:
     "lib": ["esnext"],
@@ -35,7 +36,7 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
     "paths": {
-      "@vsrepo/prisma/types": ["./generated/prisma/client"],
+      "@vsrepo/prisma/types": ["./generated/prisma/client"]
     }
   },
 }
