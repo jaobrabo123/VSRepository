@@ -1,0 +1,1 @@
+export type VSRepoErrorType = "VSREPO_CONFIG" | "VSREPO_BUILD" | "VSREPO_EXTEND" | "VSREPO_RUNTIME";

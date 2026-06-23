@@ -40,3 +40,5 @@ tsconfig.json
 *.local
 
 .prettierrc
+
+teste.js
