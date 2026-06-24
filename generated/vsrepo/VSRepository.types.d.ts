@@ -19,8 +19,8 @@ type WidenField<T> =
     T extends bigint ? bigint | number :
     T extends Date ? Date | string :
     T extends Decimal ? Decimal | string | number :
-    T extends Array<infer U> ? WidenField<U>[] :
-    T extends readonly [infer U, infer V] ? [WidenField<U>, WidenField<V>] :
+    T extends readonly [infer U, infer V] ? [WidenField<U>, WidenField<V>] : 
+    T extends Array<infer U> ? WidenField<U>[] : 
     T;
 
 /**

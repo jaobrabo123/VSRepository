@@ -266,11 +266,18 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
 
             const result = await db[tableName].findUnique(prismaArgs);
 
-            if (!result) return null;
-            if (!relations)
+            if (!result) {
+                if (showWorking) performanceLoggerEnd(tableName, "merge", start!);
+
+                return null;
+            }
+            if (!relations) {
+                if (showWorking) performanceLoggerEnd(tableName, "merge", start!);
+                
                 return merge(result, obj, {
                     arrayMerge: (target, source) => target.concat(source),
                 });
+            }
 
             const objKeys = Object.keys(obj);
             const objAny = obj as any;

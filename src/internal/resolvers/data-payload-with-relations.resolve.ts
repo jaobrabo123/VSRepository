@@ -15,9 +15,11 @@ export function resolveDataPayloadWithRelations(
         const key = objKeys[i]!;
         const field = obj[key]!;
 
-        if (field == null) continue;
+        if (field === undefined) continue;
 
         if (relationsKeys.includes(key)) {
+            if (field === null) continue;
+            
             const relation = relations[key]!;
 
             if (relation.mode === "otm" || relation.mode === "mtm") {
