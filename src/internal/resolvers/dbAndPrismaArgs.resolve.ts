@@ -23,6 +23,7 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
         ordenation,
         pagination,
         skipDuplicates,
+        forceSeeMode,
     } = data;
 
     const validatedOptions = (alreadyValidatedOptions && options)
@@ -36,7 +37,7 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
         prismaArgs.where = resolveMergeWheres(
             {
                 respectRequired: !baseConfig.ignoreRequiredWhere,
-                see: validatedOptions.see,
+                see: forceSeeMode ?? validatedOptions.see,
             },
             wherePkValue != undefined ? { [instance.pkName]: wherePkValue } : specificWhere,
             pushWhere,

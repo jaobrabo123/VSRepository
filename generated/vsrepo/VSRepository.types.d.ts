@@ -521,12 +521,12 @@ export type BuildConfig<TSelectKeys extends PropertyKey = string> = {
         patchList?: BaseMethodConfig<TSelectKeys>;
         /** Configuração do método `softRemove`. Só existe se `softRemovekName` estiver configurado. */
         softRemove?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `softRemoveList`. Só existe se `softRemovekName` estiver configurado. */
-        softRemoveList?: BaseMethodConfig<TSelectKeys>;
+        /** Configuração do método `softRemoveList`. Não aceita select. Só existe se `softRemovekName` estiver configurado. */
+        softRemoveList?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
         /** Configuração do método `restore`. Só existe se `softRemovekName` estiver configurado. */
         restore?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `restoreList`. Só existe se `softRemovekName` estiver configurado. */
-        restoreList?: BaseMethodConfig<TSelectKeys>;
+        /** Configuração do método `restoreList`. Não aceita select. Só existe se `softRemovekName` estiver configurado. */
+        restoreList?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
     };
 };
 
@@ -713,23 +713,19 @@ type AllBaseMethods<
 
     /** Marca um registro como removido (soft-delete). */
     softRemove: <S extends keyof TSelects | false = _DS<Config, C, 'softRemove', TSelects>>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S>
+        pk: _Pk<T, Config>, options?: Omit<MethodOptions<S>, 'see'>
     ) => Promise<_Ret<M, TSelects, S, TDefault>>;
 
     /** Marca múltiplos registros como removidos (soft-delete) em lote. */
-    softRemoveList: <S extends keyof TSelects | false = _DS<Config, C, 'softRemoveList', TSelects>>(
-        pks: _Pk<T, Config>[], options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
+    softRemoveList: (pks: _Pk<T, Config>[], options?: { db?: ClientOrTransaction }) => Promise<{ count: number }>;
 
     /** Restaura um registro marcado como removido (soft-delete). */
     restore: <S extends keyof TSelects | false = _DS<Config, C, 'restore', TSelects>>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S>
+        pk: _Pk<T, Config>, options?: Omit<MethodOptions<S>, 'see'>
     ) => Promise<_Ret<M, TSelects, S, TDefault>>;
 
     /** Restaura múltiplos registros marcados como removidos (soft-delete) em lote. */
-    restoreList: <S extends keyof TSelects | false = _DS<Config, C, 'restoreList', TSelects>>(
-        pks: _Pk<T, Config>[], options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
+    restoreList: (pks: _Pk<T, Config>[], options?: { db?: ClientOrTransaction }) => Promise<{ count: number }>;
 };
 
 type InjectedBaseMethods<

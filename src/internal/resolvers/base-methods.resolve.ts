@@ -352,6 +352,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
                 baseConfig: baseMethods.softRemove,
                 options,
                 wherePkValue: pk,
+                forceSeeMode: "all",
                 dataPayload: { [softRemovekName]: new Date() },
             });
 
@@ -380,6 +381,8 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
                 baseConfig: baseMethods.softRemoveList,
                 options,
                 wherePkValue: { in: pks },
+                withoutSelect: true,
+                forceSeeMode: "all",
                 dataPayload: { [softRemovekName]: new Date() },
             });
 
@@ -387,7 +390,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
                 ? performanceLoggerStart(tableName, "softRemoveList", prismaArgs)
                 : undefined;
 
-            const result = await db[tableName].updateManyAndReturn(prismaArgs);
+            const result = await db[tableName].updateMany(prismaArgs);
 
             if (showWorking) performanceLoggerEnd(tableName, "softRemoveList", start!);
 
@@ -408,6 +411,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
                 baseConfig: baseMethods.restore,
                 options,
                 wherePkValue: pk,
+                forceSeeMode: "all",
                 dataPayload: { [softRemovekName]: null },
             });
 
@@ -435,7 +439,9 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
                 instance,
                 baseConfig: baseMethods.restoreList,
                 options,
+                withoutSelect: true,
                 wherePkValue: { in: pks },
+                forceSeeMode: "all",
                 dataPayload: { [softRemovekName]: null },
             });
 
@@ -443,7 +449,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
                 ? performanceLoggerStart(tableName, "restoreList", prismaArgs)
                 : undefined;
 
-            const result = await db[tableName].updateManyAndReturn(prismaArgs);
+            const result = await db[tableName].updateMany(prismaArgs);
 
             if (showWorking) performanceLoggerEnd(tableName, "restoreList", start!);
 

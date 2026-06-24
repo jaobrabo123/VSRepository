@@ -194,7 +194,7 @@ const userVSRepo = setupVSRepo<User, "User">()({
 // * Agora que configuramos noso repository vamos criar e exportar uma instância dele usando o método '.build()'
 // * Para isso precisamos passar uma instância do PrismaClient como primeiro parâmetro e também podemos configurar algumas coisas dessa instância
 export const userRepository = userVSRepo.build(prisma, {
-    // * Aqui poderiamos marcar o showWorking como 'true' para ver o repository funcionando na prática, porém ele gera muitos logs para debug profundo, então 
+    // * Aqui poderiamos marcar o showWorking como 'true' para ver o repository funcionando na prática, porém ele gera muitos logs para debug profundo, então
     // * vamos deixar desativado, pois esse não é o foco no momento. Mas se você quiser pode ativar para ver ele funcionando e os payloads que ele gera
     // * para o Prisma
     showWorking: false, // * Por padrão já vem marcado como 'false'
@@ -268,6 +268,13 @@ type Product = ProductGetPayload<{
 const productVSRepo = setupVSRepo<Product, "Product">()({
     tableName: "product",
     pkName: "id",
+
+    // * "softRemovekName" é a nova configuração que habilita o soft-delete nesse repository.
+    // * Ao informar o nome de um campo DateTime do modelo, o VSRepository passa a oferecer automaticamente
+    // * os métodos: softRemove, softRemoveList, restore e restoreList.
+    // * O campo precisa ser do tipo DateTime (nullable) no schema.prisma — o VSRepository valida isso no build.
+    softRemovekName: "deletedAt",
+
     selectModels: {
         public: {
             id: true,
@@ -276,6 +283,7 @@ const productVSRepo = setupVSRepo<Product, "Product">()({
             price: true,
             createdAt: true,
             updatedAt: true,
+            deletedAt: true,
             tags: true,
             user: {
                 select: {
@@ -285,6 +293,17 @@ const productVSRepo = setupVSRepo<Product, "Product">()({
                     likesVSRepo: true,
                 },
             },
+        },
+        publicWithoutUser: {
+            id: true,
+            description: true,
+            name: true,
+            price: true,
+            createdAt: true,
+            updatedAt: true,
+            deletedAt: true,
+            tags: true,
+            userId: true,
         },
     },
     defaultSelectModel: "public",
@@ -297,11 +316,11 @@ const productVSRepo = setupVSRepo<Product, "Product">()({
             mode: "mto",
             pk: "id",
             restriction: "add",
-            // * O "nullAble" só existem em relações "mto" (many-to-one), ele serve para dizermos se a chave estrangeira (nesse caso o userId) pode ser nula.
-            // * Como o userId é not null (definimos isso no schema.prisma) colocamos "nullAble" como false (padrão = false).
+            // * O "nullable" só existe em relações "mto" (many-to-one), ele serve para dizermos se a chave estrangeira (nesse caso o userId) pode ser nula.
+            // * Como o userId é not null (definimos isso no schema.prisma) colocamos "nullable" como false (padrão = false).
             // * Isso serve para o VSRepository decidir oq fazer caso você passe a relation como null no save/patch, se for true ele vai fazer
-            // * um disconnect (colocar a fk como null) e se for false ele não faz nada
-            nullAble: false,
+            // * um disconnect (colocar a fk como null) e se for false ele lança erro
+            nullable: false,
         },
         tags: {
             mode: "mtm",

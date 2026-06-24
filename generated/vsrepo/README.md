@@ -336,9 +336,9 @@ Quando `softRemovekName` está configurado no repository, os seguintes métodos 
 | Método                     | Descrição                                                                         |
 | -------------------------- | --------------------------------------------------------------------------------- |
 | `softRemove(pk)`           | Marca um registro como removido preenchendo `softRemovekName` com a data atual    |
-| `softRemoveList(pks)`      | Marca múltiplos registros como removidos em lote                                  |
+| `softRemoveList(pks)`      | Marca múltiplos registros como removidos em lote — retorna `{ count }`            |
 | `restore(pk)`              | Restaura um registro soft-deletado, limpando o campo `softRemovekName`            |
-| `restoreList(pks)`         | Restaura múltiplos registros soft-deletados em lote                               |
+| `restoreList(pks)`         | Restaura múltiplos registros soft-deletados em lote — retorna `{ count }`         |
 
 ```ts
 const usuarioRepository = setupVSRepo<Usuario, "usuario">()(({
@@ -1035,14 +1035,14 @@ vsRepo.build(prisma, {
     merge?:           { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
     getAll?:          { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
     softRemove?:      { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    softRemoveList?:  { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
     restore?:         { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    restoreList?:     { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
 
     // Métodos que NÃO aceitam defaultSelect
-    removeList?: { active?: boolean; ignoreRequiredWhere?: boolean };
-    total?:      { active?: boolean; ignoreRequiredWhere?: boolean };
-    has?:        { active?: boolean; ignoreRequiredWhere?: boolean };
+    removeList?:      { active?: boolean; ignoreRequiredWhere?: boolean };
+    softRemoveList?:  { active?: boolean; ignoreRequiredWhere?: boolean };
+    restoreList?:     { active?: boolean; ignoreRequiredWhere?: boolean };
+    total?:           { active?: boolean; ignoreRequiredWhere?: boolean };
+    has?:             { active?: boolean; ignoreRequiredWhere?: boolean };
   };
 });
 ```

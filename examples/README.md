@@ -29,11 +29,13 @@ examples/
     ├── relations.test.ts          # Como configurar e usar relations no save/patch e em filtros
     ├── required-where.test.ts     # Como o requiredWhere é aplicado automaticamente nas queries
     ├── dynamic-methods.test.ts    # Prefixos, filtros de campo, operadores lógicos e paginação/ordenação
-    └── transactions.test.ts       # Transactions com options.db e acesso à instância via repository.prisma
+    ├── transactions.test.ts       # Transactions com options.db e acesso à instância via repository.prisma
+    ├── soft-delete.test.ts        # Soft-delete: softRemove, softRemoveList, restore, restoreList e SeeMode
+    └── batch-methods.test.ts      # Operações em lote: getList, saveList, patchList e merge
 ```
 
 - **`prisma.ts`** configura a instância do `PrismaClient` (com o adapter do Postgres) usada por todos os repositories.
-- **`repositories.ts`** é o ponto de partida: aqui é onde os repositories de `User`, `Address` e `Product` são configurados com `setupVSRepo`, incluindo `selectModels`, `requiredWhere`, `relations` e os métodos dinâmicos (`methods`). Todos os arquivos em `tests/` importam os repositories já prontos a partir daqui.
+- **`repositories.ts`** é o ponto de partida: aqui é onde os repositories de `User`, `Address` e `Product` são configurados com `setupVSRepo`, incluindo `selectModels`, `requiredWhere`, `softRemovekName`, `relations` e os métodos dinâmicos (`methods`). Todos os arquivos em `tests/` importam os repositories já prontos a partir daqui.
 - **`tests/`** é onde a "mão na massa" acontece: cada arquivo é um script independente e executável que demonstra um conjunto de funcionalidades específico, com `console.log` em cada passo para você ver o resultado de cada operação no terminal.
 
 ---
@@ -44,7 +46,7 @@ Todos os exemplos giram em torno do mesmo schema do Prisma (veja [`prisma/schema
 
 - **`User`** → tem um endereço (`Address`, relação **one-to-one**) e vários produtos (`Product`, relação **one-to-many**).
 - **`Address`** → pertence a um único `User` (**one-to-one**).
-- **`Product`** → pertence a um único `User` (**many-to-one**) e pode ter várias `Tag` (relação **many-to-many**).
+- **`Product`** → pertence a um único `User` (**many-to-one**) e pode ter várias `Tag` (relação **many-to-many**). O campo `deletedAt` habilita o soft-delete nesse model.
 - **`Tag`** → pode estar em vários produtos.
 
 Entender esse desenho ajuda bastante a acompanhar os exemplos de `relations.test.ts`, já que ele usa exatamente essas relações (`oto`, `otm`, `mto`, `mtm`) na prática.
@@ -108,6 +110,8 @@ npx tsx examples/tests/relations.test.ts
 npx tsx examples/tests/required-where.test.ts
 npx tsx examples/tests/dynamic-methods.test.ts
 npx tsx examples/tests/transactions.test.ts
+npx tsx examples/tests/soft-delete.test.ts
+npx tsx examples/tests/batch-methods.test.ts
 ```
 
 Ou, se preferir usar o `pnpm`:
@@ -118,6 +122,8 @@ pnpm tsx examples/tests/relations.test.ts
 pnpm tsx examples/tests/required-where.test.ts
 pnpm tsx examples/tests/dynamic-methods.test.ts
 pnpm tsx examples/tests/transactions.test.ts
+pnpm tsx examples/tests/soft-delete.test.ts
+pnpm tsx examples/tests/batch-methods.test.ts
 ```
 
 > ⚠️ Os testes criam e removem dados reais no banco configurado na sua `DATABASE_URL`. Por isso, é recomendável rodá-los em um banco de desenvolvimento/teste, nunca em produção.
@@ -143,14 +149,16 @@ Para deixar a leitura mais fácil, os comentários nos exemplos seguem um padrã
 
 Se você está começando agora com o VSRepository, essa é a ordem recomendada para acompanhar os exemplos:
 
-1. **[`repositories.ts`](./repositories.ts)** — entenda como os repositories são configurados (`selectModels`, `requiredWhere`, `relations`, `methods`).
+1. **[`repositories.ts`](./repositories.ts)** — entenda como os repositories são configurados (`selectModels`, `requiredWhere`, `softRemovekName`, `relations`, `methods`).
 2. **[`tests/base-methods.test.ts`](./tests/base-methods.test.ts)** — veja os métodos base (`get`, `save`, `patch`, `remove`, `getAll`, `total`, `has`...) em ação.
 3. **[`tests/relations.test.ts`](./tests/relations.test.ts)** — entenda como o `save`/`patch` gerenciam relações automaticamente (`set` vs `add`) e como usar filtros de relação (`Some`, `None`, `With`, `Without`).
 4. **[`tests/required-where.test.ts`](./tests/required-where.test.ts)** — veja como o `requiredWhere` é injetado automaticamente nas queries e como ignorá-lo quando necessário (`ignoreRequiredWhere`, `whereType: "overwrite"`).
 5. **[`tests/dynamic-methods.test.ts`](./tests/dynamic-methods.test.ts)** — explore os métodos dinâmicos: prefixos, filtros de campo, operadores lógicos (`And`/`Or`), `proxyTo` e sufixos de paginação/ordenação.
 6. **[`tests/transactions.test.ts`](./tests/transactions.test.ts)** — entenda como acessar a instância do Prisma com `repository.prisma`, abrir uma transaction com `$transaction` e fazer múltiplos repositories participarem dela via `options.db`, incluindo um exemplo de rollback.
+7. **[`tests/soft-delete.test.ts`](./tests/soft-delete.test.ts)** — aprenda a usar o soft-delete (`softRemovekName`, `softRemove`, `softRemoveList`, `restore`, `restoreList`) e o `SeeMode` para controlar quais registros as queries enxergam (`"active"`, `"removed"`, `"all"`).
+8. **[`tests/batch-methods.test.ts`](./tests/batch-methods.test.ts)** — explore as operações em lote: `getList` (busca por lista de PKs), `saveList` (cria vários em transação automática), `patchList` (atualiza vários por tuplas em transação automática) e `merge` (busca + deep merge em memória).
 
-Depois de passar por esses 6 arquivos, você já terá visto na prática praticamente tudo que está documentado no [README principal](../README.md). A partir daí, a melhor forma de aprender é editar os próprios exemplos: troque os campos, crie novos métodos dinâmicos em `repositories.ts` e veja o autocomplete e a tipagem reagindo em tempo real.
+Depois de passar por esses 8 arquivos, você já terá visto na prática praticamente tudo que está documentado no [README principal](../README.md). A partir daí, a melhor forma de aprender é editar os próprios exemplos: troque os campos, crie novos métodos dinâmicos em `repositories.ts` e veja o autocomplete e a tipagem reagindo em tempo real.
 
 ---
 

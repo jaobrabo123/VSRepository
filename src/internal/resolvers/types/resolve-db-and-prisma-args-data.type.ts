@@ -1,5 +1,6 @@
 import { BaseMethodConfigWithSelect } from "../../validation/types/base-methods.type";
 import { Pagination } from "../../validation/types/pagination.type";
+import { SeeMode } from "../../validation/types/see-mode.type";
 import { RepositoryBuildInstance } from "./repository-build-instance.type";
 
 export interface ResolveDbAndPrismaArgsData {
@@ -19,4 +20,5 @@ export interface ResolveDbAndPrismaArgsData {
     pagination?: Pagination;
     ordenation?: object | object[];
     skipDuplicates?: boolean;
+    forceSeeMode?: SeeMode;
 }
