@@ -1,5 +1,3 @@
-import { RepositoryBuildInstance } from "../resolvers/types/repository-build-instance.type";
-
 export function logger(
     message: string,
     moment: "runtime" | "config" | "extend" | "build",
@@ -7,9 +5,9 @@ export function logger(
     obj?: object,
 ) {
     console.log(
-        `[VSRepository] (${tableName ?? "unknown"}: ${moment}) ${message}${obj ? "\n" : ""}`,
-        JSON.stringify(obj, null, 2),
+        `[VSRepository] (${tableName ?? "unknown"}: ${moment}) ${message}`
     );
+    if(obj) console.log(JSON.stringify(obj, null, 2));
 }
 
 export function performanceLoggerStart(

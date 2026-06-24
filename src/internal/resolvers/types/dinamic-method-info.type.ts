@@ -13,7 +13,6 @@ export interface DinamicMethodInfo {
     dataIndex?: number;
     updateIndex?: number;
     createIndex?: number;
-    skipDuplicates?: boolean;
     whereIndex?: number;
     prismaArgsIndex?: number;
 }

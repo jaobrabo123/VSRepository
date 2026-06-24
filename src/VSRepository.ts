@@ -74,7 +74,7 @@ export class VSRepository {
             );
         }
 
-        const validatedConfig = validateBuildConfig(config, buildInstance);
+        const validatedConfig = validateBuildConfig(config ?? {}, buildInstance);
 
         resolveBaseMethods(buildInstance, validatedConfig);
 
@@ -110,13 +110,27 @@ export class VSRepository {
 
                 if (!dinamicMethodInfo.ignoreWhere) {
                     resolvePrettyWheres(dinamicMethodInfo, dinamicMethodWhereOps);
-                    if (showWorking)
+                    if (showWorking){
+                        const argsSimulation: any[] = [];
+
+                        for (let x = 0; x < dinamicMethodInfo.argsCount; x++) {
+                            argsSimulation[x] = "00";
+                        }
+
                         logger(
                             `Where object resolved to ${methodToMap}:`,
                             "build",
                             buildInstance.tableName,
-                            dinamicMethodWhereOps.prettyWheres,
+                            resolveSpecificWhere(argsSimulation, dinamicMethodWhereOps.prettyWheres),
                         );
+
+                        // logger(
+                        //     `Where object resolved to ${methodToMap}:`,
+                        //     "build",
+                        //     buildInstance.tableName,
+                        //     dinamicMethodWhereOps.prettyWheres,
+                        // );
+                    }
                 }
 
                 let select: object | undefined = undefined;
@@ -140,11 +154,11 @@ export class VSRepository {
                                 ignoreRequiredWhere:
                                     dinamicMethodWhereOps.whereType === "overwrite",
                             },
-                            withoutWhere: dinamicMethodInfo.ignoreSelect,
+                            withoutWhere: dinamicMethodInfo.ignoreWhere,
                             specificSelect: select,
                             pushWhere: dinamicMethodWhereOps.pushWhere,
                             withoutSelect: dinamicMethodInfo.ignoreSelect,
-                            skipDuplicates: dinamicMethodInfo.skipDuplicates,
+                            skipDuplicates: dinamicMethodCustomization.skipDuplicates,
                             ordenation:
                                 dinamicMethodCustomization.orderPosition !== undefined
                                     ? args.at(dinamicMethodCustomization.orderPosition)
@@ -234,12 +248,12 @@ export class VSRepository {
                         }
                         return result;
                     } catch (err) {
-                        logger(
-                            `Fatal error when executing ${dinamicMethodInfo.method}:`,
-                            "runtime",
-                            buildInstance.tableName,
-                            { prismaArgs },
-                        );
+                        // logger(
+                        //     `Fatal error when executing ${dinamicMethodInfo.method}:`,
+                        //     "runtime",
+                        //     buildInstance.tableName,
+                        //     { prismaArgs },
+                        // );
                         throw err;
                     }
                 };

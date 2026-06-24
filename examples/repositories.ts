@@ -181,7 +181,7 @@ const userVSRepo = setupVSRepo<User, "User">()({
         updateManyWhere: { map: true },
         updateById: { map: true },
         upsertByEmail: { map: true },
-        deleteManyByIdIn: { map: true, whereType: "overwrite", selectModel: "minimal" },
+        deleteManyByIdIn: { map: true, whereType: "overwrite" },
         deleteById: { map: true, selectModel: "minimal" },
         // * O VSRepository tem suporte ao "aggregate" e ao "groupBy", para utilizá-los você pode declarar um método com o nome exato deles (não aceita
         // * parâmetros extras), a tipagem do retorno deles é definida dinamicamente pelo próprio Prisma

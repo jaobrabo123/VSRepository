@@ -568,13 +568,28 @@ type RelationPayload<TField, TRelationConfig, M extends Prisma.ModelName, K exte
       ? ExtractNestedCreateInput<M, K> | (TRelationConfig extends { mode: 'oto'; restriction: 'set' } | { mode: 'mto'; nullable: true } | { mode: 'mto'; nullAble: true } ? null : never)
       : never;
 
+type TransformCreatePayload<U, T, M extends Prisma.ModelName, TRelations> =
+    Omit<U, keyof TRelations> &
+    {
+        // Campos que são OBRIGATÓRIOS nesta ramificação específica da união do Prisma
+        [K in Extract<keyof TRelations, keyof U> as {} extends Pick<U, K> ? never : K]: 
+            K extends keyof T ? RelationPayload<T[K], TRelations[K], M, K> : never;
+    } &
+    {
+        // Campos que são OPCIONAIS nesta ramificação ou que não pertencem originalmente a ela
+        [K in keyof TRelations as K extends keyof U ? ({} extends Pick<U, K> ? K : never) : K]?: 
+            K extends keyof T ? RelationPayload<T[K], TRelations[K], M, K> : never;
+    };
+
 /**
  * Payload aceito pelo `save` quando o repository possui relações configuradas.
  */
 type UpsertWithRelations<T, M extends Prisma.ModelName, TRelations> =
-    DistributiveOmit<ModelUpsertInput<M>, keyof TRelations> & {
-        [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K], M, K>;
-    };
+    ModelUpsertInput<M> extends infer U
+        ? U extends any
+            ? Simplify<TransformCreatePayload<U, T, M, TRelations>>
+            : never
+        : never;
 
 type CleanNestedInput<T> = T extends any
     ? T extends { data: infer D }
@@ -607,9 +622,11 @@ type UpdateWithRelations<T, M extends Prisma.ModelName, TRelations> =
 export type SaveObject<TInput, TRepo> = 
     TRepo extends VSRepository<infer T, infer M, infer Config>
         ? (Config extends { relations: infer R } ? (R extends object ? R : {}) : {}) extends infer TRelations
-            ? DistributiveOmit<TInput, keyof TRelations> & {
-                  [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K], M, K>;
-              }
+            ? TInput extends infer U 
+                ? U extends any 
+                    ? Simplify<TransformCreatePayload<U, T, M, TRelations>>
+                    : never
+                : never
             : never
         : never;
 
