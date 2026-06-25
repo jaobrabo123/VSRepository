@@ -7,28 +7,28 @@
     "type": "git",
     "url": "git+https://github.com/jaobrabo123/VSRepository.git"
   },
-  "main": "./src/index.js",
-  "types": "./src/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.d.ts",
-      "import": "./src/index.js",
-      "require": "./src/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
     },
     "./VSRepository": {
-      "types": "./src/VSRepository.d.ts",
-      "import": "./src/VSRepository.ts",
-      "require": "./src/VSRepository.ts"
+      "types": "./dist/VSRepository.d.ts",
+      "import": "./dist/VSRepository.js",
+      "require": "./dist/VSRepository.js"
     },
     "./VSRepoError": {
-      "types": "./src/VSRepoError.d.ts",
-      "import": "./src/VSRepoError.ts",
-      "require": "./src/VSRepoError.ts"
+      "types": "./dist/VSRepoError.d.ts",
+      "import": "./dist/VSRepoError.js",
+      "require": "./dist/VSRepoError.js"
     }
   },
-  "type": "module",
+  "type": "commonjs",
   "files": [
-    "src",
+    "dist",
     "scripts"
   ],
   "bin": {
@@ -38,7 +38,9 @@
     "node": ">=18"
   },
   "scripts": {
-    "vsrepo": "node ./scripts/configure-prisma-import.mjs"
+    "vsrepo": "node ./scripts/configure-prisma-import.mjs",
+    "build": "tsc -p tsconfig.build.json && node ./scripts/copy-types.mjs",
+    "prepack": "pnpm build"
   },
   "keywords": [
     "prisma",

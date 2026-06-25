@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from '@vsrepo/prisma/types';
+import { Prisma, PrismaClient } from '../generated/prisma/client';
 import { Decimal, JsonValue } from '@prisma/client/runtime/client';
 
 /**
@@ -348,6 +348,7 @@ type ExtractPkName<T, Config> = Config extends { pkName: infer PK } ? (PK extend
 type ExtractSelectModels<Config> = Config extends { selectModels: infer SM } ? SM : {};
 type ExtractDefaultSelect<Config> = Config extends { defaultSelectModel: infer D } ? D : never;
 type ExtractRelations<Config> = Config extends { relations: infer R } ? (R extends object ? R : {}) : {};
+type ExtractSoftRemovekName<Config> = Config extends { softRemovekName: infer S } ? S : never;
 
 type AggregateMethod<M extends Prisma.ModelName> = <A extends Prisma.TypeMap['model'][M]['operations']['aggregate']['args']>(
     prismaArgs: A, 

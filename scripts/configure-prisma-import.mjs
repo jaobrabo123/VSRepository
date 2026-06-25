@@ -69,10 +69,10 @@ const packageRoot = installedPackageExists
   ? installedNodeModulesPath
   : path.resolve(scriptDirectory, '..');
 
-const sourceDir = path.join(packageRoot, 'src');
+const sourceDir = path.join(packageRoot, 'dist');
 
 if (!fs.existsSync(sourceDir)) {
-  console.error(`Nao foi possivel localizar a pasta src em: ${sourceDir}`);
+  console.error(`Nao foi possivel localizar a pasta dist em: ${sourceDir}`);
   process.exit(1);
 }
 
@@ -99,7 +99,7 @@ for (const fileName of typeFiles) {
   let contents = fs.readFileSync(sourceFile, 'utf8');
 
   contents = contents.replace(
-    /from\s+(['"])@vsrepo\/prisma\/types\1/g,
+    /from\s+(['"])\.\.\/generated\/prisma\/client\1/g,
     `from '${prismaTargetPath === CLASSIC_PRISMA_GENERATED_PATH ? prismaTargetPath : relativeImportPath(path.dirname(targetFile), prismaTargetPath)}'`
   );
 
