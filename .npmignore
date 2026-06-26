@@ -31,7 +31,7 @@ logs/
 .github/
 
 # Build folders
-dist/
+# dist/
 build/
 
 # TypeScript config
@@ -46,3 +46,5 @@ teste.js
 teste.ts
 
 VSRepository (OG)/
+
+linkedin/

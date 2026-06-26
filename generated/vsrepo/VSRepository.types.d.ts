@@ -10,8 +10,8 @@ import { Prisma, PrismaClient } from '../prisma/client';
 import { Decimal, JsonValue } from '@prisma/client/runtime/client';
 
 /**
- * Achata uma interseção de tipos em um único objeto,
- * evitando o erro "union type too complex to represent" do TypeScript.
+ * Flattens a type intersection into a single object,
+ * avoiding the TypeScript "union type too complex to represent" error.
  */
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
@@ -24,17 +24,17 @@ type WidenField<T> =
     T;
 
 /**
- * Instância completa do Prisma Client usada para construir repositories.
+ * Full Prisma Client instance used to build repositories.
  */
 export type DbClient = PrismaClient;
 
 /**
- * Cliente transacional do Prisma retornado por `prisma.$transaction`.
+ * Prisma transactional client returned by `prisma.$transaction`.
  */
 export type DbTransaction = Prisma.TransactionClient;
 
 /**
- * Aceita tanto o cliente principal do Prisma quanto um cliente de transação.
+ * Accepts either the main Prisma client or a transaction client.
  */
 export type ClientOrTransaction = DbClient | DbTransaction;
 
@@ -45,32 +45,32 @@ type OrderPattern = {
 };
 
 /**
- * Opções de paginação aceitas pelos métodos com sufixo `Paginated`.
+ * Pagination options accepted by methods with the `Paginated` suffix.
  *
- * @template TCursor Tipo do cursor usado pelo modelo Prisma.
+ * @template TCursor Type of the cursor used by the Prisma model.
  */
 export type PaginationOptions<TCursor = unknown> = {
-    /** Quantidade de registros a ignorar. */
+    /** Number of records to skip. */
     skip?: number;
-    /** Quantidade máxima de registros retornados. */
+    /** Maximum number of records to return. */
     take?: number;
-    /** Cursor tipado para paginação baseada em posição. */
+    /** Typed cursor for position-based pagination. */
     cursor?: TCursor;
 };
 
 /**
- * Ordenação aceita pelos métodos do repository.
+ * Ordering accepted by repository methods.
  *
- * Pode ser uma única ordenação ou uma lista de ordenações encadeadas.
+ * Can be a single ordering or a list of chained orderings.
  */
 export type OrderOptions = OrderPattern | OrderPattern[];
 
 /**
- * Modo de visibilidade para registros com soft-delete.
+ * Visibility mode for records with soft-delete.
  *
- * - `"active"` — retorna apenas registros não removidos (padrão).
- * - `"removed"` — retorna apenas registros removidos.
- * - `"all"` — retorna todos os registros, independentemente do status.
+ * - `"active"` — returns only non-deleted records (default).
+ * - `"removed"` — returns only deleted records.
+ * - `"all"` — returns all records regardless of their status.
  */
 export type SeeMode = 'active' | 'removed' | 'all';
 
@@ -247,41 +247,41 @@ type CleanFields<R extends string> =
     R extends `${infer F}SkipDuplicates` ? F : R;
 
 /**
- * Opções adicionais aceitas pelos métodos do repository.
+ * Additional options accepted by repository methods.
  *
- * @template S Chaves disponíveis em `selectModels`.
+ * @template S Available keys in `selectModels`.
  */
 export type MethodOptions<S> = {
     /**
-     * Select model a ser aplicado na operação.
+     * Select model to apply to the operation.
      *
-     * @note Use `false` para retornar o payload completo do Prisma, sem select.
+     * @note Use `false` to return the full Prisma payload without a select.
      */
     selectModel?: S | false;
     /**
-     * Cliente Prisma ou transação que deve executar a operação.
+     * Prisma client or transaction to use for the operation.
      */
     db?: ClientOrTransaction;
     /**
-     * Modo de visibilidade para registros com soft-delete.
+     * Visibility mode for records with soft-delete.
      *
-     * Só tem efeito se `softRemovekName` estiver configurado no repository.
+     * Only takes effect if `softRemovekName` is configured on the repository.
      *
-     * - `"active"` — retorna apenas registros não removidos (padrão).
-     * - `"removed"` — retorna apenas registros removidos.
-     * - `"all"` — retorna todos os registros, ignorando o status de remoção.
+     * - `"active"` — returns only non-deleted records (default).
+     * - `"removed"` — returns only deleted records.
+     * - `"all"` — returns all records, ignoring deletion status.
      */
     see?: SeeMode;
 };
 
 /**
- * Versão de `MethodOptions` derivada diretamente de uma instância configurada de `VSRepository`.
+ * Version of `MethodOptions` derived directly from a configured `VSRepository` instance.
  *
- * @template TRepo Instância de `VSRepository` configurada (use `typeof meuVSRepo`).
+ * @template TRepo Configured `VSRepository` instance (use `typeof myVSRepo`).
  *
  * @example
- * const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()(config);
- * type Opts = MethodOptionsModel<typeof usuarioVSRepo>;
+ * const userVSRepo = setupVSRepo<User, "user">()(config);
+ * type Opts = MethodOptionsModel<typeof userVSRepo>;
  */
 export type MethodOptionsModel<TRepo> =
     TRepo extends VSRepository<any, any, infer Config>
@@ -343,7 +343,7 @@ type ExtractPatternBase<K extends string> =
 type MethodFactory<T, M extends Prisma.ModelName, K extends string, SelectModels, DefaultSelect extends keyof SelectModels | false, I, MethodConf> = 
     K extends `findWhere${string}`
         ? {
-            /** @deprecated Use findOneWhere em seu lugar. */
+            /** @deprecated Use findOneWhere instead. */
             <S extends keyof SelectModels | false = DefaultSelect>(...args: [...ExtractFields<T, CleanFields<ExtractPatternBase<K>>, I>, ...ExtraArgs<GetMappedMethod<K, MethodConf>, ExtractPatternBase<K>, I>, options?: MethodOptions<S>]): Promise<ResolveReturnType<GetMappedMethod<K, MethodConf>, SelectedModel<M, S, SelectModels>>>;
           }
         : MethodFn<GetMappedMethod<K, MethodConf>, T, M, ExtractPatternBase<K>, SelectModels, DefaultSelect, I>;
@@ -385,148 +385,148 @@ type DynamicMethods<T, M extends Prisma.ModelName, Config, I> = Config extends {
     : {};
 
 /**
- * Agrupa os principais tipos de input do Prisma derivados de um modelo.
+ * Groups the main Prisma input types derived from a model.
  *
- * @template M Nome do modelo Prisma.
+ * @template M Prisma model name.
  */
 export type PrismaModelInputs<M extends Prisma.ModelName> = {
-    /** Tipo do argumento `select` usado em consultas do modelo. */
+    /** Type of the `select` argument used in model queries. */
     select: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['select'];
-    /** Tipo do `data` usado em `create`. */
+    /** Type of the `data` used in `create`. */
     createInput: Prisma.TypeMap['model'][M]['operations']['create']['args']['data'];
-    /** Tipo do `data` usado em `createMany`. */
+    /** Type of the `data` used in `createMany`. */
     createManyInput: Prisma.TypeMap['model'][M]['operations']['createMany']['args']['data'];
-    /** Tipo do `data` usado em `update`. */
+    /** Type of the `data` used in `update`. */
     updateInput: Prisma.TypeMap['model'][M]['operations']['update']['args']['data'];
-    /** Tipo do `data` usado em `updateMany`. */
+    /** Type of the `data` used in `updateMany`. */
     updateManyInput: Prisma.TypeMap['model'][M]['operations']['updateMany']['args']['data'];
-    /** Tipo do `where` usado nas buscas do modelo. */
+    /** Type of the `where` used in model queries. */
     whereInput: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['where'];
-    /** Tipo do `orderBy` usado nas buscas do modelo. */
+    /** Type of the `orderBy` used in model queries. */
     orderByInput: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['orderBy'];
-    /** Tipo do cursor usado nas buscas do modelo. */
+    /** Type of the cursor used in model queries. */
     cursorInput: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['cursor'];
-    /** Tipo do payload `create` usado em `upsert`. */
+    /** Type of the `create` payload used in `upsert`. */
     upsertCreateInput: Prisma.TypeMap['model'][M]['operations']['upsert']['args']['create'];
-    /** Tipo do payload `update` usado em `upsert`. */
+    /** Type of the `update` payload used in `upsert`. */
     upsertUpdateInput: Prisma.TypeMap['model'][M]['operations']['upsert']['args']['update'];
 };
 
 /**
- * Tipo do objeto `select` de um modelo Prisma.
+ * Type of the `select` object of a Prisma model.
  */
 export type SelectModel<M extends Prisma.ModelName> = PrismaModelInputs<M>['select'];
 
 /**
- * Mapa de selects nomeados e reutilizáveis para um modelo Prisma.
+ * Map of named, reusable selects for a Prisma model.
  */
 export type SelectModels<M extends Prisma.ModelName> = Record<string, SelectModel<M>>;
 
 /**
- * Tipo do objeto `where` de um modelo Prisma.
+ * Type of the `where` object of a Prisma model.
  */
 export type WhereModel<M extends Prisma.ModelName> = PrismaModelInputs<M>['whereInput'];
 
 /**
- * Tipo do objeto `orderBy` de um modelo Prisma.
+ * Type of the `orderBy` object of a Prisma model.
  */
 export type OrdenationModel<M extends Prisma.ModelName> = PrismaModelInputs<M>['orderByInput'];
 
 /**
- * Opções de paginação com cursor tipado para um modelo Prisma.
+ * Pagination options with typed cursor for a Prisma model.
  */
 export type PaginationModel<M extends Prisma.ModelName> = PaginationOptions<PrismaModelInputs<M>['cursorInput']>;
 
 /**
- * Payload base usado para criar um registro no `save`/`upsert` do modelo.
+ * Base payload used to create a record in the model's `save`/`upsert`.
  */
 export type ModelUpsertInput<M extends Prisma.ModelName> = PrismaModelInputs<M>['upsertCreateInput'];
 
 /**
- * Configuração de um método dinâmico definido em `methods`.
+ * Configuration for a dynamic method defined in `methods`.
  *
- * @template M Nome do modelo Prisma.
- * @template SelectModels Mapa de select models disponíveis no repository.
+ * @template M Prisma model name.
+ * @template SelectModels Map of select models available in the repository.
  */
 export type MethodConfig<M extends Prisma.ModelName, SelectModels = any> = {
-    /** Define se o método será exposto no repository. */
+    /** Defines whether the method will be exposed on the repository. */
     readonly map: boolean;
-    /** Sobrescreve o `defaultSelectModel` apenas para este método. */
+    /** Overrides `defaultSelectModel` for this method only. */
     readonly selectModel?: string | false;
-    /** Controla se o método combina (`extending`) ou sobrescreve (`overwrite`) o `requiredWhere`. */
+    /** Controls whether the method combines (`extending`) or overwrites (`overwrite`) the `requiredWhere`. */
     readonly whereType?: 'overwrite' | 'extending';
-    /** Redireciona a lógica para outro padrão de método válido. */
+    /** Redirects the logic to another valid method pattern. */
     readonly proxyTo?: ValidMethodPatterns;
-    /** Adiciona um `where` extra além do `requiredWhere`. */
+    /** Adds an extra `where` on top of `requiredWhere`. */
     readonly pushWhere?: WhereModel<M>;
     /** 
-     * Define se `findBy` retorna um item (`one`) ou uma lista (`list`).
-     * @deprecated Use `findOneBy` se quiser retornar um único resultado.
+     * Defines whether `findBy` returns a single item (`one`) or a list (`list`).
+     * @deprecated Use `findOneBy` if you want to return a single result.
      */
     readonly fbMode?: 'one' | 'list';
-    /** Injeta uma ordenação fixa automaticamente na query. */
+    /** Injects a fixed ordering automatically into the query. */
     readonly injectOrdenation?: OrdenationModel<M>;
-    /** Injeta uma paginação fixa automaticamente na query. */
+    /** Injects a fixed pagination automatically into the query. */
     readonly injectPagination?: PaginationModel<M>;
 };
 
 type BaseMethodConfig<TSelectKeys extends PropertyKey = string> = {
-    /** Ativa ou desativa o método base no `build`. */
+    /** Enables or disables the base method in the `build`. */
     active?: boolean;
-    /** Select model padrão usado pelo método base. */
+    /** Default select model used by the base method. */
     defaultSelect?: TSelectKeys;
-    /** Ignora o `requiredWhere`. */
+    /** Ignores the `requiredWhere`. */
     ignoreRequiredWhere?: boolean;
 };
 
 /**
- * Configuração aplicada durante o `.build(prisma, config?)`.
+ * Configuration applied during `.build(prisma, config?)`.
  *
- * @template TSelectKeys Chaves válidas de `selectModels`.
+ * @template TSelectKeys Valid keys of `selectModels`.
  */
 export type BuildConfig<TSelectKeys extends PropertyKey = string> = {
     /**
-     * Congela o objeto final do repository com `Object.freeze`.
-     * @deprecated Não tem mais efeito prático na nova versão — o freeze é sempre aplicado.
+     * Freezes the final repository object with `Object.freeze`.
+     * @deprecated No longer has any practical effect in the next version — freeze will be always applied.
      */
     freeze?: boolean;
-    /** Exibe logs internos de funcionamento no console. */
+    /** Prints internal working logs to the console. */
     showWorking?: boolean;
-    /** Personaliza o comportamento dos métodos base automáticos. */
+    /** Customizes the behavior of the automatic base methods. */
     baseMethods?: {
-        /** Configuração do método `get`. */
+        /** Configuration for the `get` method. */
         get?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `getOrThrow`. */
+        /** Configuration for the `getOrThrow` method. */
         getOrThrow?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `getList` (busca por lista de PKs). */
+        /** Configuration for the `getList` method (fetch by list of PKs). */
         getList?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `remove`. */
+        /** Configuration for the `remove` method. */
         remove?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `save`. */
+        /** Configuration for the `save` method. */
         save?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `patch`. */
+        /** Configuration for the `patch` method. */
         patch?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `merge`. */
+        /** Configuration for the `merge` method. */
         merge?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `removeList` (exclusão em lote). Não aceita select. */
+        /** Configuration for the `removeList` method (batch deletion). Does not accept select. */
         removeList?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
-        /** Configuração do método `getAll` (listagem total). */
+        /** Configuration for the `getAll` method (full listing). */
         getAll?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `total` (contagem). Não aceita select. */
+        /** Configuration for the `total` method (count). Does not accept select. */
         total?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
-        /** Configuração do método `has` (verificação de existência). Não aceita select. */
+        /** Configuration for the `has` method (existence check). Does not accept select. */
         has?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
-        /** Configuração do método `saveList` (salvar em lote via transação). */
+        /** Configuration for the `saveList` method (batch save via transaction). */
         saveList?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `patchList` (atualizar em lote via transação). */
+        /** Configuration for the `patchList` method (batch update via transaction). */
         patchList?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `softRemove`. Só existe se `softRemovekName` estiver configurado. */
+        /** Configuration for the `softRemove` method. Only available if `softRemovekName` is configured. */
         softRemove?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `softRemoveList`. Não aceita select. Só existe se `softRemovekName` estiver configurado. */
+        /** Configuration for the `softRemoveList` method. Does not accept select. Only available if `softRemovekName` is configured. */
         softRemoveList?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
-        /** Configuração do método `restore`. Só existe se `softRemovekName` estiver configurado. */
+        /** Configuration for the `restore` method. Only available if `softRemovekName` is configured. */
         restore?: BaseMethodConfig<TSelectKeys>;
-        /** Configuração do método `restoreList`. Não aceita select. Só existe se `softRemovekName` estiver configurado. */
+        /** Configuration for the `restoreList` method. Does not accept select. Only available if `softRemovekName` is configured. */
         restoreList?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
     };
 };
@@ -549,11 +549,11 @@ type ResolveCurrentReturn<M extends Prisma.ModelName, Models, S, D> =
             ? ([D] extends [never] ? FullModelType<M> : SelectedModel<M, D, Models>)
             : SelectedModel<M, S, Models>;
 
-// ─── helpers reutilizados dentro do tipo mapeado ────────────────────────────
-// ─── tipos de payload para relações ─────────────────────────────────────────
+// ─── helpers reused within the mapped type ───────────────────────────────────
+// ─── relation payload types ──────────────────────────────────────────────────
 
 /**
- * Versão distributiva de `Omit`, preservando unions ao remover propriedades.
+ * Distributive version of `Omit`, preserving unions when removing properties.
  */
 type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 type ExtractUnionProp<T, K extends PropertyKey> = T extends any ? (K extends keyof T ? T[K] : never) : never;
@@ -572,18 +572,18 @@ type RelationPayload<TField, TRelationConfig, M extends Prisma.ModelName, K exte
 type TransformCreatePayload<U, T, M extends Prisma.ModelName, TRelations> =
     Omit<U, keyof TRelations> &
     {
-        // Campos que são OBRIGATÓRIOS nesta ramificação específica da união do Prisma
+        // Fields that are REQUIRED in this specific branch of the Prisma union
         [K in Extract<keyof TRelations, keyof U> as {} extends Pick<U, K> ? never : K]: 
             K extends keyof T ? RelationPayload<T[K], TRelations[K], M, K> : never;
     } &
     {
-        // Campos que são OPCIONAIS nesta ramificação ou que não pertencem originalmente a ela
+        // Fields that are OPTIONAL in this branch or do not originally belong to it
         [K in keyof TRelations as K extends keyof U ? ({} extends Pick<U, K> ? K : never) : K]?: 
             K extends keyof T ? RelationPayload<T[K], TRelations[K], M, K> : never;
     };
 
 /**
- * Payload aceito pelo `save` quando o repository possui relações configuradas.
+ * Payload accepted by `save` when the repository has configured relations.
  */
 type UpsertWithRelations<T, M extends Prisma.ModelName, TRelations> =
     ModelUpsertInput<M> extends infer U
@@ -610,7 +610,7 @@ type RelationUpdatePayload<TField, TRelationConfig, M extends Prisma.ModelName, 
       : never;
 
 /**
- * Payload aceito pelo `patch` quando o repository possui relações configuradas.
+ * Payload accepted by `patch` when the repository has configured relations.
  */
 type UpdateWithRelations<T, M extends Prisma.ModelName, TRelations> =
     DistributiveOmit<PrismaModelInputs<M>['updateInput'], keyof TRelations> & {
@@ -618,7 +618,7 @@ type UpdateWithRelations<T, M extends Prisma.ModelName, TRelations> =
     };
 
 /**
- * Extrai o tipo de payload do método `save` a partir de uma instância de VSRepository configurada.
+ * Extracts the payload type of the `save` method from a configured VSRepository instance.
  */
 export type SaveObject<TInput, TRepo> = 
     TRepo extends VSRepository<infer T, infer M, infer Config>
@@ -632,7 +632,7 @@ export type SaveObject<TInput, TRepo> =
         : never;
 
 /**
- * Extrai o tipo de payload do método `patch` a partir de uma instância de VSRepository configurada.
+ * Extracts the payload type of the `patch` method from a configured VSRepository instance.
  */
 export type PatchObject<TInput, TRepo> = 
     TRepo extends VSRepository<infer T, infer M, infer Config>
@@ -653,7 +653,7 @@ type _Def<Config> = ExtractDefaultSelect<Config>;
 type _Rel<Config> = ExtractRelations<Config>;
 type _Soft<Config> = ExtractSoftRemovekName<Config>;
 
-// ─── tipo mapeado refatorado — otimizado para o compilador TS ────────────────
+// ─── refactored mapped type — optimized for the TS compiler ──────────────────
 
 type AllBaseMethods<
     T,
@@ -667,55 +667,55 @@ type AllBaseMethods<
     TSoftKey  = _Soft<Config>,
     I         = PrismaModelInputs<M>
 > = {
-    /** Busca um registro pela chave primária (PK). */
+    /** Fetches a record by its primary key (PK). */
     get: <S extends keyof TSelects | false = _DS<Config, C, 'get', TSelects>>(
         pk: _Pk<T, Config>, options?: MethodOptions<S>
     ) => Promise<_Ret<M, TSelects, S, TDefault> | null>;
 
-    /** Busca um registro pela PK e lança `VSRepoRuntimeError` se não encontrado. */
+    /** Fetches a record by PK and throws `VSRepoRuntimeError` if not found. */
     getOrThrow: <S extends keyof TSelects | false = _DS<Config, C, 'getOrThrow', TSelects>>(
         pk: _Pk<T, Config>, options?: MethodOptions<S>
     ) => Promise<_Ret<M, TSelects, S, TDefault>>;
 
-    /** Busca múltiplos registros por uma lista de chaves primárias (PKs). */
+    /** Fetches multiple records by a list of primary keys (PKs). */
     getList: <S extends keyof TSelects | false = _DS<Config, C, 'getList', TSelects>>(
         pks: _Pk<T, Config>[], options?: MethodOptions<S>
     ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
 
-    /** Remove um registro identificado pela chave primária (PK). */
+    /** Deletes a record identified by its primary key (PK). */
     remove: <S extends keyof TSelects | false = _DS<Config, C, 'remove', TSelects>>(
         pk: _Pk<T, Config>, options?: MethodOptions<S>
     ) => Promise<_Ret<M, TSelects, S, TDefault>>;
 
-    /** Insere ou atualiza (upsert) um registro. */
+    /** Inserts or updates (upsert) a record. */
     save: <S extends keyof TSelects | false = _DS<Config, C, 'save', TSelects>>(
         obj: UpsertWithRelations<T, M, TRelations>, options?: MethodOptions<S>
     ) => Promise<_Ret<M, TSelects, S, TDefault>>;
 
-    /** Salva um array de objetos em uma única transação automática. */
+    /** Saves an array of objects in a single automatic transaction. */
     saveList: <S extends keyof TSelects | false = _DS<Config, C, 'saveList', TSelects>>(
         objs: UpsertWithRelations<T, M, TRelations>[], options?: Omit<MethodOptions<S>, 'db'> & { db?: DbTransaction }
     ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
 
-    /** Atualiza parcialmente (patch) um registro existente pela chave primária (PK). */
+    /** Partially updates (patch) an existing record by its primary key (PK). */
     patch: <S extends keyof TSelects | false = _DS<Config, C, 'patch', TSelects>>(
         pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>, options?: MethodOptions<S>
     ) => Promise<_Ret<M, TSelects, S, TDefault>>;
 
-    /** Atualiza parcialmente múltiplos registros via tuplas `[pk, obj]` em transação automática. */
+    /** Partially updates multiple records via `[pk, obj]` tuples in an automatic transaction. */
     patchList: <S extends keyof TSelects | false = _DS<Config, C, 'patchList', TSelects>>(
         tuples: [pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>][], options?: Omit<MethodOptions<S>, 'db'> & { db?: DbTransaction }
     ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
 
-    /** Busca um registro pela PK e faz deep merge com o objeto fornecido **em memória**. */
+    /** Fetches a record by PK and deep-merges it with the provided object **in memory**. */
     merge: <S extends keyof TSelects | false = _DS<Config, C, 'merge', TSelects>>(
         pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>, options?: MethodOptions<S>
     ) => Promise<_Ret<M, TSelects, S, TDefault> | null>;
 
-    /** Remove múltiplos registros pelas suas chaves primárias. */
+    /** Deletes multiple records by their primary keys. */
     removeList: (pks: _Pk<T, Config>[], options?: { db?: ClientOrTransaction }) => Promise<{ count: number }>;
 
-    /** Busca todos os registros (respeita `requiredWhere` quando aplicado). */
+    /** Fetches all records (respects `requiredWhere` when set). */
     getAll: <S extends keyof TSelects | false = _DS<Config, C, 'getAll', TSelects>>(
         options?: MethodOptions<S> & {
             pagination?: PaginationOptions<I extends { cursorInput: infer Curs } ? Curs : unknown>;
@@ -723,26 +723,26 @@ type AllBaseMethods<
         }
     ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
 
-    /** Retorna a quantidade total de registros. */
+    /** Returns the total number of records. */
     total: (options?: { db?: ClientOrTransaction; see?: SeeMode }) => Promise<number>;
 
-    /** Verifica se um registro existe pela chave primária (PK). */
+    /** Checks whether a record exists by its primary key (PK). */
     has: (pk: _Pk<T, Config>, options?: { db?: ClientOrTransaction; see?: SeeMode }) => Promise<boolean>;
 
-    /** Marca um registro como removido (soft-delete). */
+    /** Marks a record as deleted (soft-delete). */
     softRemove: <S extends keyof TSelects | false = _DS<Config, C, 'softRemove', TSelects>>(
         pk: _Pk<T, Config>, options?: Omit<MethodOptions<S>, 'see'>
     ) => Promise<_Ret<M, TSelects, S, TDefault>>;
 
-    /** Marca múltiplos registros como removidos (soft-delete) em lote. */
+    /** Marks multiple records as deleted (soft-delete) in batch. */
     softRemoveList: (pks: _Pk<T, Config>[], options?: { db?: ClientOrTransaction }) => Promise<{ count: number }>;
 
-    /** Restaura um registro marcado como removido (soft-delete). */
+    /** Restores a record previously marked as deleted (soft-delete). */
     restore: <S extends keyof TSelects | false = _DS<Config, C, 'restore', TSelects>>(
         pk: _Pk<T, Config>, options?: Omit<MethodOptions<S>, 'see'>
     ) => Promise<_Ret<M, TSelects, S, TDefault>>;
 
-    /** Restaura múltiplos registros marcados como removidos (soft-delete) em lote. */
+    /** Restores multiple records previously marked as deleted (soft-delete) in batch. */
     restoreList: (pks: _Pk<T, Config>[], options?: { db?: ClientOrTransaction }) => Promise<{ count: number }>;
 };
 
@@ -780,56 +780,56 @@ type InjectedBaseMethods<
 
 
 /**
- * Configuração de relação para One-to-Many ou Many-to-Many.
+ * Relation configuration for One-to-Many or Many-to-Many.
  *
- * @template TItem O tipo da entidade relacionada.
+ * @template TItem Type of the related entity.
  */
 export type ManyRelationConfig<TItem> = {
-    /** A chave primária (Primary Key) da entidade relacionada. */
+    /** Primary key of the related entity. */
     pk: keyof TItem;
-    /** Tipo de relação: `otm` (One-to-Many) ou `mtm` (Many-to-Many). */
+    /** Relation type: `otm` (One-to-Many) or `mtm` (Many-to-Many). */
     mode: 'otm' | 'mtm';
-    /** Comportamento de mutação: `set` (substitui tudo) ou `add` (adiciona aos existentes). */
+    /** Mutation behavior: `set` (replaces all) or `add` (appends to existing). */
     restriction: 'set' | 'add';
 };
 
 /**
- * Configuração de relação One-to-One.
+ * One-to-One relation configuration.
  *
- * @template TItem O tipo da entidade relacionada.
+ * @template TItem Type of the related entity.
  */
 export type OneToOneRelationConfig<TItem> = {
-    /** A chave primária (Primary Key) da entidade relacionada. */
+    /** Primary key of the related entity. */
     pk: keyof TItem;
-    /** Tipo de relação: `oto` (One-to-One). */
+    /** Relation type: `oto` (One-to-One). */
     mode: 'oto';
-    /** Comportamento de mutação permitido para salvar. */
+    /** Allowed mutation behavior for saving. */
     restriction: 'set' | 'add';
 };
 
 /**
- * Configuração de relação Many-to-One.
+ * Many-to-One relation configuration.
  *
- * @template TItem O tipo da entidade relacionada.
+ * @template TItem Type of the related entity.
  */
 export type ManyToOneRelationConfig<TItem> = {
-    /** A chave primária (Primary Key) da entidade relacionada. */
+    /** Primary key of the related entity. */
     pk: keyof TItem;
-    /** Tipo de relação: `mto` (Many-to-One). */
+    /** Relation type: `mto` (Many-to-One). */
     mode: 'mto';
-    /** Comportamento de mutação permitido para salvar. */
+    /** Allowed mutation behavior for saving. */
     restriction: 'set' | 'add';
     /**
-     * Habilita a possibilidade de desvincular a relação, tornando a chave estrangeira nula.
-     * @deprecated Use `nullable` (com letras minúsculas) em vez de `nullAble`.
+     * Enables the ability to unlink the relation, setting the foreign key to null.
+     * @deprecated Use `nullable` (lowercase) instead of `nullAble`.
      */
     nullAble?: boolean;
-    /** Habilita a possibilidade de desvincular a relação, tornando a chave estrangeira nula. */
+    /** Enables the ability to unlink the relation, setting the foreign key to null. */
     nullable?: boolean;
 };
 
 /**
- * Infere automaticamente a configuração de relação possível a partir de um campo.
+ * Automatically infers the possible relation configuration from a field.
  */
 export type ExtractRelationConfig<TField> = NonNullable<TField> extends infer NonNull
     ? NonNull extends Date | Buffer | Uint8Array | Decimal | JsonValue ? never
@@ -839,7 +839,7 @@ export type ExtractRelationConfig<TField> = NonNullable<TField> extends infer No
     : never;
 
 /**
- * Mapa das relações configuráveis de um tipo de entidade.
+ * Map of configurable relations for an entity type.
  */
 export type RepositoryRelations<T> = {
     [K in keyof T as ExtractRelationConfig<T[K]> extends never ? never : K]?: ExtractRelationConfig<T[K]>;
@@ -848,21 +848,15 @@ export type RepositoryRelations<T> = {
 type AnySelect<M extends Prisma.ModelName> = Prisma.TypeMap['model'][M]['operations']['findMany']['args']['select'];
 
 /**
- * Configuração principal usada em `setupVSRepo<T, M>()(config)`.
+ * Main configuration used in `setupVSRepo<T, M>()(config)`.
  *
- * @template T Tipo da entidade manipulada pelo repository.
- * @template M Nome do modelo Prisma.
- * @template SM Mapa de select models nomeados.
+ * @template T Type of the entity managed by the repository.
+ * @template M Prisma model name.
+ * @template SM Map of named select models.
  */
 export type RepoConfig<T, M extends Prisma.ModelName, SM extends Record<string, AnySelect<M>> = Record<string, AnySelect<M>>> = {
     tableName: Uncapitalize<M>;
     pkName: keyof T;
-    /**
-     * Nome do campo `DateTime` usado para soft-delete.
-     *
-     * Quando configurado, habilita os métodos `softRemove`, `softRemoveList`, `restore` e `restoreList`.
-     * O campo **deve** ser do tipo `DateTime` no schema do Prisma — o VSRepository valida isso no `build`.
-     */
     softRemovekName?: keyof T & string;
     selectModels?: SM;
     defaultSelectModel?: Extract<keyof SM, string>;
@@ -872,43 +866,43 @@ export type RepoConfig<T, M extends Prisma.ModelName, SM extends Record<string, 
 };
 
 /**
- * Tipo final retornado por `.build(prisma)`.
+ * Final type returned by `.build(prisma)`.
  *
- * Combina métodos dinâmicos, métodos base e extensões personalizadas.
+ * Combines dynamic methods, base methods, and custom extensions.
  */
 type BuiltRepository<T extends object, M extends Prisma.ModelName, Config extends RepoConfig<T, M, any>, C extends BuildConfig<any> | undefined> = {
     /**
-     * Estende o repository com métodos personalizados sem perder a tipagem.
+     * Extends the repository with custom methods without losing type inference.
      */
     extend<E>(extensionFunc: (repo: BuiltRepository<T, M, Config, C>) => E): BuiltRepository<T, M, Config, C> & E;
 
     /**
-     * Instância do Prisma Client passada no `build`.
+     * The Prisma Client instance passed to `build`.
      */
     readonly prisma: DbClient;
 } & DynamicMethods<T, M, Config, PrismaModelInputs<M>> & InjectedBaseMethods<T, M, Config, C>;
 
 /**
- * Fábrica tipada de repositories baseada na configuração do modelo Prisma.
+ * Typed repository factory based on the Prisma model configuration.
  */
 export declare class VSRepository<T extends object, M extends Prisma.ModelName, const Config extends RepoConfig<T, M, any> = RepoConfig<T, M, any>> {
-    /** Configuração original informada no `setupVSRepo`. */
+    /** Original configuration provided to `setupVSRepo`. */
     readonly config: Config;
     /**
-     * Cria uma instância configurável de `VSRepository`.
+     * Creates a configurable instance of `VSRepository`.
      */
     constructor(config: Config);
     /**
-     * Constrói o repository final com os métodos base e dinâmicos.
+     * Builds the final repository with base and dynamic methods.
      */
     build<C extends BuildConfig<keyof ExtractSelectModels<Config>>>(prisma: DbClient, config?: C): BuiltRepository<T, M, Config, C>;
     vsrepocache: never;
 }
 
 /**
- * Infere o tipo de um repository já configurado a partir de uma instância de `VSRepository`.
+ * Infers the type of an already-configured repository from a `VSRepository` instance.
  *
- * Também permite informar manualmente o `BuildConfig` e o tipo de extensões.
+ * Also allows manually providing the `BuildConfig` and extensions type.
  */
 export type RepositoryOf<TRepo, C extends BuildConfig<any> | undefined = undefined, E = unknown> =
     TRepo extends VSRepository<infer T, infer M, infer Config>
@@ -916,16 +910,58 @@ export type RepositoryOf<TRepo, C extends BuildConfig<any> | undefined = undefin
         : never;
 
 /**
- * Tipo utilitário usado para validar a configuração de um repository em tempo de compilação.
+ * Utility type used to validate a repository configuration at compile time.
  */
 export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Config> = {
+    /**
+     * Name of the table mapped by Prisma (usually uncapitalized).
+     */
     tableName: Uncapitalize<M>;
+
+    /**
+     * Name of the field that represents the entity's primary key (Primary Key).
+     */
     pkName: keyof T;
+
+    /**
+     * Name of the `DateTime` field used for soft-delete.
+     *
+     * When configured, enables the `softRemove`, `softRemoveList`, `restore`, and `restoreList` methods.
+     * The field **must** be of type `DateTime` in the Prisma schema — VSRepository validates this during `build`.
+     */
     softRemovekName?: keyof T & string;
+
+    /**
+     * Defines named and reusable data projections (selects).
+     * Allows creating different views of the same entity (e.g., `public`, `minimal`, `internal`).
+     */
     selectModels?: SelectModels<M>;
+
+    /**
+     * Defines which select (a key from `selectModels`) will be used automatically
+     * when none is specified in the method call.
+     * It is highly recommended to define it whenever `selectModels` are used.
+     */
     defaultSelectModel?: string;
+
+    /**
+     * Defines global filters that will be automatically applied to all repository queries.
+     * Useful for tenant isolation (multi-tenancy) or base restrictions (e.g., `isActive: true`).
+     */
     requiredWhere?: WhereModel<M>;
+
+    /**
+     * Configures automatic relation management.
+     * When configured, allows the `save`, `saveList`, `patch`, and `patchList` methods 
+     * to automatically handle linking, creation, or cascading deletion of related records.
+     */
     relations?: RepositoryRelations<T>;
+
+    /**
+     * Definition of dynamic repository methods.
+     * Behaviors and return types are automatically inferred from the method's name 
+     * (e.g., `findOneByEmail`, `findManyPaginated`) or proxied via the `proxyTo` property.
+     */
     methods?: {
         [K in keyof (Config extends { methods: infer Meth } ? Meth : {})]: K extends string
             ? MethodConfig<M, Config extends { selectModels: infer SM } ? SM : any> & (K extends ValidMethodPatterns ? {} : { proxyTo: ValidMethodPatterns })
@@ -934,8 +970,8 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
 };
 
 /**
- * Função para inicializar e configurar o `repository`.
- * As configurações passadas nele são as que serão lidas ao executar o `.build()`.
+ * Function to initialize and configure the `repository`.
+ * The configuration passed here is what will be read when `.build()` is called.
  */
 export declare function setupVSRepo<T extends object, M extends Prisma.ModelName>(): <
     const SM extends Record<string, SelectModel<M>>,

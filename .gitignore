@@ -3,7 +3,7 @@ node_modules/
 dist/
 .env
 *.log
-/generated/prisma
+# /generated/prisma
 
 .gemini/
 .cursor/
@@ -14,3 +14,5 @@ dist/
 
 teste.js
 teste.ts
+
+linkedin/
