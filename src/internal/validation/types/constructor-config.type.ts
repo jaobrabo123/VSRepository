@@ -10,4 +10,5 @@ export interface ConstructorConfig {
     requiredWhere?: object;
     relations?: Record<string, Relation>;
     methods?: Record<string, Method>;
+    defaultOrdenation?: object | object[];
 }

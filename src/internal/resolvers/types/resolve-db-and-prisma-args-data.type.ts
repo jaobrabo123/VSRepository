@@ -21,4 +21,5 @@ export interface ResolveDbAndPrismaArgsData {
     ordenation?: object | object[];
     skipDuplicates?: boolean;
     forceSeeMode?: SeeMode;
+    withOrdenationAndPagination?: boolean;
 }

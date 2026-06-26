@@ -39,6 +39,7 @@ export function validateConstructorConfig(config: unknown): ConstructorConfig {
                     }),
                 )
                 .optional(),
+            defaultOrdenation: objectSchema.or(z.array(objectSchema)).optional(),
         })
         .superRefine((config, ctx) => {
             if (config.defaultSelectModel && !config.selectModels?.[config.defaultSelectModel]) {

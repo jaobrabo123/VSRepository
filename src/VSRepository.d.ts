@@ -349,6 +349,7 @@ type ExtractSelectModels<Config> = Config extends { selectModels: infer SM } ? S
 type ExtractDefaultSelect<Config> = Config extends { defaultSelectModel: infer D } ? D : never;
 type ExtractRelations<Config> = Config extends { relations: infer R } ? (R extends object ? R : {}) : {};
 type ExtractSoftRemovekName<Config> = Config extends { softRemovekName: infer S } ? S : never;
+type ExtractDefaultOrdenation<Config> = Config extends { defaultOrdenation: infer O } ? O : never;
 
 type AggregateMethod<M extends Prisma.ModelName> = <A extends Prisma.TypeMap['model'][M]['operations']['aggregate']['args']>(
     prismaArgs: A, 
@@ -644,6 +645,7 @@ type _Sel<Config> = ExtractSelectModels<Config>;
 type _Def<Config> = ExtractDefaultSelect<Config>;
 type _Rel<Config> = ExtractRelations<Config>;
 type _Soft<Config> = ExtractSoftRemovekName<Config>;
+type _DOrd<Config> = ExtractDefaultOrdenation<Config>;
 
 // ─── refactored mapped type — optimized for the TS compiler ──────────────────
 
@@ -657,7 +659,8 @@ type AllBaseMethods<
     TPk       = ExtractPkName<T, Config>,
     TRelations = _Rel<Config>,
     TSoftKey  = _Soft<Config>,
-    I         = PrismaModelInputs<M>
+    I         = PrismaModelInputs<M>,
+    TDefaultOrdenation = _DOrd<Config>
 > = {
     /** Fetches a record by its primary key (PK). */
     get: <S extends keyof TSelects | false = _DS<Config, C, 'get', TSelects>>(
@@ -711,6 +714,11 @@ type AllBaseMethods<
     getAll: <S extends keyof TSelects | false = _DS<Config, C, 'getAll', TSelects>>(
         options?: MethodOptions<S> & {
             pagination?: PaginationOptions<I extends { cursorInput: infer Curs } ? Curs : unknown>;
+            /**
+             * Ordering to apply to the query.
+             * When omitted and `defaultOrdenation` is configured on the repository,
+             * the default ordering is applied automatically.
+             */
             order?: I extends { orderByInput: infer OB } ? OB : OrderOptions;
         }
     ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
@@ -748,9 +756,10 @@ type InjectedBaseMethods<
     TPk       = ExtractPkName<T, Config>,
     TRelations = _Rel<Config>,
     TSoftKey  = _Soft<Config>,
-    I         = PrismaModelInputs<M>
+    I         = PrismaModelInputs<M>,
+    TDefaultOrdenation = _DOrd<Config>
 > = Pick<
-    AllBaseMethods<T, M, Config, C, TSelects, TDefault, TPk, TRelations, TSoftKey, I>,
+    AllBaseMethods<T, M, Config, C, TSelects, TDefault, TPk, TRelations, TSoftKey, I, TDefaultOrdenation>,
     | (C extends { baseMethods: { get:          { active: false } } } ? never : 'get')
     | (C extends { baseMethods: { getOrThrow:   { active: false } } } ? never : 'getOrThrow')
     | (C extends { baseMethods: { getList:      { active: false } } } ? never : 'getList')
@@ -853,6 +862,7 @@ export type RepoConfig<T, M extends Prisma.ModelName, SM extends Record<string, 
     selectModels?: SM;
     defaultSelectModel?: Extract<keyof SM, string>;
     requiredWhere?: WhereModel<M>;
+    defaultOrdenation?: OrdenationModel<M>;
     relations?: RepositoryRelations<T>;
     methods?: Record<string, MethodConfig<M, SM>>;
 };
@@ -941,6 +951,15 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
      * Useful for tenant isolation (multi-tenancy) or base restrictions (e.g., `isActive: true`).
      */
     requiredWhere?: WhereModel<M>;
+
+    /**
+     * Default ordering automatically injected into all queries that accept `orderBy`,
+     * unless the method already has `injectOrdenation` configured or uses the `Ordered` suffix.
+     *
+     * Useful for ensuring a consistent sort order across the repository without repeating
+     * the `order` argument on every call.
+     */
+    defaultOrdenation?: OrdenationModel<M>;
 
     /**
      * Configures automatic relation management.

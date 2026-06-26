@@ -31,6 +31,7 @@ export class VSRepository {
     requiredWhere?: object;
     relations?: Record<string, Relation>;
     methods?: Record<string, Method>;
+    defaultOrdenation?: object | object[];
 
     constructor(config: unknown) {
         const validatedConfig = validateConstructorConfig(config);
@@ -44,6 +45,7 @@ export class VSRepository {
         this.relations = validatedConfig.relations;
         this.requiredWhere = validatedConfig.requiredWhere;
         this.methods = validatedConfig.methods;
+        this.defaultOrdenation = validatedConfig.defaultOrdenation;
     }
 
     extend(extensionFunc: unknown) {
@@ -110,7 +112,7 @@ export class VSRepository {
 
                 if (!dinamicMethodInfo.ignoreWhere) {
                     resolvePrettyWheres(dinamicMethodInfo, dinamicMethodWhereOps);
-                    if (showWorking){
+                    if (showWorking) {
                         const argsSimulation: any[] = [];
 
                         for (let x = 0; x < dinamicMethodInfo.argsCount; x++) {
@@ -121,7 +123,10 @@ export class VSRepository {
                             `Where object resolved to ${methodToMap}:`,
                             "build",
                             buildInstance.tableName,
-                            resolveSpecificWhere(argsSimulation, dinamicMethodWhereOps.prettyWheres),
+                            resolveSpecificWhere(
+                                argsSimulation,
+                                dinamicMethodWhereOps.prettyWheres,
+                            ),
                         );
 
                         // logger(
@@ -179,6 +184,8 @@ export class VSRepository {
                                 dinamicMethodInfo.updateIndex !== undefined
                                     ? args.at(dinamicMethodInfo.updateIndex)
                                     : undefined,
+                            withOrdenationAndPagination:
+                                !dinamicMethodInfo.ignoreOrderByAndPagination,
                         };
 
                         if (!dinamicMethodInfo.ignoreWhere) {

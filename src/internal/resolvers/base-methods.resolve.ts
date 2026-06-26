@@ -119,6 +119,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
                 options: restOptions,
                 pagination,
                 ordenation: order,
+                withOrdenationAndPagination: true,
             });
 
             const start = showWorking
@@ -273,7 +274,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             }
             if (!relations) {
                 if (showWorking) performanceLoggerEnd(tableName, "merge", start!);
-                
+
                 return merge(result, obj, {
                     arrayMerge: (target, source) => target.concat(source),
                 });

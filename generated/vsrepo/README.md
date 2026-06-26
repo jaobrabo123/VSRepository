@@ -31,6 +31,7 @@ O VSRepository permite criar repositories fortemente tipados com:
   - [Configurando os métodos base](#configurando-os-métodos-base)
 - [Select Models](#select-models)
 - [Required Where](#requiredwhere)
+- [Default Ordenation](#default-ordenation)
 - [Opção `see`](#opção-see)
 - [Métodos dinâmicos](#métodos-dinâmicos)
   - [Prefixos disponíveis](#prefixos-disponíveis)
@@ -485,7 +486,47 @@ const usuario = await usuarioRepository.findByEmail("joao@email.com");
 
 ---
 
-## Opção `see`
+## Default Ordenation
+
+`defaultOrdenation` define uma ordenação padrão aplicada automaticamente em todas as queries que aceitam `orderBy`, sem precisar repetir o argumento `order` em cada chamada.
+
+```ts
+const usuarioRepository = setupVSRepo<Usuario, "usuario">()(({
+  tableName: "usuario",
+  pkName: "id",
+  defaultOrdenation: { criadoEm: "desc" },
+}).build(prisma);
+```
+
+Com isso, toda query de listagem já virá ordenada por `criadoEm` decrescente:
+
+```ts
+// Internamente: ORDER BY criadoEm DESC
+const usuarios = await usuarioRepository.getAll();
+
+// Também aplica ao getAll com pagination
+const paginados = await usuarioRepository.getAll({ pagination: { take: 10 } });
+```
+
+**A `defaultOrdenation` é ignorada quando:**
+
+- O método usa o sufixo `Ordered`, `OrderedAndPaginated` ou `PaginatedAndOrdered` — nesses casos o argumento `order` passado na chamada tem prioridade.
+- O método dinâmico tem `injectOrdenation` configurado — a ordenação fixa do método prevalece.
+
+```ts
+methods: {
+  findManyPaginatedAndOrdered: { map: true },         // ordem vem do argumento → defaultOrdenation ignorada
+  findManyByAtivo:             { map: true },         // sem Ordered → defaultOrdenation aplicada
+  findManyByStatus: {
+    map: true,
+    injectOrdenation: { nome: "asc" },                // injectOrdenation → defaultOrdenation ignorada
+  },
+}
+```
+
+> `defaultOrdenation` aceita o mesmo tipo que o `orderBy` nativo do Prisma para o modelo — incluindo arrays de ordenações encadeadas.
+
+---
 
 Quando `softRemovekName` está configurado, todos os métodos base aceitam a opção `see` para controlar a visibilidade de registros soft-deletados:
 
@@ -1005,14 +1046,15 @@ type UsuarioPatchPayload = PatchObject<Prisma.UsuarioUpdateInput, typeof usuario
 
 ```ts
 setupVSRepo<TPayload, TTableName>()({
-  tableName: Uncapitalize<M>;          // Nome da tabela no Prisma
-  pkName: keyof T;                     // Nome da primary key
-  softRemovekName?: keyof T & string;  // Campo DateTime para soft-delete (opcional)
-  selectModels?: SelectModels<M>;      // Projeções de dados nomeadas
-  defaultSelectModel?: keyof SM;       // Select aplicado por padrão
-  requiredWhere?: WhereModel<M>;       // Filtros sempre aplicados
-  relations?: RepositoryRelations<T>;  // Configuração de relações
-  methods?: Record<string, MethodConfig<M, SM>>; // Métodos dinâmicos
+  tableName: Uncapitalize<M>;                     // Nome da tabela no Prisma
+  pkName: keyof T;                                // Nome da primary key
+  softRemovekName?: keyof T & string;             // Campo DateTime para soft-delete (opcional)
+  selectModels?: SelectModels<M>;                 // Projeções de dados nomeadas
+  defaultSelectModel?: keyof SM;                  // Select aplicado por padrão
+  requiredWhere?: WhereModel<M>;                  // Filtros sempre aplicados
+  defaultOrdenation?: OrdenationModel<M>;         // Ordenação padrão para queries sem Ordered/injectOrdenation
+  relations?: RepositoryRelations<T>;             // Configuração de relações
+  methods?: Record<string, MethodConfig<M, SM>>;  // Métodos dinâmicos
 });
 ```
 
@@ -1105,5 +1147,7 @@ Para reportar problemas ou sugerir novas funcionalidades, abra uma **Issue**.
 **Select model retorna campos inesperados** — Verifique se o select model define exatamente os campos que o seu tipo TypeScript espera. Campos com `false` não serão retornados pelo Prisma.
 
 **`softRemovekName` lança erro no build** — O campo informado deve ser do tipo `DateTime` no schema do Prisma. Tipos como `Boolean` ou `String` não são aceitos.
+
+**`defaultOrdenation` não está sendo aplicada** — Verifique se o método não usa o sufixo `Ordered`, `OrderedAndPaginated` ou `PaginatedAndOrdered`, e se não possui `injectOrdenation` configurado. Ambos têm prioridade sobre a ordenação padrão.
 
 **`saveList`/`patchList` com `db` inválido** — O campo `db` nestes métodos aceita apenas `DbTransaction` (retorno de `prisma.$transaction`), não o cliente principal. Passar o `PrismaClient` diretamente causará comportamento inesperado.

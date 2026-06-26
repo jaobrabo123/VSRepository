@@ -24,6 +24,7 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
         pagination,
         skipDuplicates,
         forceSeeMode,
+        withOrdenationAndPagination,
     } = data;
 
     const validatedOptions = (alreadyValidatedOptions && options)
@@ -64,14 +65,16 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
         prismaArgs.update = updatePayload;
     }
 
-    if (ordenation) {
-        prismaArgs.orderBy = ordenation;
-    }
+    if (withOrdenationAndPagination) {
+        if (instance.defaultOrdenation || ordenation) {
+            prismaArgs.orderBy = ordenation ?? instance.defaultOrdenation;
+        }
 
-    if (pagination) {
-        prismaArgs.skip = pagination.skip;
-        prismaArgs.take = pagination.take;
-        prismaArgs.cursor = pagination.cursor;
+        if (pagination) {
+            prismaArgs.skip = pagination.skip;
+            prismaArgs.take = pagination.take;
+            prismaArgs.cursor = pagination.cursor;
+        }
     }
 
     if (skipDuplicates!==undefined) {
