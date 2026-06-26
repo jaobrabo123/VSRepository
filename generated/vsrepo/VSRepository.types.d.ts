@@ -203,7 +203,7 @@ type GetCreateManyInput<I> = I extends { createManyInput: infer CM } ? CM : unkn
 type GetUpdateManyInput<I> = I extends { updateManyInput: infer UM } ? UM : unknown;
 type GetWhereInput<I> = I extends { whereInput: infer W } ? NonNullable<W> : unknown;
 type GetCursorInput<I> = I extends { cursorInput: infer C } ? C : unknown;
-type GetOrderByInput<I> = I extends { orderByInput: infer OB } ? OB : OrderOptions;
+type GetOrderByInput<I> = I extends { orderByInput: infer OB } ? NonNullable<OB> : OrderOptions;
 
 type ExtraArgs<M extends string, R extends string, I> = [
     ...(M extends 'upsertBy' ? [update: GetUpdateInput<I>, create: GetCreateInput<I>]
