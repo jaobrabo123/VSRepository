@@ -27,9 +27,10 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
         withOrdenationAndPagination,
     } = data;
 
-    const validatedOptions = (alreadyValidatedOptions && options)
-        ? (options as MethodOptions)
-        : validateMethodOptions(options, instance);
+    const validatedOptions =
+        alreadyValidatedOptions && options
+            ? (options as MethodOptions)
+            : validateMethodOptions(options, instance);
 
     const db = validatedOptions.db ?? instance.prisma;
     const prismaArgs: PrismaArgs = {};
@@ -48,9 +49,17 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
     }
 
     if (!withoutSelect) {
-        prismaArgs.select =
-            specificSelect ??
-            resolveSelect(instance, validatedOptions.selectModel, baseConfig.defaultSelect);
+        if (specificSelect) {
+            prismaArgs.select = specificSelect;
+        } else if (validatedOptions.includeModel) {
+            prismaArgs.include = instance.includeModels?.[validatedOptions.includeModel];
+        } else {
+            prismaArgs.select = resolveSelect(
+                instance,
+                validatedOptions.selectModel,
+                baseConfig.defaultSelect,
+            );
+        }
     }
 
     if (dataPayload) {
@@ -77,7 +86,7 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
         }
     }
 
-    if (skipDuplicates!==undefined) {
+    if (skipDuplicates !== undefined) {
         prismaArgs.skipDuplicates = skipDuplicates;
     }
 

@@ -22,6 +22,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (pk == undefined)
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'pk' must be provided.`,
+                    "65706"
                 );
 
             const { db, prismaArgs } = resolveDbAndPrismaArgs({
@@ -49,6 +50,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (pk == undefined)
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'pk' must be provided.`,
+                    "65706"
                 );
 
             const { db, prismaArgs } = resolveDbAndPrismaArgs({
@@ -83,6 +85,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (!Array.isArray(pks) || pks.some(pk => pk == undefined))
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'pks' must an array of primary keys.`,
+                    "65706"
                 );
 
             const { db, prismaArgs } = resolveDbAndPrismaArgs({
@@ -110,6 +113,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (options !== undefined && !isObject(options))
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'options' must be a valid object.`,
+                    "65706"
                 );
 
             const { pagination, order, ...restOptions } = options ?? {};
@@ -140,6 +144,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (pk == undefined)
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'pk' must be provided.`,
+                    "65706"
                 );
 
             const { db, prismaArgs } = resolveDbAndPrismaArgs({
@@ -167,6 +172,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (!Array.isArray(pks) || pks.some(pk => pk == undefined))
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'pks' must an array of primary keys.`,
+                    "65706"
                 );
 
             const { db, prismaArgs } = resolveDbAndPrismaArgs({
@@ -217,6 +223,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (pk == undefined)
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'pk' must be provided.`,
+                    "65706"
                 );
 
             const { db, prismaArgs } = resolveDbAndPrismaArgs({
@@ -245,10 +252,12 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (pk == undefined)
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'pk' must be provided.`,
+                    "65706"
                 );
             if (!isObject(obj)) {
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'obj' must be a valid object.`,
+                    "65706"
                 );
             }
 
@@ -353,6 +362,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (pk == undefined)
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'pk' must be provided.`,
+                    "65706"
                 );
 
             const { db, prismaArgs } = resolveDbAndPrismaArgs({
@@ -382,6 +392,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (!Array.isArray(pks) || pks.some(pk => pk == undefined))
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'pks' must an array of primary keys.`,
+                    "65706"
                 );
 
             const { db, prismaArgs } = resolveDbAndPrismaArgs({
@@ -412,6 +423,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (pk == undefined)
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'pk' must be provided.`,
+                    "65706"
                 );
 
             const { db, prismaArgs } = resolveDbAndPrismaArgs({
@@ -441,6 +453,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (!Array.isArray(pks) || pks.some(pk => pk == undefined))
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'pks' must an array of primary keys.`,
+                    "65706"
                 );
 
             const { db, prismaArgs } = resolveDbAndPrismaArgs({
@@ -471,6 +484,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (!isObject(obj)) {
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'obj' must be a valid object.`,
+                    "65706"
                 );
             }
 
@@ -531,6 +545,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (!Array.isArray(objs) || objs.some(ob => !isObject(ob))) {
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'objs' must be an array of valid objects.`,
+                    "65706"
                 );
             }
 
@@ -606,10 +621,12 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             if (pk == undefined)
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'pk' must be provided.`,
+                    "65706"
                 );
             if (!isObject(obj)) {
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'obj' must be a valid object.`,
+                    "65706"
                 );
             }
 
@@ -650,6 +667,7 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
             ) {
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${tableName}: runtime) 'tuples' must be a valid array of tuples [pk, obj].`,
+                    "65706"
                 );
             }
 

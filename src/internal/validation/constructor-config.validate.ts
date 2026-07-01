@@ -10,6 +10,7 @@ export function validateConstructorConfig(config: unknown): ConstructorConfig {
             pkName: stringSchema,
             softRemovekName: stringSchema.optional(),
             selectModels: z.record(stringSchema, objectSchema).optional(),
+            includeModels: z.record(stringSchema, objectSchema).optional(),
             defaultSelectModel: stringSchema.optional(),
             requiredWhere: objectSchema.optional(),
             relations: z

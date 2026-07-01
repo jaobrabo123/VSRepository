@@ -27,6 +27,7 @@ export class VSRepository {
     pkName: string;
     softRemovekName?: string;
     selectModels?: Record<string, { [x: string]: unknown }>;
+    includeModels?: Record<string, { [x: string]: unknown }>;
     defaultSelectModel?: string;
     requiredWhere?: object;
     relations?: Record<string, Relation>;
@@ -41,6 +42,7 @@ export class VSRepository {
         this.pkName = validatedConfig.pkName;
         this.softRemovekName = validatedConfig.softRemovekName;
         this.selectModels = validatedConfig.selectModels;
+        this.includeModels = validatedConfig.includeModels;
         this.defaultSelectModel = validatedConfig.defaultSelectModel;
         this.relations = validatedConfig.relations;
         this.requiredWhere = validatedConfig.requiredWhere;
@@ -217,6 +219,7 @@ export class VSRepository {
 
                         throw new VSRepoRuntimeError(
                             `[VSRepository] (${buildInstance.tableName}: runtime) Missing parameters: ${missingParams.join(", ")}`,
+                            "48670"
                         );
                     } else if (args.length > dinamicMethodInfo.argsCount) {
                         const optionsArg = args[args.length - 1];

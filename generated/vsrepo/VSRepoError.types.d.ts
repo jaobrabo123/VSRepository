@@ -58,5 +58,5 @@ export declare class VSRepoExtendError extends VSRepoError {
  */
 export declare class VSRepoRuntimeError extends VSRepoError {
     readonly type: 'VSREPO_RUNTIME';
-    constructor(message: string, code?: string);
+    constructor(message: string, code: string);
 }

@@ -13,6 +13,6 @@ dist/
 .aiox-core/
 
 teste.js
-teste.ts
+# teste.ts
 
 linkedin/

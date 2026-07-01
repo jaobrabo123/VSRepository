@@ -18,9 +18,9 @@ export class VSRepoExtendError extends VSRepoError {
 
 export class VSRepoRuntimeError extends VSRepoError {
     override readonly type = "VSREPO_RUNTIME";
-    code?: string;
+    code: string;
 
-    constructor(message: string, code?: string) {
+    constructor(message: string, code: string) {
         super(message);
         this.code = code;
     }

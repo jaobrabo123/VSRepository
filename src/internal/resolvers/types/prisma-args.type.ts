@@ -1,6 +1,7 @@
 export interface PrismaArgs {
     where?: object;
     select?: object;
+    include?: object;
     data?: object;
     create?: object;
     update?: object;

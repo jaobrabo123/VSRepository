@@ -6,6 +6,7 @@ export interface ConstructorConfig {
     pkName: string;
     softRemovekName?: string;
     selectModels?: Record<string, { [x: string]: unknown }>;
+    includeModels?: Record<string, { [x: string]: unknown }>;
     defaultSelectModel?: string;
     requiredWhere?: object;
     relations?: Record<string, Relation>;

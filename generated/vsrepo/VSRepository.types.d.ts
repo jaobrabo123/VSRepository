@@ -230,14 +230,22 @@ type PrecomputedSelects<M extends Prisma.ModelName, SelectModels> = {
     [S in keyof SelectModels]: Prisma.Result<PrismaDelegate<M>, { select: SelectModels[S] }, 'findMany'> extends Array<infer U> ? U : never
 };
 
-type SelectedModel<M extends Prisma.ModelName, S, SelectModels> = 
-    [S] extends [false] 
-        ? FullModelType<M>
-        : [S] extends [never] 
-            ? FullModelType<M> 
-            : [S] extends [keyof SelectModels] 
-                ? PrecomputedSelects<M, SelectModels>[S]
-                : FullModelType<M>;
+type PrecomputedIncludes<M extends Prisma.ModelName, IncludeModels> = {
+    [I in keyof IncludeModels]: Prisma.Result<PrismaDelegate<M>, { include: IncludeModels[I] }, 'findMany'> extends Array<infer U> ? U : never
+};
+
+type SelectedModel<M extends Prisma.ModelName, S, SelectModels, IM = never, IncludeModels = {}> = 
+    [IM] extends [never]
+        ? [S] extends [false] 
+            ? FullModelType<M>
+            : [S] extends [never] 
+                ? FullModelType<M> 
+                : [S] extends [keyof SelectModels] 
+                    ? PrecomputedSelects<M, SelectModels>[S]
+                    : FullModelType<M>
+        : IM extends keyof IncludeModels
+            ? PrecomputedIncludes<M, IncludeModels>[IM]
+            : FullModelType<M>;
 
 type CleanFields<R extends string> =
     R extends `${infer F}PaginatedAndOrdered` ? F :
@@ -250,17 +258,10 @@ type CleanFields<R extends string> =
  * Additional options accepted by repository methods.
  *
  * @template S Available keys in `selectModels`.
+ * @template IM Available keys in `includeModels`.
  */
-export type MethodOptions<S> = {
-    /**
-     * Select model to apply to the operation.
-     *
-     * @note Use `false` to return the full Prisma payload without a select.
-     */
-    selectModel?: S | false;
-    /**
-     * Prisma client or transaction to use for the operation.
-     */
+export type MethodOptions<S, IM extends PropertyKey = never> = {
+    /** Prisma client or transaction to use for the operation. */
     db?: ClientOrTransaction;
     /**
      * Visibility mode for records with soft-delete.
@@ -272,7 +273,17 @@ export type MethodOptions<S> = {
      * - `"all"` — returns all records, ignoring deletion status.
      */
     see?: SeeMode;
-};
+} & (
+    [IM] extends [never]
+        ? { 
+            /** Select model to apply to the operation. Use `false` to return the full payload. */
+            selectModel?: S | false; 
+            /** Include model to apply to the operation. Cannot be used together with `selectModel`. */
+            includeModel?: never;
+          }
+        : | { selectModel?: S | false; includeModel?: never }
+          | { selectModel?: never; includeModel: IM }
+);
 
 /**
  * Version of `MethodOptions` derived directly from a configured `VSRepository` instance.
@@ -285,11 +296,13 @@ export type MethodOptions<S> = {
  */
 export type MethodOptionsModel<TRepo> =
     TRepo extends VSRepository<any, any, infer Config>
-        ? MethodOptions<keyof ExtractSelectModels<Config> | false>
+        ? MethodOptions<keyof ExtractSelectModels<Config> | false, keyof ExtractIncludeModels<Config>>
         : never;
 
-type MethodFn<MethodName extends string, T, M extends Prisma.ModelName, R extends string, SelectModels, DefaultSelect extends keyof SelectModels | false, I> = 
-    <S extends keyof SelectModels | false = DefaultSelect>(...args: [...ExtractFields<T, CleanFields<R>, I>, ...ExtraArgs<MethodName, R, I>, options?: MethodOptions<S>]) => Promise<ResolveReturnType<MethodName, SelectedModel<M, S, SelectModels>>>;
+type MethodFn<MethodName extends string, T, M extends Prisma.ModelName, R extends string, SelectModels, DefaultSelect extends keyof SelectModels | false, I, IncludeModels> = 
+    <S extends keyof SelectModels | false = DefaultSelect, IM extends keyof IncludeModels = never>(
+        ...args: [...ExtractFields<T, CleanFields<R>, I>, ...ExtraArgs<MethodName, R, I>, options?: MethodOptions<S, keyof IncludeModels> & ({ includeModel: IM } | { includeModel?: never })]
+    ) => Promise<ResolveReturnType<MethodName, SelectedModel<M, S, SelectModels, IM, IncludeModels>>>;
 
 type GetMappedMethod<K extends string, MethodConf> = 
     K extends `findBy${string}` ? (MethodConf extends { fbMode: 'one' } ? 'findByOne' : 'findByList') :
@@ -340,13 +353,13 @@ type ExtractPatternBase<K extends string> =
     K extends `updateManyAndReturnWhere${infer R}` ? R :
     K extends `deleteManyWhere${infer R}` ? R : '';
 
-type MethodFactory<T, M extends Prisma.ModelName, K extends string, SelectModels, DefaultSelect extends keyof SelectModels | false, I, MethodConf> = 
+type MethodFactory<T, M extends Prisma.ModelName, K extends string, SelectModels, DefaultSelect extends keyof SelectModels | false, I, MethodConf, IncludeModels> = 
     K extends `findWhere${string}`
         ? {
             /** @deprecated Use findOneWhere instead. */
-            <S extends keyof SelectModels | false = DefaultSelect>(...args: [...ExtractFields<T, CleanFields<ExtractPatternBase<K>>, I>, ...ExtraArgs<GetMappedMethod<K, MethodConf>, ExtractPatternBase<K>, I>, options?: MethodOptions<S>]): Promise<ResolveReturnType<GetMappedMethod<K, MethodConf>, SelectedModel<M, S, SelectModels>>>;
+            <S extends keyof SelectModels | false = DefaultSelect, IM extends keyof IncludeModels = never>(...args: [...ExtractFields<T, CleanFields<ExtractPatternBase<K>>, I>, ...ExtraArgs<GetMappedMethod<K, MethodConf>, ExtractPatternBase<K>, I>, options?: MethodOptions<S, keyof IncludeModels> & ({ includeModel: IM } | { includeModel?: never })]): Promise<ResolveReturnType<GetMappedMethod<K, MethodConf>, SelectedModel<M, S, SelectModels, IM, IncludeModels>>>;
           }
-        : MethodFn<GetMappedMethod<K, MethodConf>, T, M, ExtractPatternBase<K>, SelectModels, DefaultSelect, I>;
+        : MethodFn<GetMappedMethod<K, MethodConf>, T, M, ExtractPatternBase<K>, SelectModels, DefaultSelect, I, IncludeModels>;
 
 type ResolveSelectModel<MethodConf, GlobalConf, SelectModels> = 
     MethodConf extends { selectModel: infer S } ? (S extends false ? false : S extends keyof SelectModels ? S : never) : 
@@ -354,6 +367,7 @@ type ResolveSelectModel<MethodConf, GlobalConf, SelectModels> =
 
 type ExtractPkName<T, Config> = Config extends { pkName: infer PK } ? (PK extends keyof T ? PK : never) : never;
 type ExtractSelectModels<Config> = Config extends { selectModels: infer SM } ? SM : {};
+type ExtractIncludeModels<Config> = Config extends { includeModels: infer IM } ? IM : {};
 type ExtractDefaultSelect<Config> = Config extends { defaultSelectModel: infer D } ? D : never;
 type ExtractRelations<Config> = Config extends { relations: infer R } ? (R extends object ? R : {}) : {};
 type ExtractSoftRemovekName<Config> = Config extends { softRemovekName: infer S } ? S : never;
@@ -378,7 +392,7 @@ type DynamicMethods<T, M extends Prisma.ModelName, Config, I> = Config extends {
                       : ResolvedKey extends 'groupBy'
                       ? GroupByMethod<M>
                       : ResolvedKey extends string
-                      ? MethodFactory<T, M, ResolvedKey, ExtractSelectModels<Config>, ResolveSelectModel<Methods[K], Config, ExtractSelectModels<Config>>, I, Methods[K]>
+                      ? MethodFactory<T, M, ResolvedKey, ExtractSelectModels<Config>, ResolveSelectModel<Methods[K], Config, ExtractSelectModels<Config>>, I, Methods[K], ExtractIncludeModels<Config>>
                       : never
                   : never
               : never;
@@ -393,6 +407,8 @@ type DynamicMethods<T, M extends Prisma.ModelName, Config, I> = Config extends {
 export type PrismaModelInputs<M extends Prisma.ModelName> = {
     /** Type of the `select` argument used in model queries. */
     select: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['select'];
+    /** Type of the `include` argument used in model queries. */
+    include: Prisma.TypeMap['model'][M]['operations']['findMany']['args']['include'];
     /** Type of the `data` used in `create`. */
     createInput: Prisma.TypeMap['model'][M]['operations']['create']['args']['data'];
     /** Type of the `data` used in `createMany`. */
@@ -422,6 +438,16 @@ export type SelectModel<M extends Prisma.ModelName> = PrismaModelInputs<M>['sele
  * Map of named, reusable selects for a Prisma model.
  */
 export type SelectModels<M extends Prisma.ModelName> = Record<string, SelectModel<M>>;
+
+/**
+ * Type of the `include` object of a Prisma model.
+ */
+export type IncludeModel<M extends Prisma.ModelName> = PrismaModelInputs<M>['include'];
+
+/**
+ * Map of named, reusable includes for a Prisma model.
+ */
+export type IncludeModels<M extends Prisma.ModelName> = Record<string, IncludeModel<M>>;
 
 /**
  * Type of the `where` object of a Prisma model.
@@ -542,12 +568,16 @@ type ResolveMethodDefaultSelect<Config, C, Method extends keyof NonNullable<Buil
             ? ExtractDefaultSelect<Config> 
             : false;
 
-type ResolveCurrentReturn<M extends Prisma.ModelName, Models, S, D> = 
-    [S] extends [false] 
-        ? FullModelType<M> 
-        : [S] extends [never] 
-            ? ([D] extends [never] ? FullModelType<M> : SelectedModel<M, D, Models>)
-            : SelectedModel<M, S, Models>;
+type ResolveCurrentReturn<M extends Prisma.ModelName, Models, S, D, IM = never, Includes = {}> = 
+    [IM] extends [never]
+        ? [S] extends [false] 
+            ? FullModelType<M> 
+            : [S] extends [never] 
+                ? ([D] extends [never] ? FullModelType<M> : SelectedModel<M, D, Models>)
+                : SelectedModel<M, S, Models>
+        : IM extends keyof Includes
+            ? PrecomputedIncludes<M, Includes>[IM]
+            : FullModelType<M>;
 
 // ─── helpers reused within the mapped type ───────────────────────────────────
 // ─── relation payload types ──────────────────────────────────────────────────
@@ -653,10 +683,11 @@ export type PatchObject<TInput, TRepo> =
 
 
 type _Pk<T, Config> = WidenField<T[ExtractPkName<T, Config> extends keyof T ? ExtractPkName<T, Config> : never]>;
-type _Ret<M extends Prisma.ModelName, TSelects, S, TDefault> = ResolveCurrentReturn<M, TSelects, S, TDefault>;
+type _Ret<M extends Prisma.ModelName, TSelects, S, TDefault, IM = never, TIncludes = {}> = ResolveCurrentReturn<M, TSelects, S, TDefault, IM, TIncludes>;
 type _DS<Config, C, Method extends keyof NonNullable<BuildConfig['baseMethods']>, TSelects = ExtractSelectModels<Config>> =
     ResolveMethodDefaultSelect<Config, C, Method, TSelects>;
 type _Sel<Config> = ExtractSelectModels<Config>;
+type _Inc<Config> = ExtractIncludeModels<Config>;
 type _Def<Config> = ExtractDefaultSelect<Config>;
 type _Rel<Config> = ExtractRelations<Config>;
 type _Soft<Config> = ExtractSoftRemovekName<Config>;
@@ -675,59 +706,60 @@ type AllBaseMethods<
     TRelations = _Rel<Config>,
     TSoftKey  = _Soft<Config>,
     I         = PrismaModelInputs<M>,
-    TDefaultOrdenation = _DOrd<Config>
+    TDefaultOrdenation = _DOrd<Config>,
+    TIncludes = _Inc<Config>
 > = {
     /** Fetches a record by its primary key (PK). */
-    get: <S extends keyof TSelects | false = _DS<Config, C, 'get', TSelects>>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault> | null>;
+    get: <S extends keyof TSelects | false = _DS<Config, C, 'get', TSelects>, IM extends keyof TIncludes = never>(
+        pk: _Pk<T, Config>, options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+    ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes> | null>;
 
     /** Fetches a record by PK and throws `VSRepoRuntimeError` if not found. */
-    getOrThrow: <S extends keyof TSelects | false = _DS<Config, C, 'getOrThrow', TSelects>>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>>;
+    getOrThrow: <S extends keyof TSelects | false = _DS<Config, C, 'getOrThrow', TSelects>, IM extends keyof TIncludes = never>(
+        pk: _Pk<T, Config>, options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+    ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>>;
 
     /** Fetches multiple records by a list of primary keys (PKs). */
-    getList: <S extends keyof TSelects | false = _DS<Config, C, 'getList', TSelects>>(
-        pks: _Pk<T, Config>[], options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
+    getList: <S extends keyof TSelects | false = _DS<Config, C, 'getList', TSelects>, IM extends keyof TIncludes = never>(
+        pks: _Pk<T, Config>[], options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+    ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>[]>;
 
     /** Deletes a record identified by its primary key (PK). */
-    remove: <S extends keyof TSelects | false = _DS<Config, C, 'remove', TSelects>>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>>;
+    remove: <S extends keyof TSelects | false = _DS<Config, C, 'remove', TSelects>, IM extends keyof TIncludes = never>(
+        pk: _Pk<T, Config>, options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+    ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>>;
 
     /** Inserts or updates (upsert) a record. */
-    save: <S extends keyof TSelects | false = _DS<Config, C, 'save', TSelects>>(
-        obj: UpsertWithRelations<T, M, TRelations>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>>;
+    save: <S extends keyof TSelects | false = _DS<Config, C, 'save', TSelects>, IM extends keyof TIncludes = never>(
+        obj: UpsertWithRelations<T, M, TRelations>, options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+    ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>>;
 
     /** Saves an array of objects in a single automatic transaction. */
-    saveList: <S extends keyof TSelects | false = _DS<Config, C, 'saveList', TSelects>>(
-        objs: UpsertWithRelations<T, M, TRelations>[], options?: Omit<MethodOptions<S>, 'db'> & { db?: DbTransaction }
-    ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
+    saveList: <S extends keyof TSelects | false = _DS<Config, C, 'saveList', TSelects>, IM extends keyof TIncludes = never>(
+        objs: UpsertWithRelations<T, M, TRelations>[], options?: Omit<MethodOptions<S, keyof TIncludes>, 'db'> & ({ includeModel: IM } | { includeModel?: never }) & { db?: DbTransaction }
+    ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>[]>;
 
     /** Partially updates (patch) an existing record by its primary key (PK). */
-    patch: <S extends keyof TSelects | false = _DS<Config, C, 'patch', TSelects>>(
-        pk: _Pk<T, Config>, obj: PatchWithRelations<T, M, TRelations>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>>;
+    patch: <S extends keyof TSelects | false = _DS<Config, C, 'patch', TSelects>, IM extends keyof TIncludes = never>(
+        pk: _Pk<T, Config>, obj: PatchWithRelations<T, M, TRelations>, options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+    ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>>;
 
     /** Partially updates multiple records via `[pk, obj]` tuples in an automatic transaction. */
-    patchList: <S extends keyof TSelects | false = _DS<Config, C, 'patchList', TSelects>>(
-        tuples: [pk: _Pk<T, Config>, obj: PatchWithRelations<T, M, TRelations>][], options?: Omit<MethodOptions<S>, 'db'> & { db?: DbTransaction }
-    ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
+    patchList: <S extends keyof TSelects | false = _DS<Config, C, 'patchList', TSelects>, IM extends keyof TIncludes = never>(
+        tuples: [pk: _Pk<T, Config>, obj: PatchWithRelations<T, M, TRelations>][], options?: Omit<MethodOptions<S, keyof TIncludes>, 'db'> & ({ includeModel: IM } | { includeModel?: never }) & { db?: DbTransaction }
+    ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>[]>;
 
     /** Fetches a record by PK and deep-merges it with the provided object **in memory**. */
-    merge: <S extends keyof TSelects | false = _DS<Config, C, 'merge', TSelects>>(
-        pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>, options?: MethodOptions<S>
-    ) => Promise<_Ret<M, TSelects, S, TDefault> | null>;
+    merge: <S extends keyof TSelects | false = _DS<Config, C, 'merge', TSelects>, IM extends keyof TIncludes = never>(
+        pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>, options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+    ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes> | null>;
 
     /** Deletes multiple records by their primary keys. */
     removeList: (pks: _Pk<T, Config>[], options?: { db?: ClientOrTransaction }) => Promise<{ count: number }>;
 
     /** Fetches all records (respects `requiredWhere` when set). */
-    getAll: <S extends keyof TSelects | false = _DS<Config, C, 'getAll', TSelects>>(
-        options?: MethodOptions<S> & {
+    getAll: <S extends keyof TSelects | false = _DS<Config, C, 'getAll', TSelects>, IM extends keyof TIncludes = never>(
+        options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never }) & {
             pagination?: PaginationOptions<I extends { cursorInput: infer Curs } ? Curs : unknown>;
             /**
              * Ordering to apply to the query.
@@ -736,7 +768,7 @@ type AllBaseMethods<
              */
             order?: I extends { orderByInput: infer OB } ? OB : OrderOptions;
         }
-    ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
+    ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>[]>;
 
     /** Returns the total number of records. */
     total: (options?: { db?: ClientOrTransaction; see?: SeeMode }) => Promise<number>;
@@ -745,17 +777,17 @@ type AllBaseMethods<
     has: (pk: _Pk<T, Config>, options?: { db?: ClientOrTransaction; see?: SeeMode }) => Promise<boolean>;
 
     /** Marks a record as deleted (soft-delete). */
-    softRemove: <S extends keyof TSelects | false = _DS<Config, C, 'softRemove', TSelects>>(
-        pk: _Pk<T, Config>, options?: Omit<MethodOptions<S>, 'see'>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>>;
+    softRemove: <S extends keyof TSelects | false = _DS<Config, C, 'softRemove', TSelects>, IM extends keyof TIncludes = never>(
+        pk: _Pk<T, Config>, options?: Omit<MethodOptions<S, keyof TIncludes>, 'see'> & ({ includeModel: IM } | { includeModel?: never })
+    ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>>;
 
     /** Marks multiple records as deleted (soft-delete) in batch. */
     softRemoveList: (pks: _Pk<T, Config>[], options?: { db?: ClientOrTransaction }) => Promise<{ count: number }>;
 
     /** Restores a record previously marked as deleted (soft-delete). */
-    restore: <S extends keyof TSelects | false = _DS<Config, C, 'restore', TSelects>>(
-        pk: _Pk<T, Config>, options?: Omit<MethodOptions<S>, 'see'>
-    ) => Promise<_Ret<M, TSelects, S, TDefault>>;
+    restore: <S extends keyof TSelects | false = _DS<Config, C, 'restore', TSelects>, IM extends keyof TIncludes = never>(
+        pk: _Pk<T, Config>, options?: Omit<MethodOptions<S, keyof TIncludes>, 'see'> & ({ includeModel: IM } | { includeModel?: never })
+    ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>>;
 
     /** Restores multiple records previously marked as deleted (soft-delete) in batch. */
     restoreList: (pks: _Pk<T, Config>[], options?: { db?: ClientOrTransaction }) => Promise<{ count: number }>;
@@ -772,9 +804,10 @@ type InjectedBaseMethods<
     TRelations = _Rel<Config>,
     TSoftKey  = _Soft<Config>,
     I         = PrismaModelInputs<M>,
-    TDefaultOrdenation = _DOrd<Config>
+    TDefaultOrdenation = _DOrd<Config>,
+    TIncludes = _Inc<Config>
 > = Pick<
-    AllBaseMethods<T, M, Config, C, TSelects, TDefault, TPk, TRelations, TSoftKey, I, TDefaultOrdenation>,
+    AllBaseMethods<T, M, Config, C, TSelects, TDefault, TPk, TRelations, TSoftKey, I, TDefaultOrdenation, TIncludes>,
     | (C extends { baseMethods: { get:          { active: false } } } ? never : 'get')
     | (C extends { baseMethods: { getOrThrow:   { active: false } } } ? never : 'getOrThrow')
     | (C extends { baseMethods: { getList:      { active: false } } } ? never : 'getList')
@@ -876,6 +909,7 @@ export type RepoConfig<T, M extends Prisma.ModelName, SM extends Record<string, 
     softRemovekName?: keyof T & string;
     selectModels?: SM;
     defaultSelectModel?: Extract<keyof SM, string>;
+    includeModels?: IncludeModels<M>;
     requiredWhere?: WhereModel<M>;
     defaultOrdenation?: OrdenationModel<M>;
     relations?: RepositoryRelations<T>;
@@ -960,6 +994,12 @@ export type ValidateRepoConfig<T extends object, M extends Prisma.ModelName, Con
      * It is highly recommended to define it whenever `selectModels` are used.
      */
     defaultSelectModel?: string;
+
+    /**
+     * Defines named and reusable include projections.
+     * Similar to selectModels, but resolves Prisma `include` clauses.
+     */
+    includeModels?: IncludeModels<M>;
 
     /**
      * Defines global filters that will be automatically applied to all repository queries.

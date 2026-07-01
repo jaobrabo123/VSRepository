@@ -30,6 +30,7 @@ O VSRepository permite criar repositories fortemente tipados com:
   - [Merge](#merge)
   - [Configurando os métodos base](#configurando-os-métodos-base)
 - [Select Models](#select-models)
+- [Include Models](#include-models)
 - [Required Where](#requiredwhere)
 - [Default Ordenation](#default-ordenation)
 - [Opção `see`](#opção-see)
@@ -460,6 +461,51 @@ const usuario = await usuarioRepository.get(id, { selectModel: "minimal" });
 
 ```ts
 const usuarioCompleto = await usuarioRepository.get(id, { selectModel: false });
+```
+
+---
+
+## Include Models
+
+`includeModels` funciona de forma parecida com o `selectModels`, mas em vez de receber um `select`, ele recebe um `include` válido do Prisma.
+
+```ts
+const usuarioRepository = setupVSRepo<Usuario, "usuario">()(({
+  tableName: "usuario",
+  pkName: "id",
+  selectModels: {
+    public: { id: true, nome: true, email: true },
+  },
+  defaultSelectModel: "public",
+  includeModels: {
+    comPosts: { posts: true },
+    comPostsEPerfil: { posts: true, perfil: true },
+  },
+}).build(prisma);
+```
+
+**Usando um `includeModel` na chamada:**
+
+```ts
+const usuario = await usuarioRepository.get(id, { includeModel: "comPosts" });
+```
+
+Nesse caso, o `select` padrão (`selectModels`/`defaultSelectModel`) é ignorado e apenas o `include` é enviado ao Prisma.
+
+### Diferenças em relação ao `selectModels`
+
+- **Só pode ser passado na chamada do método**, via `options.includeModel`. Não existe `defaultIncludeModel` nem `defaultInclude` — não há como configurar um `includeModel` padrão no repository, diferente do que ocorre com `defaultSelectModel`.
+- **`includeModel` e `selectModel` não podem ser passados juntos** na mesma chamada. Se um `includeModel` for informado, qualquer `selectModel` (incluindo o padrão) é ignorado.
+
+```ts
+// CORRETO ✅ — apenas includeModel
+await usuarioRepository.get(id, { includeModel: "comPosts" });
+
+// CORRETO ✅ — apenas selectModel
+await usuarioRepository.get(id, { selectModel: "public" });
+
+// ERRADO ❌ — não é permitido combinar os dois
+await usuarioRepository.get(id, { selectModel: "public", includeModel: "comPosts" });
 ```
 
 ---
@@ -973,6 +1019,8 @@ type SeeMode = "active" | "removed" | "all";
 import type {
   SelectModel,
   SelectModels,
+  IncludeModel,
+  IncludeModels,
   WhereModel,
   OrdenationModel,
   PaginationModel,
@@ -986,13 +1034,15 @@ import type {
 ```ts
 import type { MethodOptions, MethodOptionsModel } from "../../generated/vsrepo";
 
-// MethodOptions<S> — opções passadas nos métodos do repository
-type Opts = MethodOptions<"public" | "minimal">;
+// MethodOptions<S, IM> — opções passadas nos métodos do repository
+type Opts = MethodOptions<"public" | "minimal", "comPosts">;
 
 // MethodOptionsModel<TRepo> — derivado de uma instância VSRepository configurada
 const usuarioVSRepo = setupVSRepo<Usuario, "usuario">()(config);
 type OptsModel = MethodOptionsModel<typeof usuarioVSRepo>;
 ```
+
+> O segundo parâmetro de `MethodOptions` (`IM`) representa as chaves válidas de `includeModels`. Quando informado, `selectModel` e `includeModel` tornam-se mutuamente exclusivos no tipo — não é possível passar os dois na mesma chamada.
 
 ### Tipos de configuração
 
@@ -1049,8 +1099,9 @@ setupVSRepo<TPayload, TTableName>()({
   tableName: Uncapitalize<M>;                     // Nome da tabela no Prisma
   pkName: keyof T;                                // Nome da primary key
   softRemovekName?: keyof T & string;             // Campo DateTime para soft-delete (opcional)
-  selectModels?: SelectModels<M>;                 // Projeções de dados nomeadas
+  selectModels?: SelectModels<M>;                 // Projeções de dados nomeadas (select)
   defaultSelectModel?: keyof SM;                  // Select aplicado por padrão
+  includeModels?: IncludeModels<M>;               // Projeções de dados nomeadas (include) — sem default, só na chamada
   requiredWhere?: WhereModel<M>;                  // Filtros sempre aplicados
   defaultOrdenation?: OrdenationModel<M>;         // Ordenação padrão para queries sem Ordered/injectOrdenation
   relations?: RepositoryRelations<T>;             // Configuração de relações
@@ -1145,6 +1196,10 @@ Para reportar problemas ou sugerir novas funcionalidades, abra uma **Issue**.
 **`proxyTo` obrigatório** — Nomes fora dos moldes (ex.: `buscarPorEmail`) não são parseados diretamente. Use `proxyTo: "findByEmail"` nesses casos.
 
 **Select model retorna campos inesperados** — Verifique se o select model define exatamente os campos que o seu tipo TypeScript espera. Campos com `false` não serão retornados pelo Prisma.
+
+**`selectModel` e `includeModel` juntos na mesma chamada** — Não é permitido. Escolha um ou outro: se `includeModel` for informado, o `select` (incluindo o `defaultSelectModel`) é ignorado e apenas o `include` é enviado ao Prisma.
+
+**`includeModel` não aparece como opção padrão do repository** — Isso é esperado. Diferente de `defaultSelectModel`, não existe `defaultIncludeModel`/`defaultInclude`. Um `includeModel` só pode ser definido na chamada do método, via `options.includeModel`.
 
 **`softRemovekName` lança erro no build** — O campo informado deve ser do tipo `DateTime` no schema do Prisma. Tipos como `Boolean` ou `String` não são aceitos.
 

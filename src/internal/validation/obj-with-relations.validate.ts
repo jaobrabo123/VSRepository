@@ -21,10 +21,12 @@ export function validateObjWithRelations(
             if (obj[key] === null) {
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${instance.tableName}: runtime) '${key}' cannot be 'null' when relation mode is "mtm" or "otm", use an empty array instead.`,
+                    "91868"
                 );
             } else if (!Array.isArray(obj[key]) || obj[key].some(val => !isObject(val))) {
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${instance.tableName}: runtime) '${key}' must be a valid array of objects when relation mode is "mtm" or "otm".`,
+                    "91868"
                 );
             }
         } else {
@@ -32,15 +34,18 @@ export function validateObjWithRelations(
                 if (relation.mode === "oto" && relation.restriction !== "set") {
                     throw new VSRepoRuntimeError(
                         `[VSRepository] (${instance.tableName}: runtime) '${key}' can be 'null' only if the relation restriction is "set" and mode is "oto".`,
+                    "91868"
                     );
                 } else if (relation.mode === "mto" && !relation.nullable && !relation.nullAble) {
                     throw new VSRepoRuntimeError(
                         `[VSRepository] (${instance.tableName}: runtime) '${key}' can be 'null' only if the relation 'nullable' is 'true' and mode is "mto".`,
+                    "91868"
                     );
                 }
             } else if (!isObject(obj[key])) {
                 throw new VSRepoRuntimeError(
                     `[VSRepository] (${instance.tableName}: runtime) '${key}' must be a valid object when relation mode is "oto" or "mto".`,
+                    "91868"
                 );
             }
         }

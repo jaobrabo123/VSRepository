@@ -8,14 +8,25 @@ export function validateMethodOptions(
     options: unknown,
     instance: RepositoryBuildInstance,
 ): MethodOptions {
-    const optionsSchema = z.strictObject({
-        db: objectSchema.optional(),
-        selectModel: z
-            .literal(false)
-            .or(z.enum(Object.keys(instance.selectModels ?? {})))
-            .optional(),
-        see: z.enum(["active", "removed", "all"]).default("active"),
-    });
+    const optionsSchema = z
+        .strictObject({
+            db: objectSchema.optional(),
+            selectModel: z
+                .literal(false)
+                .or(z.enum(Object.keys(instance.selectModels ?? {})))
+                .optional(),
+            includeModel: z.enum(Object.keys(instance.includeModels ?? {})).optional(),
+            see: z.enum(["active", "removed", "all"]).default("active"),
+        })
+        .refine(
+            data => {
+                return !(data.selectModel !== undefined && data.includeModel !== undefined);
+            },
+            {
+                message: "cannot be provided with 'selectModel'.",
+                path: ["includeModel"],
+            },
+        );
 
     const optionsParsed = optionsSchema.safeParse(options ?? {});
 
@@ -24,6 +35,7 @@ export function validateMethodOptions(
         const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
         throw new VSRepoRuntimeError(
             `[VSRepository] (${instance.tableName}: runtime) ${path}: ${firstIssue?.message}`,
+            "67542"
         );
     }
 
