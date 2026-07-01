@@ -460,8 +460,7 @@ export type MethodConfig<M extends Prisma.ModelName, SelectModels = any> = {
     readonly proxyTo?: ValidMethodPatterns;
     /** Adds an extra `where` on top of `requiredWhere`. */
     readonly pushWhere?: WhereModel<M>;
-    /** 
-     * Defines whether `findBy` returns a single item (`one`) or a list (`list`).
+    /** * Defines whether `findBy` returns a single item (`one`) or a list (`list`).
      * @deprecated Use `findOneBy` if you want to return a single result.
      */
     readonly fbMode?: 'one' | 'list';
@@ -505,8 +504,12 @@ export type BuildConfig<TSelectKeys extends PropertyKey = string> = {
         remove?: BaseMethodConfig<TSelectKeys>;
         /** Configuration for the `save` method. */
         save?: BaseMethodConfig<TSelectKeys>;
+        /** Configuration for the `saveList` method (batch save via transaction). */
+        saveList?: BaseMethodConfig<TSelectKeys>;
         /** Configuration for the `patch` method. */
         patch?: BaseMethodConfig<TSelectKeys>;
+        /** Configuration for the `patchList` method (batch update via transaction). */
+        patchList?: BaseMethodConfig<TSelectKeys>;
         /** Configuration for the `merge` method. */
         merge?: BaseMethodConfig<TSelectKeys>;
         /** Configuration for the `removeList` method (batch deletion). Does not accept select. */
@@ -517,10 +520,6 @@ export type BuildConfig<TSelectKeys extends PropertyKey = string> = {
         total?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
         /** Configuration for the `has` method (existence check). Does not accept select. */
         has?: Omit<BaseMethodConfig<TSelectKeys>, 'defaultSelect'>;
-        /** Configuration for the `saveList` method (batch save via transaction). */
-        saveList?: BaseMethodConfig<TSelectKeys>;
-        /** Configuration for the `patchList` method (batch update via transaction). */
-        patchList?: BaseMethodConfig<TSelectKeys>;
         /** Configuration for the `softRemove` method. Only available if `softRemovekName` is configured. */
         softRemove?: BaseMethodConfig<TSelectKeys>;
         /** Configuration for the `softRemoveList` method. Does not accept select. Only available if `softRemovekName` is configured. */
@@ -611,11 +610,19 @@ type RelationUpdatePayload<TField, TRelationConfig, M extends Prisma.ModelName, 
       : never;
 
 /**
- * Payload accepted by `patch` when the repository has configured relations.
+ * Payload accepted by `merge` when the repository has configured relations (uses update input).
  */
 type UpdateWithRelations<T, M extends Prisma.ModelName, TRelations> =
     DistributiveOmit<PrismaModelInputs<M>['updateInput'], keyof TRelations> & {
         [K in Extract<keyof TRelations, keyof T>]?: RelationUpdatePayload<T[K], TRelations[K], M, K>;
+    };
+
+/**
+ * Payload accepted by `patch` and `patchList` when the repository has configured relations (uses create input).
+ */
+type PatchWithRelations<T, M extends Prisma.ModelName, TRelations> =
+    DistributiveOmit<PrismaModelInputs<M>['updateInput'], keyof TRelations> & {
+        [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K], M, K>;
     };
 
 /**
@@ -639,7 +646,7 @@ export type PatchObject<TInput, TRepo> =
     TRepo extends VSRepository<infer T, infer M, infer Config>
         ? (Config extends { relations: infer R } ? (R extends object ? R : {}) : {}) extends infer TRelations
             ? DistributiveOmit<TInput, keyof TRelations> & {
-                  [K in Extract<keyof TRelations, keyof T>]?: RelationUpdatePayload<T[K], TRelations[K], M, K>;
+                  [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K], M, K>;
               }
             : never
         : never;
@@ -702,12 +709,12 @@ type AllBaseMethods<
 
     /** Partially updates (patch) an existing record by its primary key (PK). */
     patch: <S extends keyof TSelects | false = _DS<Config, C, 'patch', TSelects>>(
-        pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>, options?: MethodOptions<S>
+        pk: _Pk<T, Config>, obj: PatchWithRelations<T, M, TRelations>, options?: MethodOptions<S>
     ) => Promise<_Ret<M, TSelects, S, TDefault>>;
 
     /** Partially updates multiple records via `[pk, obj]` tuples in an automatic transaction. */
     patchList: <S extends keyof TSelects | false = _DS<Config, C, 'patchList', TSelects>>(
-        tuples: [pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>][], options?: Omit<MethodOptions<S>, 'db'> & { db?: DbTransaction }
+        tuples: [pk: _Pk<T, Config>, obj: PatchWithRelations<T, M, TRelations>][], options?: Omit<MethodOptions<S>, 'db'> & { db?: DbTransaction }
     ) => Promise<_Ret<M, TSelects, S, TDefault>[]>;
 
     /** Fetches a record by PK and deep-merges it with the provided object **in memory**. */
