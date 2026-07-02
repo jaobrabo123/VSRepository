@@ -10,7 +10,7 @@ O VSRepository permite criar repositories fortemente tipados com:
 
 - **Métodos base** automáticos: `get`, `getOrThrow`, `getList`, `save`, `saveList`, `remove`, `removeList`, `patch`, `patchList`, `merge`, `getAll`, `total`, `has`
 - **Soft-delete nativo**: `softRemove`, `softRemoveList`, `restore`, `restoreList`
-- **Métodos dinâmicos** inferidos pelo nome: `findByEmail`, `findManyPaginated`, `updateById`, `deleteManyByIdIn`
+- **Métodos dinâmicos** inferidos pelo nome: `findOneByEmail`, `findManyPaginated`, `updateById`, `deleteManyByNameStartsWith`
 - **Select models** reutilizáveis para diferentes projeções de dados
 - **Type safety** em 100% das operações
 - **Transações** nativas do Prisma (automáticas em `saveList` e `patchList`)
@@ -145,13 +145,10 @@ const usuarioRepository = setupVSRepo<Usuario, "usuario">()(({
     public: { id: true, nome: true, email: true },
   },
   defaultSelectModel: "public",
-  requiredWhere: { ativo: true },
 }).build(prisma);
 
 export default usuarioRepository;
 ```
-
-> `selectModels` e `requiredWhere` podem ser declarados fora do `setupVSRepo` se você precisar exportá-los para uso em outros arquivos.
 
 ### Usando o repository
 
@@ -403,36 +400,56 @@ Retorna `null` se o registro não for encontrado.
 
 ### Configurando os métodos base
 
+O segundo argumento de `.build(prisma, config)` permite ajustar o comportamento global do repository e customizar cada método base individualmente através de `baseMethods`.
+
 ```ts
 usuarioVSRepo.build(prisma, {
-  showWorking: true,  // Exibe logs do VSRepository no console, ótimo para debugar
+  // Exibe logs internos do VSRepository no console (queries montadas, prefixo detectado,
+  // filtros aplicados etc). Ótimo para debugar métodos dinâmicos. Padrão = false.
+  showWorking: true,
 
   baseMethods: {
     get: {
+      // Habilita/desabilita o método no repository final. Se `false`, o método
+      // sequer aparece no tipo do repository (não é só um erro em runtime). Padrão = true.
       active: true,
+
+      // Select model aplicado por padrão quando o método é chamado sem `options.selectModel`.
+      // Sobrescreve o `defaultSelectModel` do setupVSRepo apenas para este método.
       defaultSelect: "public",
     },
     remove: {
       active: true,
       defaultSelect: "minimal",
+
+      // Quando `true`, ignora o `requiredWhere` configurado no setupVSRepo para
+      // este método específico — útil quando um método precisa "furar" um filtro
+      // global (ex.: multi-tenancy) em um caso pontual. Padrão = false.
       ignoreRequiredWhere: false,
     },
     save: {
+      // Aqui só `ignoreRequiredWhere` é definido — `active` e `defaultSelect`
+      // continuam com seus padrões (true e o `defaultSelectModel` global).
       ignoreRequiredWhere: true,
     },
     patch: {
+      // Somente o select é sobrescrito; o método continua ativo normalmente.
       defaultSelect: "minimal",
     },
     has: {
-      active: false, // Desativa o 'has' (padrão = true)
+      active: false, // Desativa o 'has' (padrão = true) — o método some do repository
     },
     softRemove: {
+      // Métodos de soft-delete seguem as mesmas opções (`active`, `defaultSelect`,
+      // `ignoreRequiredWhere`). Só ficam disponíveis se `softRemovekName` estiver configurado.
       active: true,
       defaultSelect: "minimal",
     },
   },
 });
 ```
+
+> Métodos em lote/agregados como `removeList`, `softRemoveList`, `restoreList`, `total` e `has` **não** aceitam `defaultSelect` (não retornam um registro selecionável — retornam `{ count }` ou `boolean`). Nesses casos `BaseMethodConfig` fica restrito a `active` e `ignoreRequiredWhere`.
 
 ---
 
@@ -573,6 +590,8 @@ methods: {
 > `defaultOrdenation` aceita o mesmo tipo que o `orderBy` nativo do Prisma para o modelo — incluindo arrays de ordenações encadeadas.
 
 ---
+
+## Opção `see`
 
 Quando `softRemovekName` está configurado, todos os métodos base aceitam a opção `see` para controlar a visibilidade de registros soft-deletados:
 
@@ -745,6 +764,40 @@ await usuarioRepository.findUniqueByIdOrEmailAndNome(1, "joao@email.com", "Joao"
 await usuarioRepository.findByEmailOrNameANDActiveStatusAndIdadeGreaterThan("joao@email.com", "Joao", true, 17)
 ```
 
+Gera (`findOneByIdAndEmail`):
+
+```ts
+{
+  id: 1,
+  email: "joao@email.com"
+}
+```
+
+Gera (`findByNomeOrEmail`):
+
+```ts
+{
+  OR: [
+    { nome: "Joao" },
+    { email: "joao@email.com" }
+  ]
+}
+```
+
+Gera (`findUniqueByIdOrEmailAndNome`):
+
+```ts
+{
+  OR: [
+    { id: 1 },
+    {
+      email: "joao@email.com",
+      nome: "Joao"
+    }
+  ]
+}
+```
+
 Gera (`findByEmailOrNameANDActiveStatusAndIdadeGreaterThan`):
 
 ```ts
@@ -783,6 +836,78 @@ Permitem filtrar por campos de modelos relacionados.
 | `WithField`            | `is.field`      | Filtra campo dentro da relação                     |
 | `Without`              | `isNot: {}`     | Relação não existe (é null)                        |
 | `WithoutField`         | `isNot.field`   | Filtra campo dentro da relação com negação         |
+
+Considerando `usuario` com uma relação to-one `perfil` e uma relação to-many `postagens`:
+
+```ts
+methods: {
+  // to-many (postagens)
+  findByPostagensSome:          { map: true }, // tem ao menos uma postagem
+  findByPostagensSomeTitulo:    { map: true }, // tem ao menos uma postagem com esse título
+  findByPostagensEveryPublicada:{ map: true }, // todas as postagens estão publicadas
+  findByPostagensNone:          { map: true }, // não tem nenhuma postagem
+  findByPostagensNoneTitulo:    { map: true }, // nenhuma postagem tem esse título
+
+  // to-one (perfil)
+  findByPerfilWith:             { map: true }, // possui perfil (não é null)
+  findByPerfilWithBio:          { map: true }, // possui perfil com essa bio
+  findByPerfilWithout:          { map: true }, // não possui perfil (é null)
+  findByPerfilWithoutBio:       { map: true }, // possui perfil, mas com bio diferente da informada
+}
+
+await usuarioRepository.findByPostagensSome();
+await usuarioRepository.findByPostagensSomeTitulo("Meu primeiro post");
+await usuarioRepository.findByPostagensEveryPublicada(true);
+await usuarioRepository.findByPostagensNone();
+await usuarioRepository.findByPostagensNoneTitulo("Rascunho");
+
+await usuarioRepository.findByPerfilWith();
+await usuarioRepository.findByPerfilWithBio("Olá, mundo!");
+await usuarioRepository.findByPerfilWithout();
+await usuarioRepository.findByPerfilWithoutBio("Bio antiga");
+```
+
+Gera (`findByPostagensSomeTitulo`):
+
+```ts
+{
+  postagens: {
+    some: { titulo: "Meu primeiro post" }
+  }
+}
+```
+
+Gera (`findByPostagensEveryPublicada`):
+
+```ts
+{
+  postagens: {
+    every: { publicada: true }
+  }
+}
+```
+
+Gera (`findByPerfilWithBio`):
+
+```ts
+{
+  perfil: {
+    is: { bio: "Olá, mundo!" }
+  }
+}
+```
+
+Gera (`findByPerfilWithout`):
+
+```ts
+{
+  perfil: {
+    isNot: {}
+  }
+}
+```
+
+> `Some`, `None`, `With` e `Without` (sem campo) não recebem argumento — a relação inteira é testada quanto à existência de registros (`some`/`none`) ou a ser `null`/não-`null` (`is`/`isNot`). Já as variantes `SomeField`, `EveryField`, `NoneField`, `WithField` e `WithoutField` recebem o valor do campo filtrado como argumento.
 
 ---
 
@@ -901,8 +1026,6 @@ relations: {
   },
 }
 ```
-
-> **Nota:** `nullAble` (com A maiúsculo) ainda é aceito por compatibilidade, mas está **obsoleto**. Prefira `nullable`.
 
 ---
 
