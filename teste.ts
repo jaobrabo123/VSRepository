@@ -139,6 +139,7 @@ const userVSRepo = setupVSRepo<User, "User">()({
         updateById: { map: true },
         upsertByEmail: { map: true },
         deleteManyByIdIn: { map: true, whereType: "overwrite", selectModel: "minimal" },
+        deleteManyWhere: { map: true, whereType: "overwrite" },
         deleteById: { map: true, selectModel: "minimal" },
         aggregate: { map: true },
         groupBy: { map: true },
@@ -253,13 +254,8 @@ export const productRepository = productVSRepo.build(prisma, {
 // =============================================================================
 
 async function cleanDatabase() {
-    await productRepository.deleteManyWhere({}).catch(() => {});
-    await userRepository
-        .deleteManyByIdIn(
-            (await userRepository.getAll({ selectModel: "minimal" })).map(u => u.id),
-            // { whereType: "overwrite" } ,
-        )
-        .catch(() => {});
+    await productRepository.deleteManyWhere({}).catch(console.error);
+    await userRepository.deleteManyWhere({}).catch(console.error);
 }
 
 async function createTestUser(overrides: Record<string, unknown> = {}) {
@@ -915,10 +911,13 @@ async function testRelations() {
         name: "Product With User",
         price: 77,
         tags: [{ name: "tag-a" }, { name: "tag-b" }],
-        userId: user.id
+        userId: user.id,
     });
     const loadedProduct = await productRepository.getOrThrow(productWithUser.id);
-    console.assert(loadedProduct.user?.id === user.id, "save product com user (mto): deve vincular o usuário");
+    console.assert(
+        loadedProduct.user?.id === user.id,
+        "save product com user (mto): deve vincular o usuário",
+    );
     console.assert(
         Array.isArray(loadedProduct.tags) && loadedProduct.tags.length === 2,
         "save product com tags (mtm): deve salvar 2 tags",

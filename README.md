@@ -1,7 +1,7 @@
 # VSRepository
 
 ![npm](https://img.shields.io/npm/v/vsrepo?style=flat-square)
-![NPM License](https://img.shields.io/npm/l/vsrepo)
+![NPM License](https://img.shields.io/npm/l/vsrepo?style=flat-square)
 ![NPM Downloads](https://img.shields.io/npm/dt/vsrepo?style=flat-square)
 
 Biblioteca de repository pattern para projetos que usam **Prisma**, com suporte completo a **TypeScript** e **type inference** automático.
@@ -15,6 +15,8 @@ O VSRepository permite criar repositories fortemente tipados com:
 - **Type safety** em 100% das operações
 - **Transações** nativas do Prisma (automáticas em `saveList` e `patchList`)
 - **Extensibilidade** com métodos personalizados
+
+> 💡 Quer ver tudo isso funcionando na prática? A pasta [`examples/`](https://github.com/jaobrabo123/VSRepository/tree/main/examples) do repositório tem exemplos comentados e executáveis para cada funcionalidade — veja a seção [Exemplos práticos](#exemplos-práticos) abaixo.
 
 ---
 
@@ -48,6 +50,7 @@ O VSRepository permite criar repositories fortemente tipados com:
 - [Tratamento de erros](#tratamento-de-erros)
 - [Tipos utilitários](#tipos-utilitários)
 - [API Reference](#api-reference)
+- [Exemplos práticos](#exemplos-práticos)
 - [Contribuindo](#contribuindo)
 - [Requisitos](#requisitos)
 - [Troubleshooting](#troubleshooting)
@@ -138,7 +141,7 @@ import prisma from "../configs/db";
 import { setupVSRepo } from "../../generated/vsrepo";
 import type { Usuario } from "../../generated/prisma/client";
 
-const usuarioRepository = setupVSRepo<Usuario, "usuario">()(({
+const usuarioRepository = setupVSRepo<Usuario, "Usuario">()(({
   tableName: "usuario",
   pkName: "id",
   selectModels: {
@@ -228,14 +231,18 @@ const userVSRepo = setupVSRepo<
 });
 
 const setupUserRepository = (prisma: PrismaService) => {
-    return userVSRepo.build(prisma).extend((repo) => ({
-        buscarPorDominio: async (dominio: string) => {
-            return repo.findByEmailEndsWith(`@${dominio}`);
-        },
-    }));
+    return userVSRepo.build(prisma);
 };
 
 export type UserRepository = ReturnType<typeof setupUserRepository>;
+/* 
+A tipagem também pode ser inferida usando o `RepositoryOf` do VSRepository, passando o tipo do `userVSRepo`:
+
+export type UserRepository = RepositoryOf<typeof userVSRepo>;
+
+OBS: Caso você use o `.extend` para estender o repository ou configure os métodos base, recomenda-se 
+usar o `ReturnType` por ser mais simples de inferir a tipagem
+*/
 
 export const USER_REPOSITORY = Symbol("USER_REPOSITORY");
 
@@ -360,7 +367,7 @@ await usuarioRepository.restore(1);
 // saveList — cria ou atualiza múltiplos objetos em transação automática
 const usuarios = await usuarioRepository.saveList([
   { nome: "Maria", email: "maria@email.com" },
-  { id: 2, nome: "João Atualizado" },
+  { id: 2, nome: "João Atualizado", email: "joao@email.com" },
 ]);
 
 // patchList — atualiza parcialmente múltiplos registros via tuplas [pk, obj]
@@ -397,6 +404,36 @@ await usuarioRepository.save(mesclado);
 ```
 
 Retorna `null` se o registro não for encontrado.
+
+**Merge de relações to-many (`otm`/`mtm`) é feito por PK, não por concatenação simples.** Para relações to-one (`oto`/`mto`), o `merge` faz um deepmerge comum do objeto. Já para relações to-many, cada item do array enviado é casado com o item existente que tem a mesma PK (definida em `relations[chave].pk`): se a PK bate, os dois objetos são mesclados entre si; se não bate (item novo, sem correspondente), ele é apenas adicionado à lista. Itens existentes que não aparecem no array enviado são mantidos.
+
+```ts
+const existente = await usuarioRepository.get(1);
+// existente: {
+//   id: 1,
+//   postagens: [
+//     { id: 10, titulo: "Post A", publicada: false },
+//     { id: 11, titulo: "Post B", publicada: true },
+//   ],
+// }
+
+const mesclado = await usuarioRepository.merge(1, {
+  postagens: [
+    { id: 10, publicada: true },  // mesma PK (id: 10) → mescla com o item existente
+    { titulo: "Post C" },         // sem PK → é adicionado como um novo item
+  ],
+});
+// mesclado: {
+//   id: 1,
+//   postagens: [
+//     { id: 10, titulo: "Post A", publicada: true },  // mesclado
+//     { id: 11, titulo: "Post B", publicada: true },  // mantido, não veio no array enviado
+//     { titulo: "Post C" },                           // adicionado
+//   ],
+// }
+```
+
+> Note que o `merge` nunca remove itens de uma relação to-many — ele só mescla os que casam por PK e adiciona os que não casam. Para remover itens de uma relação, use `save`/`patch` com `restriction: "set"` na configuração da relação.
 
 ### Configurando os métodos base
 
@@ -593,7 +630,7 @@ methods: {
 
 ## Opção `see`
 
-Quando `softRemovekName` está configurado, todos os métodos base aceitam a opção `see` para controlar a visibilidade de registros soft-deletados:
+Quando `softRemovekName` está configurado, todos os métodos aceitam a opção `see` para controlar a visibilidade de registros soft-deletados:
 
 | Valor       | Comportamento                                                 |
 | ----------- | ------------------------------------------------------------- |
@@ -610,10 +647,6 @@ const removidos = await usuarioRepository.getAll({ see: "removed" });
 
 // Retorna todos
 const todos = await usuarioRepository.getAll({ see: "all" });
-
-// Funciona em qualquer método base
-const usuario = await usuarioRepository.get(id, { see: "all" });
-const existe = await usuarioRepository.has(id, { see: "removed" });
 ```
 
 > A opção `see` funciona independentemente do `requiredWhere` — ela é aplicada em cima do filtro de soft-delete, não o substitui.
@@ -754,13 +787,13 @@ Exemplo:
 methods: {
   findOneByIdAndEmail:   { map: true },
   findByNomeOrEmail:  { map: true },
-  findUniqueByIdOrEmailAndNome: { map: true },
+  findFirstByIdOrEmailAndNome: { map: true },
   findByEmailOrNameANDActiveStatusAndIdadeGreaterThan: { map: true }
 }
 
 await usuarioRepository.findOneByIdAndEmail(1, "joao@email.com");
 await usuarioRepository.findByNomeOrEmail("Joao", "joao@email.com");
-await usuarioRepository.findUniqueByIdOrEmailAndNome(1, "joao@email.com", "Joao");
+await usuarioRepository.findFirstByIdOrEmailAndNome(1, "joao@email.com", "Joao");
 await usuarioRepository.findByEmailOrNameANDActiveStatusAndIdadeGreaterThan("joao@email.com", "Joao", true, 17)
 ```
 
@@ -784,7 +817,7 @@ Gera (`findByNomeOrEmail`):
 }
 ```
 
-Gera (`findUniqueByIdOrEmailAndNome`):
+Gera (`findFirstByIdOrEmailAndNome`):
 
 ```ts
 {
@@ -1012,6 +1045,20 @@ const usuarioRepository = setupVSRepo<Usuario, "usuario">()(({
 | `set`     | Substitui completamente (remove os que não foram enviados)  |
 | `add`     | Adiciona/atualiza sem remover os existentes                 |
 
+> [!WARNING]
+> **`set` significa coisas diferentes dependendo do `mode` da relação — e isso pode causar perda de dados se você não prestar atenção.**
+>
+> Em relações onde o registro relacionado **pertence** ao registro pai (`oto` e `otm`), "remover os que não foram enviados" significa **deletar o registro do banco** (`delete`/`deleteMany`). Já em relações onde o registro relacionado é **independente** (`mto` e `mtm`), "remover" significa apenas **desvincular** (`disconnect`/`set: []`) — o registro relacionado continua existindo no banco, só deixa de apontar para o pai (ou de estar na tabela de junção).
+>
+> | Modo  | `restriction: "set"` ao omitir um item | O item continua existindo no banco? |
+> | ----- | ---------------------------------------- | ------------------------------------ |
+> | `oto` | Passar `null` no campo → **deleta** o registro relacionado (`delete: true`) | Não |
+> | `otm` | Itens fora da lista enviada → **deletados** (`deleteMany` com `notIn`)      | Não |
+> | `mto` | Passar `null` no campo (com `nullable: true`) → **desvincula** (`disconnect: true`) | Sim |
+> | `mtm` | Itens fora da lista enviada → **desvinculados** da tabela de junção (`set: []`) | Sim |
+>
+> Exemplo prático: se `postagens` é `otm` com `restriction: "set"`, um `save`/`patch` que envie o usuário com apenas 2 das 5 postagens existentes vai **apagar as outras 3 postagens do banco**, não apenas desvinculá-las do usuário. Se o comportamento esperado é só desvincular sem apagar, use `restriction: "add"` (que nunca remove nada) e gerencie a remoção manualmente.
+
 **Relação `mto` com nullable:**
 
 Use `nullable` (letra minúscula) para permitir a desvinculação de uma relação many-to-one:
@@ -1047,15 +1094,17 @@ await usuarioRepository.prisma.$transaction(async (tx) => {
 });
 ```
 
-Para `saveList` e `patchList`, o campo `db` deve ser um `DbTransaction` (não o cliente principal):
+Para `saveList` e `patchList`, o campo `db` deve ser um `DbTransaction`:
 
 ```ts
 await prisma.$transaction(async (tx) => {
   // CORRETO: tx é uma DbTransaction
-  await usuarioRepository.saveList([{ nome: "Maria" }], { db: tx });
+  const usuariosCadastrados = await usuarioRepository.saveList([{ nome: "Maria" }, { nome: "Lucas" }], { db: tx });
 
-  // ERRADO: não passe o prisma diretamente
-  // await usuarioRepository.saveList([{ nome: "Maria" }], { db: prisma });
+  await usuarioLogsRepository.save(
+    { acao: "Cadastro de usuários", data: { usuariosCadastrados: usuariosCadastrados.map(u => u.id) } },
+    { db: tx }
+  );
 });
 ```
 
@@ -1093,12 +1142,14 @@ O VSRepository lança `VSRepoError` e suas subclasses em situações específica
 import { VSRepoError, VSRepoRuntimeError } from "../../generated/vsrepo";
 
 try {
-  const usuario = await usuarioRepository.getOrThrow(id);
+  const usuario = await usuarioRepository.getOrThrow("id-que-nao-existe");
 } catch (error) {
   if (error instanceof VSRepoRuntimeError && error.code === "20727") {
-    // Registro não encontrado pelo getOrThrow
+    console.error("Registro não encontrado");
   } else if (error instanceof VSRepoError) {
     console.error("Erro no repository:", error.message);
+  } else {
+    console.error("Erro:", error.message)
   }
 }
 ```
@@ -1112,7 +1163,7 @@ try {
 | `VSRepoExtendError`  | Argumento inválido em `extend`                                    |
 | `VSRepoRuntimeError` | Erro em tempo de execução durante uma operação                    |
 
-`VSRepoRuntimeError` possui a propriedade `code` para identificação programática. O código `"20727"` é lançado pelo `getOrThrow` quando o registro não é encontrado.
+`VSRepoRuntimeError` possui a propriedade `code` para identificação programática. O código `"20727"` é lançado pelo `getOrThrow` quando o registro não é encontrado, por exemplo.
 
 ---
 
@@ -1221,7 +1272,7 @@ type UsuarioPatchPayload = PatchObject<Prisma.UsuarioUpdateInput, typeof usuario
 setupVSRepo<TPayload, TTableName>()({
   tableName: Uncapitalize<M>;                     // Nome da tabela no Prisma
   pkName: keyof T;                                // Nome da primary key
-  softRemovekName?: keyof T & string;             // Campo DateTime para soft-delete (opcional)
+  softRemovekName?: keyof T & string;             // Campo DateTime para soft-delete
   selectModels?: SelectModels<M>;                 // Projeções de dados nomeadas (select)
   defaultSelectModel?: keyof SM;                  // Select aplicado por padrão
   includeModels?: IncludeModels<M>;               // Projeções de dados nomeadas (include) — sem default, só na chamada
@@ -1273,6 +1324,28 @@ repo.extend((repo) => ({
 
 ---
 
+## Exemplos práticos
+
+Além deste README, o repositório tem uma pasta **[`examples/`](https://github.com/jaobrabo123/VSRepository/tree/main/examples)** com exemplos práticos e comentados, prontos para rodar — é o melhor lugar para ver o VSRepository sendo usado em cenários reais.
+
+```
+examples/
+├── prisma.ts             # Instância do PrismaClient usada pelos exemplos
+├── repositories.ts       # Configuração dos repositories (User, Address, Product) com setupVSRepo
+└── tests/
+    ├── base-methods.test.ts       # Métodos base: get, save, patch, remove, getAll, total, has...
+    ├── relations.test.ts          # Como configurar e usar relations no save/patch e em filtros
+    ├── required-where.test.ts     # Como o requiredWhere é aplicado automaticamente nas queries
+    ├── dynamic-methods.test.ts    # Prefixos, filtros de campo, operadores lógicos e paginação/ordenação
+    ├── transactions.test.ts       # Transactions com options.db e acesso à instância via repository.prisma
+    ├── soft-delete.test.ts        # Soft-delete: softRemove, softRemoveList, restore, restoreList e SeeMode
+    └── batch-methods.test.ts      # Operações em lote: getList, saveList, patchList e merge
+```
+
+Cada arquivo em `tests/` é um script independente e executável (via `tsx`) que demonstra um conjunto específico de funcionalidades, com `console.log` em cada passo para você acompanhar o resultado no terminal. A própria pasta tem um [README](https://github.com/jaobrabo123/VSRepository/blob/main/examples/README.md) explicando a ordem sugerida de leitura, como configurar o ambiente e como rodar os testes.
+
+---
+
 ## Contribuindo
 
 Contribuições são bem-vindas! Se você encontrou um bug, tem uma ideia de melhoria ou quer ajudar com a documentação, sinta-se à vontade para participar (**[Repositório do GitHub](https://github.com/jaobrabo123/VSRepository)**):
@@ -1318,7 +1391,7 @@ Para reportar problemas ou sugerir novas funcionalidades, abra uma **Issue**.
 
 **`proxyTo` obrigatório** — Nomes fora dos moldes (ex.: `buscarPorEmail`) não são parseados diretamente. Use `proxyTo: "findByEmail"` nesses casos.
 
-**Select model retorna campos inesperados** — Verifique se o select model define exatamente os campos que o seu tipo TypeScript espera. Campos com `false` não serão retornados pelo Prisma.
+**Select model retorna campos inesperados** — Verifique se o select model define exatamente os campos que o seu tipo TypeScript espera.
 
 **`selectModel` e `includeModel` juntos na mesma chamada** — Não é permitido. Escolha um ou outro: se `includeModel` for informado, o `select` (incluindo o `defaultSelectModel`) é ignorado e apenas o `include` é enviado ao Prisma.
 
