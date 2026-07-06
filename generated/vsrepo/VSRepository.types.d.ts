@@ -299,9 +299,17 @@ export type MethodOptionsModel<TRepo> =
         ? MethodOptions<keyof ExtractSelectModels<Config> | false, keyof ExtractIncludeModels<Config>>
         : never;
 
+type MethodOptionsWithInclude<
+    S,
+    IM extends PropertyKey,
+    TIncludes,
+    Excluded extends keyof MethodOptions<S, keyof TIncludes> = never
+> = Omit<MethodOptions<S, keyof TIncludes>, Excluded>
+    & ({ includeModel: IM } | { includeModel?: never });
+
 type MethodFn<MethodName extends string, T, M extends Prisma.ModelName, R extends string, SelectModels, DefaultSelect extends keyof SelectModels | false, I, IncludeModels> = 
     <S extends keyof SelectModels | false = DefaultSelect, IM extends keyof IncludeModels = never>(
-        ...args: [...ExtractFields<T, CleanFields<R>, I>, ...ExtraArgs<MethodName, R, I>, options?: MethodOptions<S, keyof IncludeModels> & ({ includeModel: IM } | { includeModel?: never })]
+        ...args: [...ExtractFields<T, CleanFields<R>, I>, ...ExtraArgs<MethodName, R, I>, options?: MethodOptionsWithInclude<S, IM, IncludeModels>]
     ) => Promise<ResolveReturnType<MethodName, SelectedModel<M, S, SelectModels, IM, IncludeModels>>>;
 
 type GetMappedMethod<K extends string, MethodConf> = 
@@ -357,7 +365,7 @@ type MethodFactory<T, M extends Prisma.ModelName, K extends string, SelectModels
     K extends `findWhere${string}`
         ? {
             /** @deprecated Use findOneWhere instead. */
-            <S extends keyof SelectModels | false = DefaultSelect, IM extends keyof IncludeModels = never>(...args: [...ExtractFields<T, CleanFields<ExtractPatternBase<K>>, I>, ...ExtraArgs<GetMappedMethod<K, MethodConf>, ExtractPatternBase<K>, I>, options?: MethodOptions<S, keyof IncludeModels> & ({ includeModel: IM } | { includeModel?: never })]): Promise<ResolveReturnType<GetMappedMethod<K, MethodConf>, SelectedModel<M, S, SelectModels, IM, IncludeModels>>>;
+            <S extends keyof SelectModels | false = DefaultSelect, IM extends keyof IncludeModels = never>(...args: [...ExtractFields<T, CleanFields<ExtractPatternBase<K>>, I>, ...ExtraArgs<GetMappedMethod<K, MethodConf>, ExtractPatternBase<K>, I>, options?: MethodOptionsWithInclude<S, IM, IncludeModels>]): Promise<ResolveReturnType<GetMappedMethod<K, MethodConf>, SelectedModel<M, S, SelectModels, IM, IncludeModels>>>;
           }
         : MethodFn<GetMappedMethod<K, MethodConf>, T, M, ExtractPatternBase<K>, SelectModels, DefaultSelect, I, IncludeModels>;
 
@@ -711,47 +719,47 @@ type AllBaseMethods<
 > = {
     /** Fetches a record by its primary key (PK). */
     get: <S extends keyof TSelects | false = _DS<Config, C, 'get', TSelects>, IM extends keyof TIncludes = never>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+        pk: _Pk<T, Config>, options?: MethodOptionsWithInclude<S, IM, TIncludes>
     ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes> | null>;
 
     /** Fetches a record by PK and throws `VSRepoRuntimeError` if not found. */
     getOrThrow: <S extends keyof TSelects | false = _DS<Config, C, 'getOrThrow', TSelects>, IM extends keyof TIncludes = never>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+        pk: _Pk<T, Config>, options?: MethodOptionsWithInclude<S, IM, TIncludes>
     ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>>;
 
     /** Fetches multiple records by a list of primary keys (PKs). */
     getList: <S extends keyof TSelects | false = _DS<Config, C, 'getList', TSelects>, IM extends keyof TIncludes = never>(
-        pks: _Pk<T, Config>[], options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+        pks: _Pk<T, Config>[], options?: MethodOptionsWithInclude<S, IM, TIncludes>
     ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>[]>;
 
     /** Deletes a record identified by its primary key (PK). */
     remove: <S extends keyof TSelects | false = _DS<Config, C, 'remove', TSelects>, IM extends keyof TIncludes = never>(
-        pk: _Pk<T, Config>, options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+        pk: _Pk<T, Config>, options?: MethodOptionsWithInclude<S, IM, TIncludes>
     ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>>;
 
     /** Inserts or updates (upsert) a record. */
     save: <S extends keyof TSelects | false = _DS<Config, C, 'save', TSelects>, IM extends keyof TIncludes = never>(
-        obj: UpsertWithRelations<T, M, TRelations>, options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+        obj: UpsertWithRelations<T, M, TRelations>, options?: MethodOptionsWithInclude<S, IM, TIncludes>
     ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>>;
 
     /** Saves an array of objects in a single automatic transaction. */
     saveList: <S extends keyof TSelects | false = _DS<Config, C, 'saveList', TSelects>, IM extends keyof TIncludes = never>(
-        objs: UpsertWithRelations<T, M, TRelations>[], options?: Omit<MethodOptions<S, keyof TIncludes>, 'db'> & ({ includeModel: IM } | { includeModel?: never }) & { db?: DbTransaction }
+        objs: UpsertWithRelations<T, M, TRelations>[], options?: MethodOptionsWithInclude<S, IM, TIncludes, 'db'> & { db?: DbTransaction }
     ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>[]>;
 
     /** Partially updates (patch) an existing record by its primary key (PK). */
     patch: <S extends keyof TSelects | false = _DS<Config, C, 'patch', TSelects>, IM extends keyof TIncludes = never>(
-        pk: _Pk<T, Config>, obj: PatchWithRelations<T, M, TRelations>, options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+        pk: _Pk<T, Config>, obj: PatchWithRelations<T, M, TRelations>, options?: MethodOptionsWithInclude<S, IM, TIncludes>
     ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>>;
 
     /** Partially updates multiple records via `[pk, obj]` tuples in an automatic transaction. */
     patchList: <S extends keyof TSelects | false = _DS<Config, C, 'patchList', TSelects>, IM extends keyof TIncludes = never>(
-        tuples: [pk: _Pk<T, Config>, obj: PatchWithRelations<T, M, TRelations>][], options?: Omit<MethodOptions<S, keyof TIncludes>, 'db'> & ({ includeModel: IM } | { includeModel?: never }) & { db?: DbTransaction }
+        tuples: [pk: _Pk<T, Config>, obj: PatchWithRelations<T, M, TRelations>][], options?: MethodOptionsWithInclude<S, IM, TIncludes, 'db'> & { db?: DbTransaction }
     ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>[]>;
 
     /** Fetches a record by PK and deep-merges it with the provided object **in memory**. */
     merge: <S extends keyof TSelects | false = _DS<Config, C, 'merge', TSelects>, IM extends keyof TIncludes = never>(
-        pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>, options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never })
+        pk: _Pk<T, Config>, obj: UpdateWithRelations<T, M, TRelations>, options?: MethodOptionsWithInclude<S, IM, TIncludes>
     ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes> | null>;
 
     /** Deletes multiple records by their primary keys. */
@@ -759,7 +767,7 @@ type AllBaseMethods<
 
     /** Fetches all records (respects `requiredWhere` when set). */
     getAll: <S extends keyof TSelects | false = _DS<Config, C, 'getAll', TSelects>, IM extends keyof TIncludes = never>(
-        options?: MethodOptions<S, keyof TIncludes> & ({ includeModel: IM } | { includeModel?: never }) & {
+        options?: MethodOptionsWithInclude<S, IM, TIncludes> & {
             pagination?: PaginationOptions<I extends { cursorInput: infer Curs } ? Curs : unknown>;
             /**
              * Ordering to apply to the query.
@@ -778,7 +786,7 @@ type AllBaseMethods<
 
     /** Marks a record as deleted (soft-delete). */
     softRemove: <S extends keyof TSelects | false = _DS<Config, C, 'softRemove', TSelects>, IM extends keyof TIncludes = never>(
-        pk: _Pk<T, Config>, options?: Omit<MethodOptions<S, keyof TIncludes>, 'see'> & ({ includeModel: IM } | { includeModel?: never })
+        pk: _Pk<T, Config>, options?: MethodOptionsWithInclude<S, IM, TIncludes, 'see'>
     ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>>;
 
     /** Marks multiple records as deleted (soft-delete) in batch. */
@@ -786,7 +794,7 @@ type AllBaseMethods<
 
     /** Restores a record previously marked as deleted (soft-delete). */
     restore: <S extends keyof TSelects | false = _DS<Config, C, 'restore', TSelects>, IM extends keyof TIncludes = never>(
-        pk: _Pk<T, Config>, options?: Omit<MethodOptions<S, keyof TIncludes>, 'see'> & ({ includeModel: IM } | { includeModel?: never })
+        pk: _Pk<T, Config>, options?: MethodOptionsWithInclude<S, IM, TIncludes, 'see'>
     ) => Promise<_Ret<M, TSelects, S, TDefault, IM, TIncludes>>;
 
     /** Restores multiple records previously marked as deleted (soft-delete) in batch. */
