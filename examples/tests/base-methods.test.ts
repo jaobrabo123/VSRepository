@@ -95,6 +95,8 @@ async function baseMethodsTest() {
     // * Bom, e para não deixar o nosso banco poluído vamos remover tudo que a gente criou nesse teste
     // * OBS: aqui estamos usando o "deleteManyByIdIn" pois lá na instância do nosso repository desativamos o "removeList"
     await userRepository.deleteManyByIdIn([user1.id, user2.id, user3.id]);
+
+    process.exit(0);
 }
 
 // * Agora para testar os métodos base a gente chama a função para executar todas as operações

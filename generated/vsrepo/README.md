@@ -42,6 +42,7 @@ O VSRepository permite criar repositories fortemente tipados com:
   - [Operadores lógicos](#operadores-lógicos)
   - [Filtros de relação](#filtros-de-relação)
   - [Sufixos de paginação e ordenação](#sufixos-de-paginação-e-ordenação)
+  - [Distinct](#distinct)
   - [Configuração de métodos](#configuração-de-métodos)
   - [Aggregate e GroupBy](#aggregate-e-groupby)
 - [Relações no save](#relações-no-save)
@@ -963,6 +964,42 @@ Para `createMany` e `createManyAndReturn`, o sufixo `SkipDuplicates` está dispo
 
 ---
 
+### Distinct
+
+O sufixo `Distinct` permite obter apenas registros únicos com base em um ou mais campos, equivalente à opção [`distinct`](https://www.prisma.io/docs/orm/prisma-client/queries/distinct) do Prisma.
+
+Para usar, coloque `Distinct` no nome do método (após os filtros de campo, se houver) seguido dos campos desejados separados por `And`. O primeiro caractere de cada campo deve ser maiúsculo, assim como nos filtros de campo comuns.
+
+```ts
+methods: {
+    // Retorna usuários únicos combinando "idade" e "cargo" (sem filtro de campo)
+    findManyDistinctIdadeAndCargo: { map: true },
+
+    // Distinct combinado com o sufixo Paginated
+    findManyDistinctNomePaginated: { map: true },
+
+    // Distinct combinado com um filtro de campo (nome) — filtra por nome e depois aplica o distinct em cargo
+    findManyByNomeDistinctCargo: { map: true },
+},
+```
+
+```ts
+// Sem argumentos: os campos do distinct já estão fixos no nome do método
+await userRepository.findManyDistinctIdadeAndCargo();
+
+// O argumento de paginação continua funcionando normalmente
+await userRepository.findManyDistinctNomePaginated({ take: 10, skip: 0 });
+
+// O filtro de campo "nome" continua sendo passado normalmente como argumento
+await userRepository.findManyByNomeDistinctCargo("João");
+```
+
+> Os campos informados após `Distinct` são resolvidos a partir do nome do método em tempo de build — eles **não** viram argumentos em tempo de execução, diferente dos filtros de campo comuns.
+
+`Distinct` está disponível nos prefixos que fazem leitura de múltiplos ou de um único registro: `findMany`, `findManyBy`, `findFirst`, `findFirstBy`, `findFirstOrThrow`, `findFirstOrThrowBy`, `findBy`, `findOneBy`, `findWhere`, `findOneWhere`, `findListWhere`, `existsBy` e `existsWhere`.
+
+---
+
 ### Configuração de métodos
 
 Cada entrada em `methods` aceita as seguintes opções:
@@ -1400,5 +1437,7 @@ Para reportar problemas ou sugerir novas funcionalidades, abra uma **Issue**.
 **`softRemovekName` lança erro no build** — O campo informado deve ser do tipo `DateTime` no schema do Prisma. Tipos como `Boolean` ou `String` não são aceitos.
 
 **`defaultOrdenation` não está sendo aplicada** — Verifique se o método não usa o sufixo `Ordered`, `OrderedAndPaginated` ou `PaginatedAndOrdered`, e se não possui `injectOrdenation` configurado. Ambos têm prioridade sobre a ordenação padrão.
+
+**Sufixo `Distinct` não é reconhecido** — O `Distinct` só é resolvido nos prefixos de leitura (`findMany`, `findFirst`, `findBy`, `existsBy`, etc.). Em métodos como `count`, `createMany`, `updateMany` ou `deleteMany` o sufixo é ignorado.
 
 **`saveList`/`patchList` com `db` inválido** — O campo `db` nestes métodos aceita apenas `DbTransaction` (retorno de `prisma.$transaction`), não o cliente principal. Passar o `PrismaClient` diretamente causará comportamento inesperado.

@@ -247,12 +247,21 @@ type SelectedModel<M extends Prisma.ModelName, S, SelectModels, IM = never, Incl
             ? PrecomputedIncludes<M, IncludeModels>[IM]
             : FullModelType<M>;
 
+/**
+ * Strips the `Distinct{Fields}` suffix used by read methods (e.g. `findManyDistinctIdadeAndCargo`).
+ * The distinct fields are resolved from the method name at build time, so they never
+ * become part of the runtime `where` fields extracted by `ExtractFields`.
+ */
+type StripDistinctFields<R extends string> =
+    R extends `${infer F}Distinct${string}` ? F : R;
+
 type CleanFields<R extends string> =
-    R extends `${infer F}PaginatedAndOrdered` ? F :
-    R extends `${infer F}OrderedAndPaginated` ? F :
-    R extends `${infer F}Paginated` ? F :
-    R extends `${infer F}Ordered` ? F :
-    R extends `${infer F}SkipDuplicates` ? F : R;
+    R extends `${infer F}PaginatedAndOrdered` ? StripDistinctFields<F> :
+    R extends `${infer F}OrderedAndPaginated` ? StripDistinctFields<F> :
+    R extends `${infer F}Paginated` ? StripDistinctFields<F> :
+    R extends `${infer F}Ordered` ? StripDistinctFields<F> :
+    R extends `${infer F}SkipDuplicates` ? StripDistinctFields<F> :
+    StripDistinctFields<R>;
 
 /**
  * Additional options accepted by repository methods.

@@ -154,6 +154,8 @@ async function transactionsTest() {
     // ! Como "Address" e "Product" têm "onDelete: Cascade" no schema.prisma, remover o usuário já remove o
     // ! endereço e os produtos dele automaticamente
     await userRepository.remove(user.id);
+
+    process.exit(0);
 }
 
 // * Agora para testar as transactions a gente chama a função para executar todas as operações

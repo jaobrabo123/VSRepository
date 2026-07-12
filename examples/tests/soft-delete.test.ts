@@ -146,6 +146,8 @@ async function softDeleteTest() {
     // ! Como "Product" tem "onDelete: Cascade" ligado ao usuário, remover o usuário já remove os
     // ! produtos permanentemente — então basta apagar o usuário
     await userRepository.deleteManyByIdIn([user.id]);
+
+    process.exit(0);
 }
 
 // * Agora para testar o soft-delete a gente chama a função para executar todas as operações

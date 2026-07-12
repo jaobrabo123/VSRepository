@@ -115,6 +115,8 @@ async function requiredWhereTest() {
     console.log(
         "\nUsuário inativo removido com sucesso (via deleteManyByIdIn, que ignora o requiredWhere)",
     );
+
+    process.exit(0);
 }
 
 // * Agora para testar o requiredWhere a gente chama a função para executar todas as operações

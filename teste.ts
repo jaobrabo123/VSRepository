@@ -96,6 +96,11 @@ const userVSRepo = setupVSRepo<User, "User">()({
 
         findByLikesVSRepoIsTruePaginated: { map: true },
 
+        // --- Distinct ---
+        findManyDistinctUserTypeAndLikesVSRepo: { map: true },
+        findManyDistinctUserTypePaginated: { map: true },
+        findManyByLikesVSRepoDistinctUserType: { map: true },
+
         buscarUsuariosPaias: { map: true, proxyTo: "findByLikesVSRepoIsFalse" },
 
         findInternalByEmail: {
@@ -427,6 +432,77 @@ async function testUserDynamicMethods() {
         "findByLikesVSRepoIsTruePaginated: todos devem ter likesVSRepo=true",
     );
     console.log("✅ findByLikesVSRepoIsTruePaginated:", likers.length);
+
+    // --- Distinct ---
+    // Neste ponto existem pelo menos 2 combinações distintas de (userType, likesVSRepo):
+    // (COMMON, true) — vindo de "created" (testUserBaseMethods) e "user" (COMMON, true)
+    // (ADMIN, false) — vindo de "admin" (ADMIN, false)
+
+    // findManyDistinctUserTypeAndLikesVSRepo — sem filtro de campo, só distinct em 2 colunas
+    const distinctTypeAndLikes = await userRepository.findManyDistinctUserTypeAndLikesVSRepo();
+    console.assert(
+        Array.isArray(distinctTypeAndLikes),
+        "findManyDistinctUserTypeAndLikesVSRepo: deve retornar array",
+    );
+    const uniqueCombos = new Set(
+        distinctTypeAndLikes.map(u => `${u.userType}-${u.likesVSRepo}`),
+    );
+    console.assert(
+        uniqueCombos.size === distinctTypeAndLikes.length,
+        "findManyDistinctUserTypeAndLikesVSRepo: não deve haver combinações (userType, likesVSRepo) repetidas",
+    );
+    console.assert(
+        distinctTypeAndLikes.some(u => u.userType === UserType.COMMON && u.likesVSRepo === true) &&
+            distinctTypeAndLikes.some(u => u.userType === UserType.ADMIN && u.likesVSRepo === false),
+        "findManyDistinctUserTypeAndLikesVSRepo: deve conter as combinações (COMMON,true) e (ADMIN,false)",
+    );
+    console.log(
+        "✅ findManyDistinctUserTypeAndLikesVSRepo:",
+        distinctTypeAndLikes.map(u => `${u.userType}/${u.likesVSRepo}`).join(", "),
+    );
+
+    // findManyDistinctUserTypePaginated — distinct combinado com o sufixo Paginated
+    const distinctTypePaginated = await userRepository.findManyDistinctUserTypePaginated({
+        skip: 0,
+        take: 10,
+    });
+    console.assert(
+        Array.isArray(distinctTypePaginated),
+        "findManyDistinctUserTypePaginated: deve retornar array",
+    );
+    const uniqueTypes = new Set(distinctTypePaginated.map(u => u.userType));
+    console.assert(
+        uniqueTypes.size === distinctTypePaginated.length,
+        "findManyDistinctUserTypePaginated: não deve haver userType repetido",
+    );
+    console.assert(
+        uniqueTypes.has(UserType.COMMON) && uniqueTypes.has(UserType.ADMIN),
+        "findManyDistinctUserTypePaginated: deve conter COMMON e ADMIN",
+    );
+    console.log(
+        "✅ findManyDistinctUserTypePaginated:",
+        distinctTypePaginated.map(u => u.userType).join(", "),
+    );
+
+    // findManyByLikesVSRepoDistinctUserType — filtro de campo (likesVSRepo) combinado com Distinct (userType)
+    const distinctByLikes = await userRepository.findManyByLikesVSRepoDistinctUserType(true);
+    console.assert(
+        Array.isArray(distinctByLikes),
+        "findManyByLikesVSRepoDistinctUserType: deve retornar array",
+    );
+    console.assert(
+        distinctByLikes.every(u => u.likesVSRepo === true),
+        "findManyByLikesVSRepoDistinctUserType: todos devem ter likesVSRepo=true",
+    );
+    const uniqueTypesFiltered = new Set(distinctByLikes.map(u => u.userType));
+    console.assert(
+        uniqueTypesFiltered.size === distinctByLikes.length,
+        "findManyByLikesVSRepoDistinctUserType: não deve haver userType repetido",
+    );
+    console.log(
+        "✅ findManyByLikesVSRepoDistinctUserType:",
+        distinctByLikes.map(u => u.userType).join(", "),
+    );
 
     // buscarUsuariosPaias (proxy de findByLikesVSRepoIsFalse)
     const paias = await userRepository.buscarUsuariosPaias();

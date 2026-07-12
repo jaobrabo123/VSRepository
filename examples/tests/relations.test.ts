@@ -117,6 +117,8 @@ async function relationsTest() {
     // ! Como a relação "user -> address" e "user -> product" têm "onDelete: Cascade" no schema.prisma, ao remover
     // ! o usuário o endereço e os produtos dele também são removidos automaticamente pelo banco
     await userRepository.deleteManyByIdIn([user1.id]);
+
+    process.exit(0);
 }
 
 // * Agora para testar as relações a gente chama a função para executar todas as operações

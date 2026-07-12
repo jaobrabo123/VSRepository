@@ -178,6 +178,8 @@ async function batchMethodsTest() {
     // ! Como "Product" e "Address" têm "onDelete: Cascade" ligado ao usuário, remover o usuário já
     // ! remove os produtos e o endereço dele permanentemente
     await userRepository.deleteManyByIdIn([fernanda!.id, gabriel!.id, helena!.id]);
+
+    process.exit(0);
 }
 
 // * Agora para testar os métodos em lote a gente chama a função para executar todas as operações

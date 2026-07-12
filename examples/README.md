@@ -28,7 +28,7 @@ examples/
     ├── base-methods.test.ts       # Métodos base: get, save, patch, remove, getAll, total, has...
     ├── relations.test.ts          # Como configurar e usar relations no save/patch e em filtros
     ├── required-where.test.ts     # Como o requiredWhere é aplicado automaticamente nas queries
-    ├── dynamic-methods.test.ts    # Prefixos, filtros de campo, operadores lógicos e paginação/ordenação
+    ├── dynamic-methods.test.ts    # Prefixos, filtros de campo, operadores lógicos, paginação/ordenação e distinct
     ├── transactions.test.ts       # Transactions com options.db e acesso à instância via repository.prisma
     ├── soft-delete.test.ts        # Soft-delete: softRemove, softRemoveList, restore, restoreList e SeeMode
     └── batch-methods.test.ts      # Operações em lote: getList, saveList, patchList e merge
@@ -153,7 +153,7 @@ Se você está começando agora com o VSRepository, essa é a ordem recomendada 
 2. **[`tests/base-methods.test.ts`](./tests/base-methods.test.ts)** — veja os métodos base (`get`, `save`, `patch`, `remove`, `getAll`, `total`, `has`...) em ação.
 3. **[`tests/relations.test.ts`](./tests/relations.test.ts)** — entenda como o `save`/`patch` gerenciam relações automaticamente (`set` vs `add`) e como usar filtros de relação (`Some`, `None`, `With`, `Without`).
 4. **[`tests/required-where.test.ts`](./tests/required-where.test.ts)** — veja como o `requiredWhere` é injetado automaticamente nas queries e como ignorá-lo quando necessário (`ignoreRequiredWhere`, `whereType: "overwrite"`).
-5. **[`tests/dynamic-methods.test.ts`](./tests/dynamic-methods.test.ts)** — explore os métodos dinâmicos: prefixos, filtros de campo, operadores lógicos (`And`/`Or`), `proxyTo` e sufixos de paginação/ordenação.
+5. **[`tests/dynamic-methods.test.ts`](./tests/dynamic-methods.test.ts)** — explore os métodos dinâmicos: prefixos, filtros de campo, operadores lógicos (`And`/`Or`), `proxyTo`, sufixos de paginação/ordenação e o sufixo `Distinct`.
 6. **[`tests/transactions.test.ts`](./tests/transactions.test.ts)** — entenda como acessar a instância do Prisma com `repository.prisma`, abrir uma transaction com `$transaction` e fazer múltiplos repositories participarem dela via `options.db`, incluindo um exemplo de rollback.
 7. **[`tests/soft-delete.test.ts`](./tests/soft-delete.test.ts)** — aprenda a usar o soft-delete (`softRemovekName`, `softRemove`, `softRemoveList`, `restore`, `restoreList`) e o `SeeMode` para controlar quais registros as queries enxergam (`"active"`, `"removed"`, `"all"`).
 8. **[`tests/batch-methods.test.ts`](./tests/batch-methods.test.ts)** — explore as operações em lote: `getList` (busca por lista de PKs), `saveList` (cria vários em transação automática), `patchList` (atualiza vários por tuplas em transação automática) e `merge` (busca + deep merge em memória).

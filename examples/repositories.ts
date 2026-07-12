@@ -116,6 +116,18 @@ const userVSRepo = setupVSRepo<User, "User">()({
         // * Buscando todos os usuários que gostam do VSRepository (esses caras são gente boa) recebendo um parâmetro de paginação
         findByLikesVSRepoIsTruePaginated: { map: true },
 
+        // * O sufixo "Distinct" retorna apenas registros únicos com base nos campos informados (equivalente ao "distinct" do Prisma)
+        // * Aqui não passamos nenhum filtro de campo, só o distinct em 2 colunas: vai retornar 1 usuário para cada combinação
+        // * única de "userType" e "likesVSRepo" que existir no banco
+        findManyDistinctUserTypeAndLikesVSRepo: { map: true },
+
+        // * O "Distinct" também pode ser combinado com o sufixo "Paginated" (e com "Ordered"/"OrderedAndPaginated"/"PaginatedAndOrdered")
+        findManyDistinctUserTypePaginated: { map: true },
+
+        // * E também pode ser combinado com um filtro de campo comum: aqui filtramos por "likesVSRepo" e retornamos
+        // * só um registro para cada "userType" diferente encontrado entre os que sobraram do filtro
+        findManyByLikesVSRepoDistinctUserType: { map: true },
+
         // * Também podemos criar métodos com nomes personalizados ("proxyTo" define o comportamento desse método)
         buscarUsuariosPaias: { map: true, proxyTo: "findByLikesVSRepoIsFalse" },
 

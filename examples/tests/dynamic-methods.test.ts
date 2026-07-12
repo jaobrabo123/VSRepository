@@ -122,7 +122,36 @@ async function dynamicMethodsTest() {
     console.log("\nUsuários que curtem o VSRepository, paginados (findByLikesVSRepoIsTruePaginated):", usuariosQueCurtem);
 
     // * ---------------------------------------------------------------------
-    // * 6) OPERAÇÕES NATIVAS DO PRISMA EXPOSTAS COMO MÉTODOS DINÂMICOS
+    // * 6) SUFIXO DISTINCT
+    // * ---------------------------------------------------------------------
+
+    // * "findManyDistinctUserTypeAndLikesVSRepo" não recebe nenhum filtro de campo, só o sufixo "Distinct" com 2
+    // * campos separados por "And". Como user1=(ADMIN,true), user2=(COMMON,false) e user3=(COMMON,true) formam 3
+    // * combinações diferentes, o retorno aqui terá 1 registro para cada uma delas
+    const combinacoesUnicas = await userRepository.findManyDistinctUserTypeAndLikesVSRepo();
+    console.log(
+        "\nUma combinação de (userType, likesVSRepo) por registro (findManyDistinctUserTypeAndLikesVSRepo):",
+        combinacoesUnicas,
+    );
+
+    // * "findManyDistinctUserTypePaginated" combina "Distinct" com o sufixo "Paginated" — aqui o distinct é só em
+    // * "userType", então mesmo tendo 2 usuários "COMMON" (user2 e user3), o retorno traz só 1 registro de cada
+    // * userType (ADMIN e COMMON)
+    const tiposUnicos = await userRepository.findManyDistinctUserTypePaginated({ skip: 0, take: 10 });
+    console.log("\nUm registro por userType (findManyDistinctUserTypePaginated):", tiposUnicos);
+
+    // * "findManyByLikesVSRepoDistinctUserType" combina um filtro de campo comum ("likesVSRepo") com o "Distinct"
+    // * em outro campo ("userType"). Filtrando só quem tem likesVSRepo=true (user1, ADMIN, e user3, COMMON) e
+    // * aplicando distinct em "userType", o resultado traz 2 registros: um ADMIN e um COMMON, ambos com
+    // * likesVSRepo=true
+    const porTipoQuemCurte = await userRepository.findManyByLikesVSRepoDistinctUserType(true);
+    console.log(
+        "\nUm registro por userType, apenas entre quem curte o VSRepository (findManyByLikesVSRepoDistinctUserType):",
+        porTipoQuemCurte,
+    );
+
+    // * ---------------------------------------------------------------------
+    // * 7) OPERAÇÕES NATIVAS DO PRISMA EXPOSTAS COMO MÉTODOS DINÂMICOS
     // * ---------------------------------------------------------------------
 
     // * "updateById" usa o prefixo "updateBy" (operação "update" do Prisma) filtrando pelo "id"
@@ -149,6 +178,8 @@ async function dynamicMethodsTest() {
     // ! você decidir mapear em "methods")
     await productRepository.removeList([product1.id, product2.id, product3.id]);
     await userRepository.deleteManyByIdIn([user1.id, user2.id, user3.id, upsertedUser.id]);
+
+    process.exit(0);
 }
 
 // * Agora para testar os métodos dinâmicos a gente chama a função para executar todas as operações
