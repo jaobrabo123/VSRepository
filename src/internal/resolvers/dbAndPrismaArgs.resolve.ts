@@ -25,6 +25,7 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
         skipDuplicates,
         forceSeeMode,
         withOrdenationAndPagination,
+        distinctKeys,
     } = data;
 
     const validatedOptions =
@@ -88,6 +89,10 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
 
     if (skipDuplicates !== undefined) {
         prismaArgs.skipDuplicates = skipDuplicates;
+    }
+
+    if (distinctKeys !== undefined) {
+        prismaArgs.distinct = distinctKeys;
     }
 
     return { db, prismaArgs };

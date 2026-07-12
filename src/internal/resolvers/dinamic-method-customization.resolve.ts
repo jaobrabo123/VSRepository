@@ -1,3 +1,4 @@
+import { uncapitalize } from "../utils/uncapitalize.util";
 import { DinamicMethodCustomization } from "./types/dinamic-method-customization.type";
 import { DinamicMethodInfo } from "./types/dinamic-method-info.type";
 import { RepositoryBuildInstance } from "./types/repository-build-instance.type";
@@ -18,10 +19,12 @@ export function resolveDinamicMethodCustomization(
             dinamicMethodCustomization.skipDuplicates = true;
         }
     }
- 
+
     if (!dinamicMethodInfo.ignoreOrderByAndPagination) {
-        dinamicMethodCustomization.injectOrdenation = instance.methods?.[originalKey]?.injectOrdenation;
-        dinamicMethodCustomization.injectPagination = instance.methods?.[originalKey]?.injectPagination;
+        dinamicMethodCustomization.injectOrdenation =
+            instance.methods?.[originalKey]?.injectOrdenation;
+        dinamicMethodCustomization.injectPagination =
+            instance.methods?.[originalKey]?.injectPagination;
 
         if (dinamicMethodInfo.keyToMapReplaced.endsWith("PaginatedAndOrdered")) {
             dinamicMethodCustomization.orderPosition = -2;
@@ -72,6 +75,18 @@ export function resolveDinamicMethodCustomization(
 
             dinamicMethodInfo.argsCount++;
         }
+    }
+
+    if (!dinamicMethodInfo.ignoreDistinct) {
+        const keySplitedDistinct = dinamicMethodInfo.keyToMapReplaced.split("Distinct");
+
+        if (keySplitedDistinct[1]) {
+            dinamicMethodCustomization.distinctKeys = keySplitedDistinct[1]
+                .split("And")
+                .map(uncapitalize);
+        }
+
+        dinamicMethodInfo.keyToMapReplaced = keySplitedDistinct[0]!;
     }
 
     return dinamicMethodCustomization;

@@ -10,6 +10,7 @@ export interface DinamicMethodInfo {
     method: string;
     whereParams: string[];
     otherParams: string[];
+    ignoreDistinct: boolean;
     dataIndex?: number;
     updateIndex?: number;
     createIndex?: number;

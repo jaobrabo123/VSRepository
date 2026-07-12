@@ -22,4 +22,5 @@ export interface ResolveDbAndPrismaArgsData {
     skipDuplicates?: boolean;
     forceSeeMode?: SeeMode;
     withOrdenationAndPagination?: boolean;
+    distinctKeys?: string[];
 }

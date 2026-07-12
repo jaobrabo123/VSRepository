@@ -188,6 +188,7 @@ export class VSRepository {
                                     : undefined,
                             withOrdenationAndPagination:
                                 !dinamicMethodInfo.ignoreOrderByAndPagination,
+                            distinctKeys: dinamicMethodCustomization.distinctKeys,
                         };
 
                         if (!dinamicMethodInfo.ignoreWhere) {
@@ -219,7 +220,7 @@ export class VSRepository {
 
                         throw new VSRepoRuntimeError(
                             `[VSRepository] (${buildInstance.tableName}: runtime) Missing parameters: ${missingParams.join(", ")}`,
-                            "48670"
+                            "48670",
                         );
                     } else if (args.length > dinamicMethodInfo.argsCount) {
                         const optionsArg = args[args.length - 1];

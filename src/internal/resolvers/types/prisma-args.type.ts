@@ -10,4 +10,5 @@ export interface PrismaArgs {
     take?: number;
     cursor?: object;
     skipDuplicates?: boolean;
+    distinct?: string | string[];
 }

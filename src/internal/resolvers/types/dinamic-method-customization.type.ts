@@ -6,4 +6,5 @@ export interface DinamicMethodCustomization {
     paginationPosition?: number;
     injectOrdenation?: object | object[];
     injectPagination?: Pagination;
+    distinctKeys?: string[];
 }

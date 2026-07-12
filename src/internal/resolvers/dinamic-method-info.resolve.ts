@@ -15,6 +15,7 @@ export function resolveDinamicMethodInfo(instance: RepositoryBuildInstance, dina
         ignoreSkipDuplicates: true,
         whereParams: [],
         otherParams: [],
+        ignoreDistinct: true,
     };
 
     if (dinamicMethod === "aggregate") {
@@ -42,22 +43,26 @@ export function resolveDinamicMethodInfo(instance: RepositoryBuildInstance, dina
     } else if (dinamicMethod.startsWith("findFirstOrThrowBy")) {
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("findFirstOrThrowBy", "");
         dinamicMethodInfo.ignoreOrderByAndPagination = false;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = "findFirstOrThrow";
     } else if (dinamicMethod.startsWith("findFirstOrThrow")) {
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("findFirstOrThrow", "");
         dinamicMethodInfo.ignoreOrderByAndPagination = false;
         dinamicMethodInfo.ignoreWhere = true;
         dinamicMethodInfo.onlyBaseWheres = true;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = "findFirstOrThrow";
     } else if (dinamicMethod.startsWith("findFirstBy")) {
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("findFirstBy", "");
         dinamicMethodInfo.ignoreOrderByAndPagination = false;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = "findFirst";
     } else if (dinamicMethod.startsWith("findFirst")) {
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("findFirst", "");
         dinamicMethodInfo.ignoreOrderByAndPagination = false;
         dinamicMethodInfo.ignoreWhere = true;
         dinamicMethodInfo.onlyBaseWheres = true;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = "findFirst";
     } else if (dinamicMethod.startsWith("countBy")) {
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("countBy", "");
@@ -85,6 +90,7 @@ export function resolveDinamicMethodInfo(instance: RepositoryBuildInstance, dina
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("existsBy", "");
         dinamicMethodInfo.ignoreSelect = true;
         dinamicMethodInfo.existsMode = true;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = "findFirst";
     } else if (dinamicMethod.startsWith("existsWhere")) {
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("existsWhere", "");
@@ -92,6 +98,7 @@ export function resolveDinamicMethodInfo(instance: RepositoryBuildInstance, dina
         dinamicMethodInfo.existsMode = true;
         dinamicMethodInfo.ignoreWhere = true;
         dinamicMethodInfo.onlyBaseWheres = true;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = "findFirst";
         dinamicMethodInfo.whereIndex = 0;
         dinamicMethodInfo.otherParams.push("where");
@@ -99,12 +106,14 @@ export function resolveDinamicMethodInfo(instance: RepositoryBuildInstance, dina
     } else if (dinamicMethod.startsWith("findManyBy")) {
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("findManyBy", "");
         dinamicMethodInfo.ignoreOrderByAndPagination = false;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = "findMany";
     } else if (dinamicMethod.startsWith("findMany")) {
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("findMany", "");
         dinamicMethodInfo.ignoreOrderByAndPagination = false;
         dinamicMethodInfo.ignoreWhere = true;
         dinamicMethodInfo.onlyBaseWheres = true;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = "findMany";
     } else if (dinamicMethod.startsWith("createManyAndReturn")) {
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("createManyAndReturn", "");
@@ -197,6 +206,7 @@ export function resolveDinamicMethodInfo(instance: RepositoryBuildInstance, dina
         dinamicMethodInfo.ignoreOrderByAndPagination = false;
         dinamicMethodInfo.ignoreWhere = true;
         dinamicMethodInfo.onlyBaseWheres = true;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = "findFirst";
         dinamicMethodInfo.whereIndex = 0;
         dinamicMethodInfo.otherParams.push("where");
@@ -206,6 +216,7 @@ export function resolveDinamicMethodInfo(instance: RepositoryBuildInstance, dina
         dinamicMethodInfo.ignoreOrderByAndPagination = false;
         dinamicMethodInfo.ignoreWhere = true;
         dinamicMethodInfo.onlyBaseWheres = true;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = "findFirst";
         dinamicMethodInfo.whereIndex = 0;
         dinamicMethodInfo.otherParams.push("where");
@@ -215,6 +226,7 @@ export function resolveDinamicMethodInfo(instance: RepositoryBuildInstance, dina
         dinamicMethodInfo.ignoreOrderByAndPagination = false;
         dinamicMethodInfo.ignoreWhere = true;
         dinamicMethodInfo.onlyBaseWheres = true;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = "findMany";
         dinamicMethodInfo.whereIndex = 0;
         dinamicMethodInfo.otherParams.push("where");
@@ -222,10 +234,12 @@ export function resolveDinamicMethodInfo(instance: RepositoryBuildInstance, dina
     } else if (dinamicMethod.startsWith("findOneBy")) {
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("findOneBy", "");
         dinamicMethodInfo.ignoreOrderByAndPagination = false;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = "findFirst";
     } else if (dinamicMethod.startsWith("findBy")) {
         dinamicMethodInfo.keyToMapReplaced = dinamicMethod.replace("findBy", "");
         dinamicMethodInfo.ignoreOrderByAndPagination = false;
+        dinamicMethodInfo.ignoreDistinct = false;
         dinamicMethodInfo.method = instance.methods?.[originalKey]?.fbMode === "one" ? "findFirst" : "findMany";
     } else {
         throw new VSRepoBuildError(
