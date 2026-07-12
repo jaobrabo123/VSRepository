@@ -1,47 +1,47 @@
 /*
- * Nesse arquivo vamos configurar todos os repostiories que vamos utilizar
- ! OBS: idealmente em um projeto real você criaria um arquivo para cada repository
+ * In this file we're going to configure all the repositories we'll use
+ ! NOTE: ideally, in a real project you would create one file per repository
 */
 
-// * Importando o que vamos precisar
+// * Importing what we'll need
 import { Address } from "../generated/prisma/client";
 import { UserType } from "../generated/prisma/enums";
 import { ProductGetPayload, UserGetPayload } from "../generated/prisma/models";
 import { setupVSRepo } from "../generated/vsrepo";
 import prisma from "./prisma";
 
-// * Aqui usamos o "GetPayload" para o VSRepository reconhecer a tipagem das relações
-// TODO Passe o cursor do mouse em cima de "User" para ver a tipagem dele
+// * Here we use "GetPayload" so VSRepository recognizes the typing of the relations
+// TODO Hover your mouse over "User" to see its typing
 type User = UserGetPayload<{
-    // * Usamos o "include" para incluir as relações na tipagem
+    // * We use "include" to include the relations in the typing
     include: {
         address: true;
         products: true;
     };
 }>;
 
-// * Configurando repositório de Usuários
-// ? Por que chamamos uma função logo depois da outra: ()({...})? Pois como o VSRepository precisa de 2 generics essa
-// ? é a forma de o TypeScript conseguir tratar essas generics devidamente
-// * A primeira generic é o modelo da nossa entidade
+// * Configuring the User repository
+// ? Why do we call one function right after the other: ()({...})? Because VSRepository needs 2 generics, this
+// ? is the way for TypeScript to properly handle these generics
+// * The first generic is our entity's model
 const userVSRepo = setupVSRepo<User, "User">()({
-    // * Aqui definimos o nome da tabela, ela é o nome do "model" definido no schema.prisma com a primeira letra minúscula
-    // ! OBS: Esse não é necessariamente o nome exato da tabela no banco de dados
+    // * Here we define the table name, it's the "model" name defined in schema.prisma with a lowercase first letter
+    // ! NOTE: This isn't necessarily the exact table name in the database
     tableName: "user",
 
-    // * "pkName" é o nome da chave primária da nossa entidade, ela é importante para os métodos base e para os métodos dinâmicos
-    // * de prefixo "exists" (No "exists" ela é usada no select para o Prisma buscar o mínimo possível, pois só queremos saber se existe ou não)
+    // * "pkName" is the name of our entity's primary key, it's important for the base methods and for the dynamic methods
+    // * with the "exists" prefix (in "exists" it's used in the select so Prisma fetches as little as possible, since we only want to know whether it exists or not)
     pkName: "id",
 
-    // * Aqui estamos definindo o "requiredWhere", ele contém o filtro que será injetado por padrão em todas as operações (com exceção do aggregate e do groupBy)
+    // * Here we're defining "requiredWhere", it contains the filter that will be injected by default in every operation (except aggregate and groupBy)
     requiredWhere: {
-        // * Por padrão só vamos buscar usuários ativos
+        // * By default we'll only fetch active users
         active: true,
     },
 
-    // * Agora vamos definir os "selectModels", eles são modelos de select do Prisma que podemos utilizar nas nossas operações
+    // * Now let's define the "selectModels", they're Prisma select models we can use in our operations
     selectModels: {
-        // * Definindo o modelo "public"
+        // * Defining the "public" model
         public: {
             id: true,
             name: true,
@@ -55,7 +55,7 @@ const userVSRepo = setupVSRepo<User, "User">()({
                 include: { tags: true },
             },
         },
-        // * Definindo o modelo "internal"
+        // * Defining the "internal" model
         internal: {
             id: true,
             name: true,
@@ -65,188 +65,188 @@ const userVSRepo = setupVSRepo<User, "User">()({
             createdAt: true,
             updatedAt: true,
             active: true,
-            password: true, // * Observe que só nesse modelo a senha está disponível
+            password: true, // * Notice that the password is only available in this model
         },
-        // * Definindo o modelo "minimal"
+        // * Defining the "minimal" model
         minimal: {
             id: true,
         },
     },
 
-    // * Agora definimos que por padrão o "selectModel" usado será o "public" nos métodos base e nos métodos dinâmicos
+    // * Now we define that by default the "selectModel" used will be "public" in the base and dynamic methods
     defaultSelectModel: "public",
 
-    // * Configurando as relações
-    // ! Um detalhe importante: Você não é obrigado a configurar as relations, somente se você quiser que o VSRepository as gerencie no save/patch de forma
-    // ! organizada, porém, caso prefira, você pode gerenciar as relações manualmente, só ficaria mais verboso
+    // * Configuring the relations
+    // ! An important detail: You're not required to configure relations, only if you want VSRepository to manage them in save/patch in an
+    // ! organized way. However, if you prefer, you can manage the relations manually — it would just be more verbose
     relations: {
-        // * Relação com endereço
+        // * Relation with address
         address: {
-            // * Definimos como uma relação "one-to-one" (oto)
+            // * We define it as a "one-to-one" (oto) relation
             mode: "oto",
-            // * Chave primária do endereço (importante para o "save" e "patch" poder gerenciar essa relação devidamente)
+            // * Address primary key (important so "save" and "patch" can properly manage this relation)
             pk: "id",
-            // * Marcamos a restrição como "set" para sempre que passarmos ela no "save" ou no "patch" ela ser sobrescrita caso
+            // * We mark the restriction as "set" so that whenever we pass it in "save" or "patch" it gets overwritten
             restriction: "set",
         },
 
-        // * Relação com produtos
+        // * Relation with products
         products: {
-            // * Aqui é uma relação one-to-many (otm)
+            // * Here it's a one-to-many (otm) relation
             mode: "otm",
             pk: "id",
-            // * Definimos a restrição como "add", pois não queremos apagar os produtos que não foram passados no save/patch, apenas adicionar
-            // * novos ou atualizar os já existentes
+            // * We set the restriction to "add", since we don't want to delete products that weren't passed in save/patch, only add
+            // * new ones or update the existing ones
             restriction: "add",
         },
     },
 
-    // * Agora vamos definir os métodos dinâmicos que terão o comportamento inferido pelo *nome*
+    // * Now let's define the dynamic methods, whose behavior will be inferred from their *name*
     methods: {
-        // * Esse método buscará usuários com o "userType" passado no parâmetro da função
-        // * Observe que na entidade essa coluna começa com "u" minúsculo, porém aqui precisamos passar o nome capitalizado (com a primeira letra maiúscula)
+        // * This method will search for users with the "userType" passed as a function parameter
+        // * Notice that in the entity this column starts with a lowercase "u", but here we need to pass the capitalized name (with an uppercase first letter)
         findByUserType: { map: true },
 
-        // * Aqui criamos um método que busca um usuário específico pelo "email" e pelo "userType"
+        // * Here we create a method that finds a specific user by "email" and by "userType"
         findOneByEmailAndUserType: { map: true },
 
-        // * Esse método busca usuários que tenham o "userType" passado ou que o "email" termine com o texto passado
+        // * This method finds users who have the passed "userType" OR whose "email" ends with the passed text
         findByUserTypeOrEmailEndsWith: { map: true },
 
-        // * Buscando todos os usuários que gostam do VSRepository (esses caras são gente boa) recebendo um parâmetro de paginação
+        // * Fetching all users who like VSRepository (these guys are cool) receiving a pagination parameter
         findByLikesVSRepoIsTruePaginated: { map: true },
 
-        // * O sufixo "Distinct" retorna apenas registros únicos com base nos campos informados (equivalente ao "distinct" do Prisma)
-        // * Aqui não passamos nenhum filtro de campo, só o distinct em 2 colunas: vai retornar 1 usuário para cada combinação
-        // * única de "userType" e "likesVSRepo" que existir no banco
+        // * The "Distinct" suffix returns only unique records based on the fields provided (equivalent to Prisma's "distinct")
+        // * Here we don't pass any field filter, just distinct on 2 columns: it'll return 1 user for each unique
+        // * combination of "userType" and "likesVSRepo" that exists in the database
         findManyDistinctUserTypeAndLikesVSRepo: { map: true },
 
-        // * O "Distinct" também pode ser combinado com o sufixo "Paginated" (e com "Ordered"/"OrderedAndPaginated"/"PaginatedAndOrdered")
+        // * "Distinct" can also be combined with the "Paginated" suffix (and with "Ordered"/"OrderedAndPaginated"/"PaginatedAndOrdered")
         findManyDistinctUserTypePaginated: { map: true },
 
-        // * E também pode ser combinado com um filtro de campo comum: aqui filtramos por "likesVSRepo" e retornamos
-        // * só um registro para cada "userType" diferente encontrado entre os que sobraram do filtro
+        // * And it can also be combined with a regular field filter: here we filter by "likesVSRepo" and return
+        // * only one record for each distinct "userType" found among the ones left over from the filter
         findManyByLikesVSRepoDistinctUserType: { map: true },
 
-        // * Também podemos criar métodos com nomes personalizados ("proxyTo" define o comportamento desse método)
-        buscarUsuariosPaias: { map: true, proxyTo: "findByLikesVSRepoIsFalse" },
+        // * We can also create methods with custom names ("proxyTo" defines that method's behavior)
+        findLameUsers: { map: true, proxyTo: "findByLikesVSRepoIsFalse" },
 
-        // * Buscando dados privados do usuário por email
+        // * Fetching the user's private data by email
         findInternalByEmail: {
             map: true,
             proxyTo: "findOneByEmail",
-            // * Aqui estamos dizendo que esse método específico vai ignorar o requiredWhere, ou seja, vai encontrar
-            // * o usuário mesmo se ele estiver com "active" = false
+            // * Here we're saying that this specific method will ignore requiredWhere, meaning it will find
+            // * the user even if they have "active" = false
             whereType: "overwrite",
-            // * Aqui dizemos que queremos usar o selectModel "internal" (aquele que definimos no "selectModels")
+            // * Here we say we want to use the "internal" selectModel (the one we defined in "selectModels")
             selectModel: "internal",
         },
 
-        // * Método pra ver se tem um usuário com um email
+        // * Method to check if a user exists with a given email
         existsByEmail: { map: true },
 
-        // * Esse método busca todos os Admins
+        // * This method fetches all Admins
         findAdmins: {
             map: true,
             proxyTo: "findBy",
-            // * O "pushWhere" injeta esse filtro automaticamente nesse método específico
+            // * "pushWhere" automatically injects this filter into this specific method
             pushWhere: {
                 userType: UserType.ADMIN,
             },
         },
 
-        // * Agora vamos criar um método que busca usuários do mesmo país
+        // * Now let's create a method that finds users from the same country
         findByAddressWithCountry: {
             map: true,
-            // * Aqui injetamos uma ordenação fixa para esse método, os resultados serão automaticamente ordenados pelo estado e pela cidade
+            // * Here we inject a fixed ordering for this method, results will be automatically ordered by state and by city
             injectOrdenation: [{ address: { state: "asc" } }, { address: { city: "asc" } }],
         },
 
-        // * Também podemos buscar usuários sem endereço
+        // * We can also search for users without an address
         findByAddressWithout: { map: true },
 
-        // * Bom, caso a gente não saiba o nome exato do usuário podemos buscar resultados que 'contenham' o nome que a gente passar e ignorar a diferença
-        // * de letras maiúsculas e minúsculas, além disso vamos aceitar um parâmetro manual de ordenação e de paginação
+        // * Well, in case we don't know the user's exact name, we can search for results that 'contain' the name we pass and ignore
+        // * uppercase/lowercase differences. On top of that we'll accept a manual ordering and pagination parameter
         findByNameContainsInsensitiveOrderedAndPaginated: { map: true },
 
-        // * Agora vamos criar 2 métodos, um para procurar usuários com produtos e outro para usuários sem produtos
+        // * Now let's create 2 methods, one to search for users with products and another for users without products
         findByProductsSome: { map: true },
         findByProductsNone: { map: true },
 
-        // * O VSRepository também tem suporte à todas as operações nativas do Prisma, vou declarar um exemplo para cada uma delas
-        // * aqui só para mostrar as possibilidades, mas não entrarei muito em detalhes
+        // * VSRepository also supports every native Prisma operation, I'll declare an example for each one of them
+        // * here just to show the possibilities, but I won't go into much detail
         findUniqueByEmail: { map: true },
         findUniqueOrThrowById: { map: true },
         findFirstByNameStartsWith: { map: true },
         findFirstOrThrowByIdOrEmail: { map: true },
         countByUserType: { map: true },
-        // * O sufixo "Optional" diz que o parâmetro "name" é opcional nesse método (podemos passar esse parâmetro como 'undefined')
-        // * Veja a documentação do VSRepository para mais detalhes: https://github.com/jaobrabo123/VSRepository#filtros-de-campo
+        // * The "Optional" suffix says the "name" parameter is optional in this method (we can pass this parameter as 'undefined')
+        // * See VSRepository's documentation for more details: https://github.com/jaobrabo123/VSRepository#field-filters
         findManyByNameOptional: { map: true },
         createManyAndReturn: { map: true },
         createManySkipDuplicates: { map: true },
         create: { map: true },
         updateManyAndReturnByUserType: { map: true },
-        // * No VSRepository algumas operações aceitam o sufixo "Where" (ao invés de "By"), oq permite você passar um objeto "where" literal do Prisma como
-        // * parâmetro, útil para filtragens muito complexas.
-        // * Leia a documentação do VSRepository para saber quais operações tem suporte ao sufixo "Where": https://github.com/jaobrabo123/VSRepository#métodos-dinâmicos
+        // * In VSRepository some operations accept the "Where" suffix (instead of "By"), which lets you pass a literal Prisma "where"
+        // * object as a parameter, useful for very complex filtering.
+        // * Read VSRepository's documentation to find out which operations support the "Where" suffix: https://github.com/jaobrabo123/VSRepository#dynamic-methods
         updateManyWhere: { map: true },
         updateById: { map: true },
         upsertByEmail: { map: true },
         deleteManyByIdIn: { map: true, whereType: "overwrite" },
         deleteById: { map: true, selectModel: "minimal" },
-        // * O VSRepository tem suporte ao "aggregate" e ao "groupBy", para utilizá-los você pode declarar um método com o nome exato deles (não aceita
-        // * parâmetros extras), a tipagem do retorno deles é definida dinamicamente pelo próprio Prisma
-        // ! Observação importante: O "aggregate" e o "groupBy" ignoram os selectModels, o requiredWhere e o pushWhere
+        // * VSRepository supports "aggregate" and "groupBy". To use them you can declare a method with their exact name (it doesn't accept
+        // * extra parameters), the return type is dynamically defined by Prisma itself
+        // ! Important note: "aggregate" and "groupBy" ignore selectModels, requiredWhere, and pushWhere
         aggregate: { map: true },
         groupBy: { map: true },
     },
 });
 
-// * Agora que configuramos noso repository vamos criar e exportar uma instância dele usando o método '.build()'
-// * Para isso precisamos passar uma instância do PrismaClient como primeiro parâmetro e também podemos configurar algumas coisas dessa instância
+// * Now that we've configured our repository, let's create and export an instance of it using the '.build()' method
+// * For that we need to pass a PrismaClient instance as the first parameter, and we can also configure a few things about this instance
 export const userRepository = userVSRepo.build(prisma, {
-    // * Aqui poderiamos marcar o showWorking como 'true' para ver o repository funcionando na prática, porém ele gera muitos logs para debug profundo, então
-    // * vamos deixar desativado, pois esse não é o foco no momento. Mas se você quiser pode ativar para ver ele funcionando e os payloads que ele gera
-    // * para o Prisma
-    showWorking: false, // * Por padrão já vem marcado como 'false'
+    // * Here we could set showWorking to 'true' to see the repository working in practice, but it generates a lot of deep-debug logs, so
+    // * we'll leave it disabled since that's not the focus right now. But if you want, you can enable it to see it working and the payloads
+    // * it generates for Prisma
+    showWorking: false, // * It's already set to 'false' by default
 
-    // * Também podemos configurar o funcionamento de alguns métodos base
-    // * Para saber mais sobre os métodos base veja a documentação do VSRepository: https://github.com/jaobrabo123/VSRepository#métodos-base
+    // * We can also configure the behavior of some base methods
+    // * To learn more about the base methods, see VSRepository's documentation: https://github.com/jaobrabo123/VSRepository#base-methods
     baseMethods: {
         removeList: {
-            // * Aqui estamos desativando o "removeList" nessa instância (por padrão todos os métodos vêm ativados)
+            // * Here we're disabling "removeList" on this instance (by default all methods come enabled)
             active: false,
         },
         remove: {
-            // * O método "remove" vai usar o selectModel "minimal" caso a gente não especifique ao chamar
+            // * The "remove" method will use the "minimal" selectModel if we don't specify one when calling it
             defaultSelect: "minimal",
         },
         getOrThrow: {
-            // * Aqui estamos dizendo que o "getOrThrow" vai ignorar o "requiredWhere" (semelhante ao whereType "overwrite" dos métodos dinâmicos)
+            // * Here we're saying that "getOrThrow" will ignore "requiredWhere" (similar to whereType "overwrite" in dynamic methods)
             ignoreRequiredWhere: true,
         },
         save: {
-            // * Configurando que ao realizar o upsert internamente (caso objeto passado tenha a primary key) o save vai ignorar o "requiredWhere"
+            // * Configuring that when performing an upsert internally (if the passed object has the primary key) save will ignore "requiredWhere"
             ignoreRequiredWhere: true,
         },
     },
 });
 
-// * Agora que criamos a instância podemos conferir se ele realmente criou os métodos
-// TODO Passe o cursor do mouse em cima de "UserRepositoryKeys" para ver os métodos do nosso repository
+// * Now that we've created the instance, we can check whether it actually created the methods
+// TODO Hover your mouse over "UserRepositoryKeys" to see our repository's methods
 export type UserRepositoryKeys = keyof typeof userRepository;
 
-// * Agora que já entendemos como criar e configurar um repository, vamos criar rapidamente os repositories das outras entidades
+// * Now that we understand how to create and configure a repository, let's quickly create the repositories for the other entities
 
-// * Configurando o repository de Endereco
-// * Observe que aqui não utilizamos o GetPayload, pois não vamos gerenciar nem filtrar relações nesse repository
+// * Configuring the Address repository
+// * Notice that here we don't use GetPayload, since we won't manage or filter relations in this repository
 const addressVSRepo = setupVSRepo<Address, "Address">()({
     tableName: "address",
     pkName: "id",
 
-    // * Observe também que nesse repository não definimos nenhum selectModel, o que significa que as operações retornarão o
-    // * payload padrão do Prisma. Isso não é uma boa prática, mas só mostrando que isso é uma possibilidade para projetos rápidos/simples
+    // * Also notice that in this repository we don't define any selectModel, which means the operations will return Prisma's
+    // * default payload. This isn't a good practice, it's just showing that it's a possibility for quick/simple projects
 
     methods: {
         findFirstByCityStartsWith: { map: true },
@@ -261,15 +261,15 @@ export const addressRepository = addressVSRepo
     .build(prisma, {
         baseMethods: { removeList: { ignoreRequiredWhere: true } },
     })
-    // * Podemos estender um repository usando a função "extend" ao criar uma instâcia.
-    // * Mais detalhes na documentação: https://github.com/jaobrabo123/VSRepository#estendendo-um-repository
+    // * We can extend a repository using the "extend" function when creating an instance.
+    // * More details in the documentation: https://github.com/jaobrabo123/VSRepository#extending-a-repository
     .extend(repo => ({
-        buscarEnderecosDoBrasil: async () => {
-            return repo.findByCountry("Brasil");
+        findAddressesFromBrazil: async () => {
+            return repo.findByCountry("Brazil");
         },
     }));
 
-// * Configurando repository de Produtos
+// * Configuring the Product repository
 type Product = ProductGetPayload<{
     include: {
         tags: true;
@@ -281,10 +281,10 @@ const productVSRepo = setupVSRepo<Product, "Product">()({
     tableName: "product",
     pkName: "id",
 
-    // * "softRemovekName" é a nova configuração que habilita o soft-delete nesse repository.
-    // * Ao informar o nome de um campo DateTime do modelo, o VSRepository passa a oferecer automaticamente
-    // * os métodos: softRemove, softRemoveList, restore e restoreList.
-    // * O campo precisa ser do tipo DateTime (nullable) no schema.prisma — o VSRepository valida isso no build.
+    // * "softRemovekName" is the new setting that enables soft-delete on this repository.
+    // * By providing the name of a DateTime field on the model, VSRepository automatically offers
+    // * the following methods: softRemove, softRemoveList, restore, and restoreList.
+    // * The field must be of type DateTime (nullable) in schema.prisma — VSRepository validates this at build time.
     softRemovekName: "deletedAt",
 
     selectModels: {
@@ -320,7 +320,7 @@ const productVSRepo = setupVSRepo<Product, "Product">()({
     },
     defaultSelectModel: "public",
 
-    // * Queremos buscar somente produtos de usuários ativos
+    // * We only want to fetch products belonging to active users
     requiredWhere: { user: { is: { active: true } } },
 
     relations: {
@@ -328,19 +328,19 @@ const productVSRepo = setupVSRepo<Product, "Product">()({
             mode: "mto",
             pk: "id",
             restriction: "add",
-            // * O "nullable" só existe em relações "mto" (many-to-one), ele serve para dizermos se a chave estrangeira (nesse caso o userId) pode ser nula.
-            // * Como o userId é not null (definimos isso no schema.prisma) colocamos "nullable" como false (padrão = false).
-            // * Isso serve para o VSRepository decidir oq fazer caso você passe a relation como null no save/patch, se for true ele vai fazer
-            // * um disconnect (colocar a fk como null) e se for false ele lança erro
+            // * "nullable" only exists on "mto" (many-to-one) relations, it's used to say whether the foreign key (in this case userId) can be null.
+            // * Since userId is not null (we defined this in schema.prisma) we set "nullable" to false (default = false).
+            // * This is used by VSRepository to decide what to do if you pass the relation as null in save/patch: if true it will
+            // * perform a disconnect (set the fk to null), and if false it throws an error
             nullable: false,
         },
         tags: {
             mode: "mtm",
-            // ! ATENÇÃO: Note que aqui colocamos o "name" como pk sendo que a primary key de tag é "id", mas como assim?? Não vai dar erro?? Não vai dar erro nesse caso,
-            // ! pois marcamos "name" como unique no schema.prisma, então o VSRepository consegue identificar as tags que já existem das que ainda não existem.
-            // ? Ok faz sentido, mas por que isso nesse caso? Pois na regra de negócio desse sistema em específico queremos que se uma tag fornecida já exista ela
-            // ? seja conectada ao nosso produto e se caso não tiver nenhuma tag com esse nome, ele crie e conecte ao produto. Mas se as tags fossem fixas (se não existe,
-            // ? não cria automaticamente), o ideal seria colocar a pk como "id". Mas muito cuidado ao fazer essas "gambiarras", sempre teste antes de enviar para produção.
+            // ! WARNING: Notice that here we set "name" as the pk even though tag's primary key is "id" — how come?? Won't that cause an error?? It won't cause an error in this case,
+            // ! because we marked "name" as unique in schema.prisma, so VSRepository is able to tell apart the tags that already exist from the ones that don't yet.
+            // ? Ok, that makes sense, but why do it this way here? Because in this specific system's business rules, we want a provided tag that already exists to
+            // ? be connected to our product, and if there's no tag with that name, it should be created and connected to the product. But if tags were fixed (if it doesn't exist,
+            // ? don't auto-create it), the ideal would be to set the pk as "id". Be very careful with these kinds of "workarounds" though — always test before shipping to production.
             pk: "name",
             restriction: "set",
         },
@@ -353,7 +353,7 @@ const productVSRepo = setupVSRepo<Product, "Product">()({
 
         findByPriceBetween: { map: true },
 
-        // * Esse método busca produtos sem descrição
+        // * This method searches for products without a description
         findByDescriptionIsNull: { map: true },
 
         findByTagsSomeName: { map: true },
@@ -370,4 +370,4 @@ export const productRepository = productVSRepo.build(prisma, {
     baseMethods: { removeList: { ignoreRequiredWhere: true } },
 });
 
-// * Ok, agora que já configuramos nosssos repositories vamos para pasta "tests" testá-los na prática
+// * Ok, now that we've configured our repositories, let's move on to the "tests" folder to test them in practice

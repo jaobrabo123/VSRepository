@@ -1,34 +1,34 @@
-// * Agora que já configuramos nos repositories vamos começar os teste, primeiro vamos começar a testar os métodos base que já vêm ao criar um repository
+// * Now that we've configured our repositories, let's start the tests — first let's test the base methods that already come when you create a repository
 
 import { UserType } from "../../generated/prisma/enums";
 import { userRepository } from "../repositories";
 
-// * Essa será a função que utilizaremos para testar os métodos base
+// * This will be the function we use to test the base methods
 async function baseMethodsTest() {
-    // * Bom, para começar vamos testar o getAll para buscar todos os usuários, ela pode receber uma configuração de paginação e ordenação como parâmetro,
-    // * vamos começar tentando buscar 20 registros
-    // TODO Passe o cursor do mouse em cima de "getAllResult" para ver a tipagem dele, ela está conforme o nosso modelo "public" que definimos como default no repository
+    // * Well, to start, let's test getAll to fetch all users. It can receive a pagination and ordering configuration as a parameter,
+    // * let's start by trying to fetch 20 records
+    // TODO Hover your mouse over "getAllResult" to see its typing, it matches our "public" model that we set as default on the repository
     const getAllResult = await userRepository.getAll({ pagination: { take: 20 } });
 
-    // * Como ainda não cadastramos nenhum usuário provavelmente não retornou nada, mas vamos dar um console.log para ver o resultado
-    console.log("\nResultado do 'getAll':", getAllResult);
+    // * Since we haven't registered any users yet, it probably returned nothing, but let's do a console.log to see the result
+    console.log("\n'getAll' result:", getAllResult);
 
-    // * Agora vamos popular nossa base de dados com alguns usuários, como o VSRepository *ainda* não tem suporte à um método como "saveMany" ou "saveList"
-    // * para salvar vários registros de uma vez, vamos fazer um save de cada vez. No entanto, uma opção mais robusta seria usar o createMany que declaramos
-    // * no nosso repository para usar o createMany nativo do Prisma (um createManyAndReturn também seria uma opção), mas nesse caso vamos usar o save
-    // TODO Passe o cursor do mouse em cima de cada um deles para ver a tipagem, note que até então a senha nunca está sendo retornada
+    // * Now let's populate our database with a few users. Since VSRepository *doesn't yet* support a method like "saveMany" or "saveList"
+    // * to save several records at once, we'll do a save one at a time. However, a more robust option would be to use the createMany we declared
+    // * in our repository to use Prisma's native createMany (a createManyAndReturn would also be an option), but in this case we'll use save
+    // TODO Hover your mouse over each of them to see the typing, notice that so far the password is never returned
     const user1 = await userRepository.save({
-        name: "João",
-        email: "joao@email.com",
+        name: "John",
+        email: "john@email.com",
         likesVSRepo: true,
-        password: "çenhaBeimSegura",
+        password: "n0tSoSecureP4ss",
         userType: UserType.ADMIN,
     });
     const user2 = await userRepository.save({
-        name: "Um cara paia",
-        email: "cara@paia.com",
+        name: "Some lame guy",
+        email: "lame@guy.com",
         likesVSRepo: false,
-        password: "senha123",
+        password: "password123",
         userType: UserType.COMMON,
     });
     const user3 = await userRepository.save({
@@ -39,66 +39,66 @@ async function baseMethodsTest() {
         userType: UserType.ADMIN,
     });
 
-    // * Agora vamos ver no console cada um dos usuários
-    console.log("\nUsuário 1:", user1);
-    console.log("\nUsuário 2:", user2);
-    console.log("\nUsuário 3:", user3);
+    // * Now let's log each of the users to the console
+    console.log("\nUser 1:", user1);
+    console.log("\nUser 2:", user2);
+    console.log("\nUser 3:", user3);
 
-    // * Podemos conferir o total de usuários com o método "total"
+    // * We can check the total number of users with the "total" method
     const totalUsers = await userRepository.total();
-    console.log("\nTotal de usuários:", totalUsers);
+    console.log("\nTotal users:", totalUsers);
 
-    // * Podemos validar rapidamente se um usuário existe usando o "has"
+    // * We can quickly check whether a user exists using "has"
     const user1Exists = await userRepository.has(user1.id);
-    console.log("\nUsuário 1 existe?", user1Exists);
+    console.log("\nDoes User 1 exist?", user1Exists);
 
-    // * Podemos também alterar parcialmente os dados do usuário usando o "patch"
+    // * We can also partially change the user's data using "patch"
     const updatedUser2 = await userRepository.patch(user2.id, {
         likesVSRepo: true,
-        name: "Um cara gente boa",
-        email: "gente@boa.com",
+        name: "A pretty cool guy",
+        email: "cool@guy.com",
     });
-    console.log("\nUsuário 2 atualizado:", updatedUser2);
+    console.log("\nUpdated User 2:", updatedUser2);
 
-    // * Para buscar um usuário específico usamos o "get" passando o id dele
-    // * Nesse caso vamos também escolher um selectModel específico (sem ser o default) para ver a diferença no resultado
-    // TODO Passe o mouse em cima de "internalUser3" para ver que agora estamos retornando a senha
+    // * To fetch a specific user we use "get" passing their id
+    // * In this case we'll also choose a specific selectModel (other than the default) to see the difference in the result
+    // TODO Hover your mouse over "internalUser3" to see that now we're returning the password
     const internalUser3 = await userRepository.get(user3.id, { selectModel: "internal" });
-    console.log("\nDados internos do usuário 3:", internalUser3);
+    console.log("\nUser 3 internal data:", internalUser3);
 
-    // * Também podemos atualizar um usuário com o "save", desde que o objeto fornecido contenham o id do usuário para o save realizar o "upsert"
-    // ? Aqui afirmamos que o usuário não é null como '!' pois o get retorna os dados do usuário se achar ou null se não encontrar
-    // ? porém nesse caso a gente "tem certeza" que ele existe
+    // * We can also update a user with "save", as long as the provided object contains the user's id so save performs an "upsert"
+    // ? Here we assert the user isn't null with '!' because get returns the user's data if found, or null if not found
+    // ? but in this case we "are sure" it exists
     internalUser3!.password = "J4rv1s0987";
     internalUser3!.email = "jarvis@email.com";
 
     const updatedUser3 = await userRepository.save(internalUser3!);
-    console.log("\nUsuário 3 atualizado:", updatedUser3);
+    console.log("\nUpdated User 3:", updatedUser3);
 
-    // * Para termos realmente certeza que um registro existe de tentar fazer alguma coisa, podemos usar o "getOrThrow", ele busca um usuário pelo id e lança
-    // * um erro se não encontrar
+    // * To really make sure a record exists before trying to do something, we can use "getOrThrow" — it fetches a user by id and throws
+    // * an error if not found
     try {
-        // * Para testar vamos tentar buscar um usuário que não existe
+        // * To test this, let's try to fetch a user that doesn't exist
         const unknownUser = await userRepository.getOrThrow(crypto.randomUUID());
-        console.log("\nEsse log não vai aparecer:", unknownUser);
+        console.log("\nThis log won't show up:", unknownUser);
     } catch (error: any) {
-        console.log("\nErro esperado:", error.message);
+        console.log("\nExpected error:", error.message);
     }
 
-    // * Podemos também remover um usuário específico com o "remove"
+    // * We can also remove a specific user with "remove"
     await userRepository.remove(user2.id);
 
-    // * Agora buscamos todos os usuários com "getAlL" para conferir se o Usuário 2 realmente foi removido
+    // * Now let's fetch all users with "getAll" to check whether User 2 was really removed
     const allUsers = await userRepository.getAll();
-    console.log("\nTodos os usuários:", allUsers);
+    console.log("\nAll users:", allUsers);
 
-    // * Bom, e para não deixar o nosso banco poluído vamos remover tudo que a gente criou nesse teste
-    // * OBS: aqui estamos usando o "deleteManyByIdIn" pois lá na instância do nosso repository desativamos o "removeList"
+    // * Well, and to avoid leaving our database polluted, let's remove everything we created in this test
+    // * NOTE: here we're using "deleteManyByIdIn" since we disabled "removeList" on our repository's instance
     await userRepository.deleteManyByIdIn([user1.id, user2.id, user3.id]);
 
     process.exit(0);
 }
 
-// * Agora para testar os métodos base a gente chama a função para executar todas as operações
-// TODO Rode pnpm tsx .\examples\tests\base-methods.test.ts ou npx tsx .\examples\tests\base-methods.test.ts para executar o código
+// * Now, to test the base methods, we call the function to run all the operations
+// TODO Run pnpm tsx .\examples\tests\base-methods.test.ts or npx tsx .\examples\tests\base-methods.test.ts to execute the code
 void baseMethodsTest();

@@ -1,108 +1,109 @@
-# Exemplos do VSRepository
+# VSRepository Examples
 
-Esta pasta contém exemplos práticos e comentados de como usar o **VSRepository**. A ideia aqui não é só mostrar código pronto, mas te ensinar o "porquê" de cada coisa através de comentários no próprio código (`*`, `?`, `!` e `TODO`).
+This folder contains practical, commented examples of how to use **VSRepository**. The idea here isn't just to show ready-made code, but to teach you the "why" behind each thing through comments in the code itself (`*`, `?`, `!`, and `TODO`).
 
-> 💡 Antes de mexer nesses exemplos, vale a pena dar uma lida no [README principal do projeto](../README.md), que documenta a API completa do VSRepository em detalhes.
-
----
-
-## Sumário
-
-- [Estrutura da pasta](#estrutura-da-pasta)
-- [O domínio usado nos exemplos](#o-domínio-usado-nos-exemplos)
-- [Como ler os exemplos](#como-ler-os-exemplos)
-- [Como configurar o ambiente](#como-configurar-o-ambiente)
-- [Como rodar os testes](#como-rodar-os-testes)
-- [Legenda dos comentários](#legenda-dos-comentários)
-- [Ordem sugerida de leitura](#ordem-sugerida-de-leitura)
+> 💡 Before touching these examples, it's worth reading the [project's main README](../README.md), which documents VSRepository's full API in detail.
 
 ---
 
-## Estrutura da pasta
+## Table of contents
+
+- [Folder structure](#folder-structure)
+- [The domain used in the examples](#the-domain-used-in-the-examples)
+- [How to read the examples](#how-to-read-the-examples)
+- [How to set up the environment](#how-to-set-up-the-environment)
+- [How to run the tests](#how-to-run-the-tests)
+- [Comment legend](#comment-legend)
+- [Suggested reading order](#suggested-reading-order)
+
+---
+
+## Folder structure
 
 ```
 examples/
-├── prisma.ts            # Instância do PrismaClient usada pelos exemplos
-├── repositories.ts       # Configuração de todos os repositories (User, Address, Product)
+├── prisma.ts            # PrismaClient instance used by the examples
+├── repositories.ts       # Configuration of all repositories (User, Address, Product)
 └── tests/
-    ├── base-methods.test.ts       # Métodos base: get, save, patch, remove, getAll, total, has...
-    ├── relations.test.ts          # Como configurar e usar relations no save/patch e em filtros
-    ├── required-where.test.ts     # Como o requiredWhere é aplicado automaticamente nas queries
-    ├── dynamic-methods.test.ts    # Prefixos, filtros de campo, operadores lógicos, paginação/ordenação e distinct
-    ├── transactions.test.ts       # Transactions com options.db e acesso à instância via repository.prisma
-    ├── soft-delete.test.ts        # Soft-delete: softRemove, softRemoveList, restore, restoreList e SeeMode
-    └── batch-methods.test.ts      # Operações em lote: getList, saveList, patchList e merge
+    ├── base-methods.test.ts       # Base methods: get, save, patch, remove, getAll, total, has...
+    ├── relations.test.ts          # How to configure and use relations in save/patch and in filters
+    ├── required-where.test.ts     # How requiredWhere is automatically applied to queries
+    ├── dynamic-methods.test.ts    # Prefixes, field filters, logical operators, pagination/ordering and distinct
+    ├── transactions.test.ts       # Transactions with options.db and instance access via repository.prisma
+    ├── soft-delete.test.ts        # Soft-delete: softRemove, softRemoveList, restore, restoreList and SeeMode
+    └── batch-methods.test.ts      # Batch operations: getList, saveList, patchList and merge
 ```
 
-- **`prisma.ts`** configura a instância do `PrismaClient` (com o adapter do Postgres) usada por todos os repositories.
-- **`repositories.ts`** é o ponto de partida: aqui é onde os repositories de `User`, `Address` e `Product` são configurados com `setupVSRepo`, incluindo `selectModels`, `requiredWhere`, `softRemovekName`, `relations` e os métodos dinâmicos (`methods`). Todos os arquivos em `tests/` importam os repositories já prontos a partir daqui.
-- **`tests/`** é onde a "mão na massa" acontece: cada arquivo é um script independente e executável que demonstra um conjunto de funcionalidades específico, com `console.log` em cada passo para você ver o resultado de cada operação no terminal.
+- **`prisma.ts`** configures the `PrismaClient` instance (with the Postgres adapter) used by all repositories.
+- **`repositories.ts`** is the starting point: this is where the `User`, `Address`, and `Product` repositories are configured with `setupVSRepo`, including `selectModels`, `requiredWhere`, `softRemovekName`, `relations`, and the dynamic methods (`methods`). All files in `tests/` import the already-configured repositories from here.
+- **`tests/`** is where the hands-on part happens: each file is an independent, runnable script that demonstrates a specific set of features, with `console.log` at each step so you can see the result of each operation in the terminal.
 
 ---
 
-## O domínio usado nos exemplos
+## The domain used in the examples
 
-Todos os exemplos giram em torno do mesmo schema do Prisma (veja [`prisma/schema.prisma`](../prisma/schema.prisma)):
+All the examples revolve around the same Prisma schema (see [`prisma/schema.prisma`](../prisma/schema.prisma)):
 
-- **`User`** → tem um endereço (`Address`, relação **one-to-one**) e vários produtos (`Product`, relação **one-to-many**).
-- **`Address`** → pertence a um único `User` (**one-to-one**).
-- **`Product`** → pertence a um único `User` (**many-to-one**) e pode ter várias `Tag` (relação **many-to-many**). O campo `deletedAt` habilita o soft-delete nesse model.
-- **`Tag`** → pode estar em vários produtos.
+- **`User`** → has an address (`Address`, **one-to-one** relation) and several products (`Product`, **one-to-many** relation).
+- **`Address`** → belongs to a single `User` (**one-to-one**).
+- **`Product`** → belongs to a single `User` (**many-to-one**) and can have several `Tag`s (**many-to-many** relation). The `deletedAt` field enables soft-delete on this model.
+- **`Tag`** → can be on multiple products.
 
-Entender esse desenho ajuda bastante a acompanhar os exemplos de `relations.test.ts`, já que ele usa exatamente essas relações (`oto`, `otm`, `mto`, `mtm`) na prática.
-
----
-
-## Como ler os exemplos
-
-Cada arquivo de teste é **autocontido**: ele cria os dados que precisa, executa as operações de exemplo com `console.log` explicando o resultado esperado, e no final limpa o que criou no banco (para você poder rodar de novo sem deixar lixo).
-
-Recomendamos fortemente abrir os arquivos no **VS Code** (ou outra IDE com suporte a TypeScript) ao invés de só ler no GitHub, porque:
-
-- Muitos comentários `TODO` pedem pra você passar o mouse em cima de uma variável para ver a tipagem que o VSRepository infere automaticamente — isso só funciona com o LSP do TypeScript rodando.
-- Você vai ter autocomplete nos métodos dos repositories, o que ajuda a explorar outras possibilidades além do que está nos exemplos.
+Understanding this layout helps a lot when following the `relations.test.ts` examples, since it uses exactly these relations (`oto`, `otm`, `mto`, `mtm`) in practice.
 
 ---
 
-## Como configurar o ambiente
+## How to read the examples
 
-Antes de rodar qualquer teste, você precisa de um banco Postgres rodando e o projeto configurado:
+Each test file is **self-contained**: it creates the data it needs, runs the example operations with `console.log` explaining the expected result, and at the end cleans up what it created in the database (so you can run it again without leaving leftover data).
 
-1. **Clone o repositório** (se ainda não tiver feito):
+We strongly recommend opening the files in **VS Code** (or another IDE with TypeScript support) instead of just reading them on GitHub, because:
+
+- Many `TODO` comments ask you to hover over a variable to see the type VSRepository infers automatically — this only works with the TypeScript LSP running.
+- You'll get autocomplete on the repository methods, which helps you explore other possibilities beyond what's in the examples.
+
+---
+
+## How to set up the environment
+
+Before running any test, you need a running Postgres database and the project configured:
+
+1. **Clone the repository** (if you haven't already):
    ```
    git clone https://github.com/jaobrabo123/VSRepository.git
    cd VSRepository
    ```
 
-2. **Instale as dependências**:
+2. **Install the dependencies**:
    ```
    pnpm install
    ```
 
-3. **Configure a variável de ambiente**: copie o `.env.example` para `.env` e ajuste a `DATABASE_URL` para apontar para o seu banco Postgres:
+3. **Configure the environment variable**: copy `.env.example` to `.env` and adjust `DATABASE_URL` to point to your Postgres database:
    ```
    cp .env.example .env
    ```
 
-4. **Rode as migrations** para criar as tabelas (`User`, `Address`, `Product`, `Tag`):
+4. **Run the migrations** to create the tables (`User`, `Address`, `Product`, `Tag`):
    ```
    npx prisma migrate dev
    ```
 
-5. **Gere o Prisma Client e os tipos do VSRepository**:
+5. **Generate the Prisma Client and the VSRepository types**:
    ```
+   npm run build
    npx prisma generate
    npx vsrepo generate
    ```
-   > Esses dois comandos geram as pastas `generated/prisma` e `generated/vsrepo`, que são importadas tanto em `repositories.ts` quanto nos próprios arquivos de teste.
+   > These two commands generate the `generated/prisma` and `generated/vsrepo` folders, which are imported both in `repositories.ts` and in the test files themselves.
 
-Depois desses passos, os arquivos dentro de `examples/` já devem estar livres de erros de tipagem na sua IDE.
+After these steps, the files inside `examples/` should already be free of typing errors in your IDE.
 
 ---
 
-## Como rodar os testes
+## How to run the tests
 
-Cada arquivo em `tests/` é executado individualmente com o `tsx` (já incluso nas dependências do projeto):
+Each file in `tests/` is run individually with `tsx` (already included in the project's dependencies):
 
 ```
 npx tsx examples/tests/base-methods.test.ts
@@ -114,7 +115,7 @@ npx tsx examples/tests/soft-delete.test.ts
 npx tsx examples/tests/batch-methods.test.ts
 ```
 
-Ou, se preferir usar o `pnpm`:
+Or, if you prefer to use `pnpm`:
 
 ```
 pnpm tsx examples/tests/base-methods.test.ts
@@ -126,40 +127,40 @@ pnpm tsx examples/tests/soft-delete.test.ts
 pnpm tsx examples/tests/batch-methods.test.ts
 ```
 
-> ⚠️ Os testes criam e removem dados reais no banco configurado na sua `DATABASE_URL`. Por isso, é recomendável rodá-los em um banco de desenvolvimento/teste, nunca em produção.
+> ⚠️ The tests create and remove real data in the database configured in your `DATABASE_URL`. Because of this, it's recommended to run them against a development/test database.
 
-Acompanhe a saída no terminal: cada `console.log` mostra o resultado de uma operação específica, geralmente com um comentário `TODO` no código explicando o que esperar daquele log.
+Follow the terminal output: each `console.log` shows the result of a specific operation, usually with a `TODO` comment in the code explaining what to expect from that log.
 
 ---
 
-## Legenda dos comentários
+## Comment legend
 
-Para deixar a leitura mais fácil, os comentários nos exemplos seguem um padrão:
+To make reading easier, the comments in the examples follow a pattern:
 
-| Prefixo | Significado |
+| Prefix  | Meaning |
 | ------- | ----------- |
-| `*`     | Explicação do que está sendo feito naquele trecho de código |
-| `?`     | Uma pergunta que você talvez esteja se fazendo, respondida ali mesmo |
-| `!`     | Um aviso ou detalhe importante de atenção (comportamento que pode surpreender) |
-| `TODO`  | Uma ação sugerida para você (ex: passar o mouse em cima de uma variável, ou rodar um comando) |
+| `*`     | Explanation of what's being done in that piece of code |
+| `?`     | A question you might be asking yourself, answered right there |
+| `!`     | An important warning or detail worth paying attention to (behavior that might be surprising) |
+| `TODO`  | A suggested action for you (e.g. hover over a variable, or run a command) |
 
 ---
 
-## Ordem sugerida de leitura
+## Suggested reading order
 
-Se você está começando agora com o VSRepository, essa é a ordem recomendada para acompanhar os exemplos:
+If you're just starting out with VSRepository, this is the recommended order for going through the examples:
 
-1. **[`repositories.ts`](./repositories.ts)** — entenda como os repositories são configurados (`selectModels`, `requiredWhere`, `softRemovekName`, `relations`, `methods`).
-2. **[`tests/base-methods.test.ts`](./tests/base-methods.test.ts)** — veja os métodos base (`get`, `save`, `patch`, `remove`, `getAll`, `total`, `has`...) em ação.
-3. **[`tests/relations.test.ts`](./tests/relations.test.ts)** — entenda como o `save`/`patch` gerenciam relações automaticamente (`set` vs `add`) e como usar filtros de relação (`Some`, `None`, `With`, `Without`).
-4. **[`tests/required-where.test.ts`](./tests/required-where.test.ts)** — veja como o `requiredWhere` é injetado automaticamente nas queries e como ignorá-lo quando necessário (`ignoreRequiredWhere`, `whereType: "overwrite"`).
-5. **[`tests/dynamic-methods.test.ts`](./tests/dynamic-methods.test.ts)** — explore os métodos dinâmicos: prefixos, filtros de campo, operadores lógicos (`And`/`Or`), `proxyTo`, sufixos de paginação/ordenação e o sufixo `Distinct`.
-6. **[`tests/transactions.test.ts`](./tests/transactions.test.ts)** — entenda como acessar a instância do Prisma com `repository.prisma`, abrir uma transaction com `$transaction` e fazer múltiplos repositories participarem dela via `options.db`, incluindo um exemplo de rollback.
-7. **[`tests/soft-delete.test.ts`](./tests/soft-delete.test.ts)** — aprenda a usar o soft-delete (`softRemovekName`, `softRemove`, `softRemoveList`, `restore`, `restoreList`) e o `SeeMode` para controlar quais registros as queries enxergam (`"active"`, `"removed"`, `"all"`).
-8. **[`tests/batch-methods.test.ts`](./tests/batch-methods.test.ts)** — explore as operações em lote: `getList` (busca por lista de PKs), `saveList` (cria vários em transação automática), `patchList` (atualiza vários por tuplas em transação automática) e `merge` (busca + deep merge em memória).
+1. **[`repositories.ts`](./repositories.ts)** — understand how the repositories are configured (`selectModels`, `requiredWhere`, `softRemovekName`, `relations`, `methods`).
+2. **[`tests/base-methods.test.ts`](./tests/base-methods.test.ts)** — see the base methods (`get`, `save`, `patch`, `remove`, `getAll`, `total`, `has`...) in action.
+3. **[`tests/relations.test.ts`](./tests/relations.test.ts)** — understand how `save`/`patch` manage relations automatically (`set` vs `add`) and how to use relation filters (`Some`, `None`, `With`, `Without`).
+4. **[`tests/required-where.test.ts`](./tests/required-where.test.ts)** — see how `requiredWhere` is automatically injected into queries and how to ignore it when needed (`ignoreRequiredWhere`, `whereType: "overwrite"`).
+5. **[`tests/dynamic-methods.test.ts`](./tests/dynamic-methods.test.ts)** — explore the dynamic methods: prefixes, field filters, logical operators (`And`/`Or`), `proxyTo`, pagination/ordering suffixes, and the `Distinct` suffix.
+6. **[`tests/transactions.test.ts`](./tests/transactions.test.ts)** — understand how to access the Prisma instance with `repository.prisma`, open a transaction with `$transaction`, and have multiple repositories participate in it via `options.db`, including a rollback example.
+7. **[`tests/soft-delete.test.ts`](./tests/soft-delete.test.ts)** — learn how to use soft-delete (`softRemovekName`, `softRemove`, `softRemoveList`, `restore`, `restoreList`) and `SeeMode` to control which records the queries see (`"active"`, `"removed"`, `"all"`).
+8. **[`tests/batch-methods.test.ts`](./tests/batch-methods.test.ts)** — explore the batch operations: `getList` (fetch by a list of PKs), `saveList` (creates several in an automatic transaction), `patchList` (updates several via tuples in an automatic transaction), and `merge` (fetch + deep merge in memory).
 
-Depois de passar por esses 8 arquivos, você já terá visto na prática praticamente tudo que está documentado no [README principal](../README.md). A partir daí, a melhor forma de aprender é editar os próprios exemplos: troque os campos, crie novos métodos dinâmicos em `repositories.ts` e veja o autocomplete e a tipagem reagindo em tempo real.
+After going through these 8 files, you'll have seen practically everything documented in the [main README](../README.md) in practice. From there, the best way to learn is to edit the examples yourself: swap out fields, create new dynamic methods in `repositories.ts`, and watch the autocomplete and typing react in real time.
 
 ---
 
-Encontrou algo que poderia estar mais claro nos exemplos? Abra uma [issue](https://github.com/jaobrabo123/VSRepository/issues) ou contribua direto com um Pull Request 🙂
+Found something that could be clearer in the examples? Open an [issue](https://github.com/jaobrabo123/VSRepository/issues) or contribute directly with a Pull Request 😁

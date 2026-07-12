@@ -1,100 +1,100 @@
-// * Nesse arquivo vamos testar os novos métodos base de operações em lote e o "merge":
+// * In this file we'll test the new base batch-operation methods and "merge":
 // *
-// *   getList    — busca múltiplos registros por uma lista de PKs (em uma única query)
-// *   saveList   — salva um array de objetos em uma única transação automática (suporta relations)
-// *   patchList  — atualiza parcialmente múltiplos registros via tuplas [pk, obj] em transação automática (suporta relations)
-// *   merge      — busca um registro pela PK, faz deep merge em MEMÓRIA e retorna o resultado sem persistir
+// *   getList    — fetches multiple records from a list of PKs (in a single query)
+// *   saveList   — saves an array of objects in a single automatic transaction (supports relations)
+// *   patchList  — partially updates multiple records via [pk, obj] tuples in an automatic transaction (supports relations)
+// *   merge      — fetches a record by PK, deep merges it in MEMORY, and returns the result without persisting
 
 import { UserType } from "../../generated/prisma/enums";
 import { userRepository, productRepository } from "../repositories";
 
-// * Essa será a função que utilizaremos para testar os métodos em lote
+// * This will be the function we use to test the batch methods
 async function batchMethodsTest() {
     // * -----------------------------------------------------------------------------------------
-    // * 1) saveList — criando múltiplos registros em uma única transação, com suporte a relations
+    // * 1) saveList — creating multiple records in a single transaction, with relation support
     // * -----------------------------------------------------------------------------------------
 
-    // * "saveList" salva um array de objetos em uma única transação automática gerenciada pelo VSRepository.
-    // * Cada objeto segue as mesmas regras do "save": se tiver a PK faz upsert, se não tiver faz create.
-    // * Assim como o "save", o "saveList" gerencia relations automaticamente — basta incluí-las no payload.
-    // TODO Passe o mouse em cima de "createdUsers" para ver a tipagem: é um array do selectModel "public"
+    // * "saveList" saves an array of objects in a single automatic transaction managed by VSRepository.
+    // * Each object follows the same rules as "save": if it has the PK it performs an upsert, if not it performs a create.
+    // * Just like "save", "saveList" also manages relations automatically — just include them in the payload.
+    // TODO Hover your mouse over "createdUsers" to see the typing: it's an array of the "public" selectModel
     const createdUsers = await userRepository.saveList([
         {
             name: "Fernanda Costa",
             email: "fernanda@email.com",
-            password: "senha123",
+            password: "password123",
             likesVSRepo: true,
             userType: UserType.COMMON,
-            // * Passando a relação "address" diretamente no payload — o VSRepository cria o endereço
-            // * vinculado junto com o usuário, dentro da mesma transação
+            // * Passing the "address" relation directly in the payload — VSRepository creates the address
+            // * linked to the user, within the same transaction
             address: {
                 city: "Fortaleza",
                 state: "CE",
-                country: "Brasil",
+                country: "Brazil",
             },
         },
         {
             name: "Gabriel Souza",
             email: "gabriel@email.com",
-            password: "senha123",
+            password: "password123",
             likesVSRepo: true,
             userType: UserType.ADMIN,
         },
         {
             name: "Helena Lima",
             email: "helena@email.com",
-            password: "senha123",
+            password: "password123",
             likesVSRepo: false,
             userType: UserType.COMMON,
         },
     ]);
 
     console.log(
-        "\nUsuários criados com saveList:",
+        "\nUsers created with saveList:",
         createdUsers.map(u => ({ name: u.name, address: u.address })),
     );
 
     const [fernanda, gabriel, helena] = createdUsers;
 
     // * -----------------------------------------------------------------------
-    // * 2) getList — buscando múltiplos registros por lista de PKs
+    // * 2) getList — fetching multiple records by a list of PKs
     // * -----------------------------------------------------------------------
 
-    // * "getList" faz uma única query ao banco para buscar vários registros de uma vez por uma lista de PKs.
-    // ! Importante: a ORDER dos resultados pode não respeitar a ordem da lista de PKs que você passou.
-    // * O seletor padrão (defaultSelectModel) é aplicado normalmente, assim como o requiredWhere.
+    // * "getList" performs a single database query to fetch several records at once by a list of PKs.
+    // ! Important: the ORDER of the results may not respect the order of the PK list you passed.
+    // * The default selector (defaultSelectModel) is applied normally, as is requiredWhere.
     const foundUsers = await userRepository.getList([fernanda!.id, gabriel!.id, helena!.id]);
 
     console.log(
-        "\nUsuários encontrados com getList:",
+        "\nUsers found with getList:",
         foundUsers.map(u => u.name),
     );
 
-    // * Assim como os outros métodos base, o "getList" aceita opções — inclusive um selectModel diferente
+    // * Just like the other base methods, "getList" accepts options — including a different selectModel
     const minimalUsers = await userRepository.getList([fernanda!.id, gabriel!.id], {
         selectModel: "minimal",
     });
-    // TODO Passe o mouse em cima de "minimalUsers" para ver que só o "id" está disponível
-    console.log("\ngetList com selectModel 'minimal' (apenas IDs):", minimalUsers);
+    // TODO Hover your mouse over "minimalUsers" to see that only "id" is available
+    console.log("\ngetList with selectModel 'minimal' (IDs only):", minimalUsers);
 
     // * -----------------------------------------------------------------------------------------------
-    // * 3) patchList — atualizando múltiplos registros em transação automática, com suporte a relations
+    // * 3) patchList — updating multiple records in an automatic transaction, with relation support
     // * -----------------------------------------------------------------------------------------------
 
-    // * "patchList" recebe um array de tuplas [pk, payload] e aplica o patch de cada uma dentro de uma
-    // * única transação automática. Igual ao "patch", o "patchList" também gerencia relations automaticamente.
-    // TODO Passe o mouse em cima de "updatedUsers" para ver que é um array do selectModel "public"
+    // * "patchList" receives an array of [pk, payload] tuples and applies the patch of each one within a
+    // * single automatic transaction. Just like "patch", "patchList" also manages relations automatically.
+    // TODO Hover your mouse over "updatedUsers" to see that it's an array of the "public" selectModel
     const updatedUsers = await userRepository.patchList([
         [
             fernanda!.id,
             {
                 name: "Fernanda Costa Silva",
-                // * Atualizando o endereço da Fernanda via patchList — o VSRepository gerencia o "set"
-                // * da relação "address" (configurada com restriction: "set" em repositories.ts)
+                // * Updating Fernanda's address via patchList — VSRepository manages the "set"
+                // * of the "address" relation (configured with restriction: "set" in repositories.ts)
                 address: {
                     city: "Recife",
                     state: "PE",
-                    country: "Brasil",
+                    country: "Brazil",
                 },
             },
         ],
@@ -103,7 +103,7 @@ async function batchMethodsTest() {
     ]);
 
     console.log(
-        "\nUsuários após patchList:",
+        "\nUsers after patchList:",
         updatedUsers.map(u => ({
             name: u.name,
             userType: u.userType,
@@ -113,47 +113,47 @@ async function batchMethodsTest() {
     );
 
     // * -----------------------------------------------------------------------
-    // * 4) merge — deep merge em MEMÓRIA (sem persistir no banco)
+    // * 4) merge — deep merge in MEMORY (without persisting to the database)
     // * -----------------------------------------------------------------------
 
-    // * "merge" é análogo ao "preload" do TypeORM: ele busca o registro pela PK, faz um deep merge
-    // * em memória com o objeto que você forneceu e devolve o resultado fundido — mas NÃO salva nada
-    // * no banco. É responsabilidade de quem chama decidir o que fazer com o objeto retornado.
+    // * "merge" is analogous to TypeORM's "preload": it fetches the record by PK, performs a deep merge
+    // * in memory with the object you provided, and returns the merged result — but it does NOT save anything
+    // * to the database. It's up to the caller to decide what to do with the returned object.
     // *
-    // ? Quando usar merge vs patch?
-    // *   patch  — modifica diretamente no banco sem carregar o objeto antes; retorna o estado atualizado
-    // *   merge  — útil quando você precisa do estado fundido em memória antes de decidir se vai salvar,
-    // *            aplicar validações adicionais, exibir preview de mudanças, ou montar um payload mais
-    // *            complexo antes de chamar o save manualmente
+    // ? When should you use merge vs patch?
+    // *   patch  — modifies the database directly without loading the object first; returns the updated state
+    // *   merge  — useful when you need the merged state in memory before deciding whether to save,
+    // *            apply additional validations, show a change preview, or build a more
+    // *            complex payload before manually calling save
 
     const productForMerge = await productRepository.save({
-        name: "Mochila VSRepo",
+        name: "VSRepo Backpack",
         price: 149.9,
-        description: "Mochila original",
+        description: "Original backpack",
         userId: fernanda!.id,
     });
 
-    console.log("\nProduto antes do merge:", {
+    console.log("\nProduct before merge:", {
         name: productForMerge.name,
         price: Number(productForMerge.price),
         description: productForMerge.description,
     });
 
-    // * O "merge" funde os campos em memória: os campos fornecidos sobrescrevem os existentes,
-    // * os campos não fornecidos permanecem com o valor original do banco
+    // * "merge" merges the fields in memory: the provided fields overwrite the existing ones,
+    // * the fields that aren't provided keep their original value from the database
     const mergedProduct = await productRepository.merge(
         productForMerge.id,
         {
             price: 129.9,
-            description: "Edição limitada",
+            description: "Limited edition",
         },
         { selectModel: "publicWithoutUser" },
     );
 
-    // TODO Passe o mouse em cima de "mergedProduct" para ver que o retorno é o tipo do selectModel "public" | null
-    // * O merge retorna null se o registro não for encontrado (igual ao "get"), pois faz um "get" interno antes
+    // TODO Hover your mouse over "mergedProduct" to see that the return type is the "public" selectModel | null
+    // * merge returns null if the record isn't found (just like "get"), since it performs an internal "get" first
     console.log(
-        "\nProduto após merge em memória (preço e descrição fundidos, nada persistido ainda):",
+        "\nProduct after merge in memory (price and description merged, nothing persisted yet):",
         {
             name: mergedProduct?.name,
             price: Number(mergedProduct?.price),
@@ -161,10 +161,10 @@ async function batchMethodsTest() {
         },
     );
 
-    // * Se quiser persistir o resultado fundido, basta chamar o save com o objeto retornado pelo merge
+    // * If you want to persist the merged result, just call save with the object returned by merge
     if (mergedProduct) {
         const savedAfterMerge = await productRepository.save(mergedProduct);
-        console.log("\nProduto persistido após merge + save:", {
+        console.log("\nProduct persisted after merge + save:", {
             name: savedAfterMerge.name,
             price: Number(savedAfterMerge.price),
             description: savedAfterMerge.description,
@@ -172,16 +172,16 @@ async function batchMethodsTest() {
     }
 
     // * -----------------------------------------------------------------------
-    // * 5) Limpeza final
+    // * 5) Final cleanup
     // * -----------------------------------------------------------------------
 
-    // ! Como "Product" e "Address" têm "onDelete: Cascade" ligado ao usuário, remover o usuário já
-    // ! remove os produtos e o endereço dele permanentemente
+    // ! Since "Product" and "Address" have "onDelete: Cascade" linked to the user, removing the user already
+    // ! permanently removes their products and address
     await userRepository.deleteManyByIdIn([fernanda!.id, gabriel!.id, helena!.id]);
 
     process.exit(0);
 }
 
-// * Agora para testar os métodos em lote a gente chama a função para executar todas as operações
-// TODO Rode pnpm tsx examples/tests/batch-methods.test.ts ou npx tsx examples/tests/batch-methods.test.ts para executar o código
+// * Now, to test the batch methods, we call the function to run all the operations
+// TODO Run pnpm tsx examples/tests/batch-methods.test.ts or npx tsx examples/tests/batch-methods.test.ts to execute the code
 void batchMethodsTest();

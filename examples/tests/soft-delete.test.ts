@@ -1,155 +1,155 @@
-// * Nesse arquivo vamos testar o "soft-delete" do VSRepository. Ao configurar o "softRemovekName" no
-// * setupVSRepo, o repository ganha automaticamente 4 novos métodos base: softRemove, softRemoveList,
-// * restore e restoreList. Além disso, o campo "see" em MethodOptions (e nos métodos "total" e "has")
-// * permite controlar se a query enxerga registros ativos, removidos ou todos.
+// * In this file we'll test VSRepository's "soft-delete". By configuring "softRemovekName" in
+// * setupVSRepo, the repository automatically gains 4 new base methods: softRemove, softRemoveList,
+// * restore, and restoreList. On top of that, the "see" field in MethodOptions (and in the "total" and "has"
+// * methods) lets you control whether the query sees active, removed, or all records.
 
 import { UserType } from "../../generated/prisma/enums";
 import { userRepository, productRepository } from "../repositories";
 
-// * Essa será a função que utilizaremos para testar o soft-delete
+// * This will be the function we use to test soft-delete
 async function softDeleteTest() {
-    // * Antes de tudo, vamos criar um usuário e alguns produtos para servir de dados de teste
+    // * First, let's create a user and a few products to serve as test data
     const user = await userRepository.save({
         name: "Larissa Mendes",
         email: "larissa@email.com",
-        password: "senha123",
+        password: "password123",
         likesVSRepo: true,
         userType: UserType.COMMON,
     });
 
     const product1 = await productRepository.save({
-        name: "Camiseta VSRepo",
+        name: "VSRepo T-Shirt",
         price: 59.9,
         userId: user.id,
     });
     const product2 = await productRepository.save({
-        name: "Caneca VSRepo",
+        name: "VSRepo Mug",
         price: 29.9,
         userId: user.id,
     });
     const product3 = await productRepository.save({
-        name: "Adesivo VSRepo",
+        name: "VSRepo Sticker",
         price: 4.9,
         userId: user.id,
     });
 
-    console.log("\nProdutos criados:", [product1.name, product2.name, product3.name]);
+    console.log("\nProducts created:", [product1.name, product2.name, product3.name]);
 
     // * -----------------------------------------------------------------------
-    // * 1) softRemove — soft-delete de um único registro
+    // * 1) softRemove — soft-delete of a single record
     // * -----------------------------------------------------------------------
 
-    // * "softRemove" marca o registro como removido preenchendo o campo "deletedAt" com o timestamp atual.
-    // ! Importante: o registro NÃO é apagado do banco — ele continua lá, mas o VSRepository o trata como
-    // ! "removido" por padrão em todas as operações
+    // * "softRemove" marks the record as removed by filling the "deletedAt" field with the current timestamp.
+    // ! Important: the record is NOT deleted from the database — it stays there, but VSRepository treats it as
+    // ! "removed" by default in all operations
     const removedProduct1 = await productRepository.softRemove(product1.id);
 
-    console.log("\nProduto 1 após softRemove (deletedAt preenchido):", removedProduct1.deletedAt);
+    console.log("\nProduct 1 after softRemove (deletedAt filled in):", removedProduct1.deletedAt);
 
     // * -----------------------------------------------------------------------
-    // * 2) SeeMode — controlando quais registros a query enxerga
+    // * 2) SeeMode — controlling which records the query sees
     // * -----------------------------------------------------------------------
 
-    // * Por padrão, todas as operações do repository enxergam apenas registros "ativos" (sem deletedAt).
-    // * Para mudar esse comportamento pontualmente, passamos "see" nas options da chamada.
+    // * By default, all repository operations only see "active" records (without deletedAt).
+    // * To change this behavior on a case-by-case basis, we pass "see" in the call's options.
     // *
-    // * Os valores possíveis do SeeMode são:
-    // *   "active"  → só registros não removidos (padrão)
-    // *   "removed" → só registros removidos (deletedAt não nulo)
-    // *   "all"     → todos os registros, independente do status
+    // * SeeMode's possible values are:
+    // *   "active"  → only non-removed records (default)
+    // *   "removed" → only removed records (deletedAt not null)
+    // *   "all"     → all records, regardless of status
 
-    // * Tentando buscar o produto removido com o comportamento padrão ("active")
+    // * Trying to fetch the removed product with the default behavior ("active")
     const notFound = await productRepository.get(product1.id);
-    console.log("\nBuscando produto removido sem see (padrão 'active') → esperado null:", notFound);
+    console.log("\nFetching the removed product without see (default 'active') → expected null:", notFound);
 
-    // * Agora buscando o mesmo produto removido com see: "removed"
+    // * Now fetching the same removed product with see: "removed"
     const foundRemoved = await productRepository.get(product1.id, { see: "removed" });
     console.log(
-        "\nBuscando produto removido com see: 'removed' → esperado: encontrar:",
+        "\nFetching the removed product with see: 'removed' → expected: found:",
         foundRemoved?.name,
     );
 
-    // * E com see: "all" a gente enxerga tanto ativos quanto removidos
+    // * And with see: "all" we see both active and removed
     const allProducts = await productRepository.getAll({ see: "all" });
     console.log(
-        "\ngetAll com see: 'all' (ativos + removidos):",
+        "\ngetAll with see: 'all' (active + removed):",
         allProducts.map(p => ({ name: p.name, deletedAt: p.deletedAt })),
     );
 
     // * -----------------------------------------------------------------------
-    // * 3) softRemoveList — soft-delete em lote
+    // * 3) softRemoveList — batch soft-delete
     // * -----------------------------------------------------------------------
 
-    // * "softRemoveList" funciona igual ao softRemove mas para múltiplos registros de uma vez,
-    // * retornando um objeto { count } com a quantidade de registros afetados.
+    // * "softRemoveList" works just like softRemove but for multiple records at once,
+    // * returning a { count } object with the number of affected records.
     const { count: softRemovedCount } = await productRepository.softRemoveList([
         product2.id,
         product3.id,
     ]);
     console.log(
-        "\nProdutos 2 e 3 após softRemoveList (count de soft-removidos):",
+        "\nProducts 2 and 3 after softRemoveList (soft-removed count):",
         softRemovedCount,
     );
 
-    // * Confirmar que o total de produtos "ativos" agora é 0 (todos foram soft-removidos)
-    const totalAtivos = await productRepository.total();
-    console.log("\nTotal de produtos ativos após soft-remover tudo (esperado: 0):", totalAtivos);
+    // * Confirm that the total of "active" products is now 0 (all of them were soft-removed)
+    const totalActive = await productRepository.total();
+    console.log("\nTotal active products after soft-removing everything (expected: 0):", totalActive);
 
-    // * E o total de produtos removidos é 3
-    const totalRemovidos = await productRepository.total({ see: "removed" });
-    console.log("\nTotal de produtos removidos (esperado: 3):", totalRemovidos);
+    // * And the total of removed products is 3
+    const totalRemoved = await productRepository.total({ see: "removed" });
+    console.log("\nTotal removed products (expected: 3):", totalRemoved);
 
-    // * O "has" também respeita o SeeMode: com see: "removed" ele enxerga registros soft-deletados
+    // * "has" also respects SeeMode: with see: "removed" it sees soft-deleted records
     const product1ExistsAsRemoved = await productRepository.has(product1.id, { see: "removed" });
-    console.log("\nProduto 1 existe como removido? (esperado: true):", product1ExistsAsRemoved);
+    console.log("\nDoes product 1 exist as removed? (expected: true):", product1ExistsAsRemoved);
 
     const product1ExistsAsActive = await productRepository.has(product1.id);
-    console.log("\nProduto 1 existe como ativo? (esperado: false):", product1ExistsAsActive);
+    console.log("\nDoes product 1 exist as active? (expected: false):", product1ExistsAsActive);
 
     // * -----------------------------------------------------------------------
-    // * 4) restore — restaurando um registro soft-deletado
+    // * 4) restore — restoring a soft-deleted record
     // * -----------------------------------------------------------------------
 
-    // * "restore" desfaz o soft-delete de um único registro: limpa o campo "deletedAt" (coloca null)
-    // * e o registro volta a ser visível nas operações padrão ("active")
+    // * "restore" undoes the soft-delete on a single record: it clears the "deletedAt" field (sets it to null)
+    // * and the record becomes visible again in standard ("active") operations
     const restoredProduct1 = await productRepository.restore(product1.id);
 
-    console.log("\nProduto 1 após restore (deletedAt deve ser null):", restoredProduct1.deletedAt);
+    console.log("\nProduct 1 after restore (deletedAt should be null):", restoredProduct1.deletedAt);
 
-    // * Agora o produto 1 já pode ser encontrado normalmente de novo
+    // * Now product 1 can be found normally again
     const foundAgain = await productRepository.get(product1.id);
-    console.log("\nBuscando produto 1 após restore (esperado: encontrar):", foundAgain?.name);
+    console.log("\nFetching product 1 after restore (expected: found):", foundAgain?.name);
 
     // * -----------------------------------------------------------------------
-    // * 5) restoreList — restaurando múltiplos registros
+    // * 5) restoreList — restoring multiple records
     // * -----------------------------------------------------------------------
 
-    // * "restoreList" funciona igual ao restore mas para uma lista de PKs, retornando um objeto
-    // * { count } com a quantidade de registros restaurados
+    // * "restoreList" works just like restore but for a list of PKs, returning an object
+    // * { count } with the number of restored records
     const { count: restoredCount } = await productRepository.restoreList([
         product2.id,
         product3.id,
     ]);
-    console.log("\nProdutos 2 e 3 após restoreList (count de restaurados):", restoredCount);
+    console.log("\nProducts 2 and 3 after restoreList (restored count):", restoredCount);
 
-    // * Confirmar que todos os produtos ativos voltaram
-    const totalAtivosAoFinal = await productRepository.total();
+    // * Confirm that all active products came back
+    const totalActiveAtTheEnd = await productRepository.total();
     console.log(
-        "\nTotal de produtos ativos após restore de tudo (esperado: 3):",
-        totalAtivosAoFinal,
+        "\nTotal active products after restoring everything (expected: 3):",
+        totalActiveAtTheEnd,
     );
 
     // * -----------------------------------------------------------------------
-    // * 6) Limpeza final
+    // * 6) Final cleanup
     // * -----------------------------------------------------------------------
 
-    // ! Como "Product" tem "onDelete: Cascade" ligado ao usuário, remover o usuário já remove os
-    // ! produtos permanentemente — então basta apagar o usuário
+    // ! Since "Product" has "onDelete: Cascade" linked to the user, removing the user already permanently
+    // ! removes the products — so it's enough to delete the user
     await userRepository.deleteManyByIdIn([user.id]);
 
     process.exit(0);
 }
 
-// * Agora para testar o soft-delete a gente chama a função para executar todas as operações
-// TODO Rode pnpm tsx examples/tests/soft-delete.test.ts ou npx tsx examples/tests/soft-delete.test.ts para executar o código
+// * Now, to test soft-delete, we call the function to run all the operations
+// TODO Run pnpm tsx examples/tests/soft-delete.test.ts or npx tsx examples/tests/soft-delete.test.ts to execute the code
 void softDeleteTest();

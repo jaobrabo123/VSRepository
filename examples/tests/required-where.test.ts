@@ -1,22 +1,22 @@
-// * Nesse arquivo vamos testar como o "requiredWhere" funciona na prática. Ele é um filtro que fica "preso" ao
-// * repository e é injetado automaticamente em (quase) toda operação, muito útil para soft-delete, multi-tenancy
-// * ou qualquer regra de negócio que precise valer pra tudo
+// * In this file we'll test how "requiredWhere" works in practice. It's a filter that's "locked" to the
+// * repository and automatically injected into (almost) every operation, very useful for soft-delete, multi-tenancy,
+// * or any business rule that needs to apply to everything
 
 import { UserType } from "../../generated/prisma/enums";
 import { userRepository } from "../repositories";
 
-// * Essa será a função que utilizaremos para testar o requiredWhere
+// * This will be the function we use to test requiredWhere
 async function requiredWhereTest() {
-    // * Lembrando a configuração do "userRepository" (declarada em "examples/repositories.ts"):
+    // * Recalling the "userRepository" configuration (declared in "examples/repositories.ts"):
     // * requiredWhere: { active: true }
-    // * Ou seja, por padrão, TODA operação desse repository só enxerga usuários com "active: true"
+    // * In other words, by default, EVERY operation on this repository only sees users with "active: true"
 
-    // * Vamos criar um usuário ativo e depois torná-lo inativo para ver o comportamento
+    // * Let's create an active user and then make them inactive to see the behavior
     const activeUser = await userRepository.save(
         {
-            name: "Usuário Ativo",
-            email: "ativo@email.com",
-            password: "senha123",
+            name: "Active User",
+            email: "active@email.com",
+            password: "password123",
             likesVSRepo: true,
             userType: UserType.COMMON,
             active: true,
@@ -24,101 +24,101 @@ async function requiredWhereTest() {
         { selectModel: "internal" },
     );
 
-    console.log("\nUsuário ativo criado:", activeUser);
+    console.log("\nActive user created:", activeUser);
 
     activeUser.active = false;
-    activeUser.email = "inativo@email.com";
-    activeUser.name = "Usuário Inativo";
+    activeUser.email = "inactive@email.com";
+    activeUser.name = "Inactive User";
     const inactiveUser = await userRepository.save(activeUser, { selectModel: "internal" });
 
-    console.log("\nUsuário desativado:", inactiveUser);
+    console.log("\nDeactivated user:", inactiveUser);
 
-    // ! Repare que o "save" conseguiu desativar o usuário normalmente. Isso acontece porque, lá no repositories.ts,
-    // ! configuramos "baseMethods.save.ignoreRequiredWhere: true", ou seja, o "save" ignora o requiredWhere no upsert
-    // ! (do contrário, o Prisma tentaria localizar o registro já aplicando "active: true" e como o usuário que passamos
-    // ! já tinha id o upsert não iria encontrar ele e daria erro)
+    // ! Notice that "save" was able to deactivate the user normally. This happens because, back in repositories.ts,
+    // ! we configured "baseMethods.save.ignoreRequiredWhere: true", meaning "save" ignores requiredWhere on the upsert
+    // ! (otherwise, Prisma would try to locate the record already applying "active: true", and since the user we passed
+    // ! already had an id, the upsert wouldn't find it and would throw an error)
 
-    // * Agora vamos tentar buscar o usuário inativo usando o "get" comum
+    // * Now let's try to fetch the inactive user using the regular "get"
     const foundInactiveUser = await userRepository.get(inactiveUser.id);
 
-    // * Esse log vai mostrar "null", pois o requiredWhere "active: true" foi injetado automaticamente na
-    // * busca e o usuário inativo não passa nesse filtro
-    console.log("\nTentando buscar usuário inativo com 'get' (esperado: null):", foundInactiveUser);
+    // * This log will show "null", because the requiredWhere "active: true" was automatically injected into the
+    // * query and the inactive user doesn't pass that filter
+    console.log("\nTrying to fetch the inactive user with 'get' (expected: null):", foundInactiveUser);
 
-    // * O mesmo vale pros métodos dinâmicos baseados em "By": como "findOneByEmailAndUserType"
+    // * The same applies to "By"-based dynamic methods, such as "findOneByEmailAndUserType"
     const foundByEmail = await userRepository.findOneByEmailAndUserType(
-        "inativo@email.com",
+        "inactive@email.com",
         UserType.COMMON,
     );
 
-    // * Esse também retorna "null" pelo mesmo motivo: o requiredWhere é combinado (AND) com o filtro do método
-    console.log("\nBuscando usuário inativo por email e tipo (esperado: null):", foundByEmail);
+    // * This also returns "null" for the same reason: requiredWhere is combined (AND) with the method's filter
+    console.log("\nFetching the inactive user by email and type (expected: null):", foundByEmail);
 
-    // * Criando um usuário ativo
+    // * Creating an active user
     const otherUser = await userRepository.save({
-        name: "Outro Usuário Ativo",
+        name: "Another Active User",
         email: "other@email.com",
-        password: "senha321",
+        password: "password321",
         likesVSRepo: true,
         userType: UserType.COMMON,
         active: true,
     });
 
-    // * Já um usuário ativo é encontrado normalmente, pois ele passa no requiredWhere
+    // * An active user, on the other hand, is found normally, since they pass the requiredWhere
     const foundOtherUser = await userRepository.get(otherUser.id);
-    console.log("\nBuscando usuário ativo com 'get' (esperado: encontrar):", foundOtherUser);
+    console.log("\nFetching an active user with 'get' (expected: found):", foundOtherUser);
 
-    // * Existem 2 formas de "burlar" o requiredWhere quando for necessário: configurando "ignoreRequiredWhere" no
-    // * "baseMethods" (já vimos no save) ou usando "whereType: 'overwrite'" em métodos dinâmicos
+    // * There are 2 ways to "bypass" requiredWhere when needed: configuring "ignoreRequiredWhere" in
+    // * "baseMethods" (we've already seen this in save) or using "whereType: 'overwrite'" in dynamic methods
 
-    // * O método "findInternalByEmail" foi configurado assim em repositories.ts:
+    // * The "findInternalByEmail" method was configured like this in repositories.ts:
     // * proxyTo: "findOneByEmail", whereType: "overwrite", selectModel: "internal"
-    // * Isso significa que ele ignora completamente o requiredWhere e ainda retorna os dados internos (com senha)
-    const internalInactiveUser = await userRepository.findInternalByEmail("inativo@email.com");
+    // * This means it completely ignores requiredWhere and still returns the internal data (with the password)
+    const internalInactiveUser = await userRepository.findInternalByEmail("inactive@email.com");
 
-    // * Agora sim o usuário inativo é encontrado, pois esse método específico está marcado como "overwrite"
+    // * Now the inactive user IS found, because this specific method is marked as "overwrite"
     console.log(
-        "\nBuscando usuário inativo com 'findInternalByEmail' (ignora requiredWhere):",
+        "\nFetching the inactive user with 'findInternalByEmail' (ignores requiredWhere):",
         internalInactiveUser,
     );
 
-    // * Também é possível ignorar o requiredWhere de um método base pontualmente, lembrando que no repositories.ts
-    // * configuramos "baseMethods.getOrThrow.ignoreRequiredWhere: true"
+    // * It's also possible to ignore requiredWhere for a base method on a case-by-case basis. Remember that in repositories.ts
+    // * we configured "baseMethods.getOrThrow.ignoreRequiredWhere: true"
     const inactiveUserViaGetOrThrow = await userRepository.getOrThrow(inactiveUser.id);
     console.log(
-        "\nBuscando usuário inativo com 'getOrThrow' (ignoreRequiredWhere ativado):",
+        "\nFetching the inactive user with 'getOrThrow' (ignoreRequiredWhere enabled):",
         inactiveUserViaGetOrThrow,
     );
 
-    // * Importante: o requiredWhere também é combinado em operações de contagem e checagem de existência
+    // * Important: requiredWhere is also combined into count and existence-check operations
     const totalUsers = await userRepository.total();
     console.log(
-        "\nTotal de usuários (considerando só os ativos por causa do requiredWhere):",
+        "\nTotal users (only counting active ones because of requiredWhere):",
         totalUsers,
     );
 
     const existsInactive = await userRepository.has(inactiveUser.id);
 
-    // * "has" usa o pkName internamente em um select mínimo, mas o requiredWhere ainda é aplicado, então o
-    // * usuário inativo não "existe" do ponto de vista desse repository
-    console.log("\nUsuário inativo existe (via 'has', esperado: false):", existsInactive);
+    // * "has" uses pkName internally in a minimal select, but requiredWhere is still applied, so the
+    // * inactive user doesn't "exist" from this repository's point of view
+    console.log("\nDoes the inactive user exist (via 'has', expected: false):", existsInactive);
 
-    // * E por fim, o "remove" aplica o requiredWhere por padrão (o padrão de "ignoreRequiredWhere" no remove é
-    // * "false"), e como não sobrescrevemos essa config em repositories.ts, vamos confirmar o comportamento padrão
-    // * removendo o usuário ativo, que sabemos que passa no filtro
+    // * And finally, "remove" applies requiredWhere by default (the default for "ignoreRequiredWhere" on remove is
+    // * "false"), and since we didn't override this config in repositories.ts, let's confirm the default behavior
+    // * by removing the active user, which we know passes the filter
     await userRepository.remove(otherUser.id);
-    console.log("\nUsuário ativo removido com sucesso");
+    console.log("\nActive user removed successfully");
 
-    // * Para limpar o usuário inativo do banco, como o "remove" comum aplicaria o requiredWhere (e ele não passaria),
-    // * vamos usar o "deleteManyByIdIn", que está configurado com "whereType: 'overwrite'" em repositories.ts
+    // * To clean up the inactive user from the database, since a regular "remove" would apply requiredWhere (and it
+    // * wouldn't pass), we'll use "deleteManyByIdIn", which is configured with "whereType: 'overwrite'" in repositories.ts
     await userRepository.deleteManyByIdIn([inactiveUser.id]);
     console.log(
-        "\nUsuário inativo removido com sucesso (via deleteManyByIdIn, que ignora o requiredWhere)",
+        "\nInactive user removed successfully (via deleteManyByIdIn, which ignores requiredWhere)",
     );
 
     process.exit(0);
 }
 
-// * Agora para testar o requiredWhere a gente chama a função para executar todas as operações
-// TODO Rode pnpm tsx .\examples\tests\required-where.test.ts ou npx tsx .\examples\tests\required-where.test.ts para executar o código
+// * Now, to test requiredWhere, we call the function to run all the operations
+// TODO Run pnpm tsx .\examples\tests\required-where.test.ts or npx tsx .\examples\tests\required-where.test.ts to execute the code
 void requiredWhereTest();

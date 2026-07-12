@@ -1,187 +1,187 @@
-// * Nesse arquivo vamos testar os "métodos dinâmicos", que são os métodos que declaramos em "methods" no
-// * repositories.ts e têm o comportamento inferido automaticamente a partir do próprio nome
+// * In this file we'll test the "dynamic methods", which are the methods we declared in "methods" in
+// * repositories.ts and have their behavior automatically inferred from their own name
 
 import { UserType } from "../../generated/prisma/enums";
 import { userRepository, productRepository } from "../repositories";
 
-// * Essa será a função que utilizaremos para testar os métodos dinâmicos
+// * This will be the function we use to test the dynamic methods
 async function dynamicMethodsTest() {
-    // * Antes de tudo vamos popular o banco com alguns usuários e produtos para termos dados pra brincar
+    // * First, let's populate the database with a few users and products so we have data to play with
     const user1 = await userRepository.save({
         name: "Ana Beatriz",
         email: "ana@email.com",
-        password: "senha123",
+        password: "password123",
         likesVSRepo: true,
         userType: UserType.ADMIN,
     });
     const user2 = await userRepository.save({
         name: "Carlos Eduardo",
         email: "carlos@email.com",
-        password: "senha123",
+        password: "password123",
         likesVSRepo: false,
         userType: UserType.COMMON,
     });
     const user3 = await userRepository.save({
         name: "Ana Clara",
         email: "anaclara@email.com",
-        password: "senha123",
+        password: "password123",
         likesVSRepo: true,
         userType: UserType.COMMON,
     });
 
-    console.log("\nUsuários criados para o teste:", [user1.name, user2.name, user3.name]);
+    console.log("\nUsers created for the test:", [user1.name, user2.name, user3.name]);
 
     // * -------------------------------------------------------------
-    // * 1) PREFIXOS: cada prefixo decide qual operação será realizada
+    // * 1) PREFIXES: each prefix decides which operation will be performed
     // * -------------------------------------------------------------
 
-    // * "findByUserType" usa o prefixo "findBy", que por padrão retorna uma LISTA (findMany)
+    // * "findByUserType" uses the "findBy" prefix, which by default returns a LIST (findMany)
     const admins = await userRepository.findByUserType(UserType.ADMIN);
-    console.log("\nTodos os admins (findByUserType):", admins);
+    console.log("\nAll admins (findByUserType):", admins);
 
-    // * "findUniqueByEmail" usa o prefixo "findUniqueBy", que chama o "findUnique" do Prisma e exige que o
-    // * campo buscado seja único no banco (no caso, "email" é "@unique" no schema.prisma)
+    // * "findUniqueByEmail" uses the "findUniqueBy" prefix, which calls Prisma's "findUnique" and requires the
+    // * searched field to be unique in the database (in this case, "email" is "@unique" in schema.prisma)
     const userByEmail = await userRepository.findUniqueByEmail("ana@email.com");
-    console.log("\nUsuário único pelo email (findUniqueByEmail):", userByEmail);
+    console.log("\nUnique user by email (findUniqueByEmail):", userByEmail);
 
-    // * "findUniqueOrThrowById" funciona como o "findUniqueByEmail", mas lança um erro se não encontrar
+    // * "findUniqueOrThrowById" works like "findUniqueByEmail", but throws an error if not found
     const userOrThrow = await userRepository.findUniqueOrThrowById(user1.id);
-    console.log("\nUsuário buscado com findUniqueOrThrowById:", userOrThrow);
+    console.log("\nUser fetched with findUniqueOrThrowById:", userOrThrow);
 
-    // * "findFirstByNameStartsWith" usa o prefixo "findFirstBy", que aceita filtros de campo e chama "findFirst"
+    // * "findFirstByNameStartsWith" uses the "findFirstBy" prefix, which accepts field filters and calls "findFirst"
     const firstAna = await userRepository.findFirstByNameStartsWith("Ana");
-    console.log("\nPrimeiro usuário cujo nome começa com 'Ana' (findFirstByNameStartsWith):", firstAna);
+    console.log("\nFirst user whose name starts with 'Ana' (findFirstByNameStartsWith):", firstAna);
 
-    // * "countByUserType" usa o prefixo "countBy", que retorna a contagem (number) ao invés dos registros
+    // * "countByUserType" uses the "countBy" prefix, which returns the count (number) instead of the records
     const totalAdmins = await userRepository.countByUserType(UserType.ADMIN);
-    console.log("\nTotal de admins (countByUserType):", totalAdmins);
+    console.log("\nTotal admins (countByUserType):", totalAdmins);
 
-    // * "existsByEmail" usa o prefixo "existsBy", que retorna um boolean
+    // * "existsByEmail" uses the "existsBy" prefix, which returns a boolean
     const emailExists = await userRepository.existsByEmail("carlos@email.com");
-    console.log("\nO email 'carlos@email.com' existe? (existsByEmail):", emailExists);
+    console.log("\nDoes the email 'carlos@email.com' exist? (existsByEmail):", emailExists);
 
     // * ------------------------------------------------------------------------
-    // * 2) FILTROS DE CAMPO: sufixos aplicados ao nome do campo dentro do método
+    // * 2) FIELD FILTERS: suffixes applied to the field name inside the method
     // * ------------------------------------------------------------------------
 
-    // * "findByUserTypeOrEmailEndsWith" combina o operador lógico "Or" com o filtro "EndsWith"
-    const adminsOrComEmailCom = await userRepository.findByUserTypeOrEmailEndsWith(UserType.ADMIN, "@email.com");
-    console.log("\nAdmins OU emails terminados em '@email.com' (findByUserTypeOrEmailEndsWith):", adminsOrComEmailCom);
+    // * "findByUserTypeOrEmailEndsWith" combines the "Or" logical operator with the "EndsWith" filter
+    const adminsOrEmailCom = await userRepository.findByUserTypeOrEmailEndsWith(UserType.ADMIN, "@email.com");
+    console.log("\nAdmins OR emails ending in '@email.com' (findByUserTypeOrEmailEndsWith):", adminsOrEmailCom);
 
-    // * "findByNameContainsInsensitiveOrderedAndPaginated" combina "Contains" + "Insensitive" (ignora maiúsculas/
-    // * minúsculas) e ainda aceita ordenação e paginação manuais como parâmetros extras
-    const anasPaginadas = await userRepository.findByNameContainsInsensitiveOrderedAndPaginated(
-        "ana", // * filtro: nome contém "ana", ignorando case
-        { name: "asc" }, // * ordenação manual
-        { skip: 0, take: 5 }, // * paginação manual
+    // * "findByNameContainsInsensitiveOrderedAndPaginated" combines "Contains" + "Insensitive" (ignores upper/
+    // * lower case) and still accepts manual ordering and pagination as extra parameters
+    const paginatedAnas = await userRepository.findByNameContainsInsensitiveOrderedAndPaginated(
+        "ana", // * filter: name contains "ana", ignoring case
+        { name: "asc" }, // * manual ordering
+        { skip: 0, take: 5 }, // * manual pagination
     );
-    console.log("\nUsuários com 'ana' no nome (case-insensitive), ordenados e paginados:", anasPaginadas);
+    console.log("\nUsers with 'ana' in their name (case-insensitive), ordered and paginated:", paginatedAnas);
 
-    // * "findManyByNameOptional" tem o sufixo "Optional" no campo, ou seja, podemos passar "undefined" para
-    // * não filtrar por nome e trazer todos os registros (ainda respeitando o requiredWhere, se houver)
-    const todosSemFiltro = await userRepository.findManyByNameOptional(undefined);
-    console.log("\nTodos os usuários, sem aplicar filtro de nome (findManyByNameOptional):", todosSemFiltro.length);
+    // * "findManyByNameOptional" has the "Optional" suffix on the field, meaning we can pass "undefined" to
+    // * not filter by name and bring back all records (still respecting requiredWhere, if any)
+    const allWithoutFilter = await userRepository.findManyByNameOptional(undefined);
+    console.log("\nAll users, without applying a name filter (findManyByNameOptional):", allWithoutFilter.length);
 
-    // * Do lado do "productRepository" também temos filtros numéricos, como "findByPriceLessThan" e "findByPriceBetween"
-    const product1 = await productRepository.save({ name: "Caneta VSRepo", price: 9.9, userId: user1.id });
-    const product2 = await productRepository.save({ name: "Caderno VSRepo", price: 24.9, userId: user1.id });
-    const product3 = await productRepository.save({ name: "Mochila VSRepo", price: 149.9, userId: user1.id });
+    // * On the "productRepository" side we also have numeric filters, like "findByPriceLessThan" and "findByPriceBetween"
+    const product1 = await productRepository.save({ name: "VSRepo Pen", price: 9.9, userId: user1.id });
+    const product2 = await productRepository.save({ name: "VSRepo Notebook", price: 24.9, userId: user1.id });
+    const product3 = await productRepository.save({ name: "VSRepo Backpack", price: 149.9, userId: user1.id });
 
     const cheapProducts = await productRepository.findByPriceLessThan(25);
-    console.log("\nProdutos com preço menor que 25 (findByPriceLessThan):", cheapProducts);
+    console.log("\nProducts priced under 25 (findByPriceLessThan):", cheapProducts);
 
-    // * "Between" recebe uma tupla [min, max]
+    // * "Between" receives a tuple [min, max]
     const midRangeProducts = await productRepository.findByPriceBetween([10, 30]);
-    console.log("\nProdutos com preço entre 10 e 30 (findByPriceBetween):", midRangeProducts);
+    console.log("\nProducts priced between 10 and 30 (findByPriceBetween):", midRangeProducts);
 
     // * ---------------------------------------------------------------------
-    // * 3) OPERADORES LÓGICOS: "And" entre campos e "Or" entre campos
+    // * 3) LOGICAL OPERATORS: "And" between fields and "Or" between fields
     // * ---------------------------------------------------------------------
 
-    // * "findOneByEmailAndUserType" exige que AMBOS os campos batam)
+    // * "findOneByEmailAndUserType" requires BOTH fields to match
     const exactMatch = await userRepository.findOneByEmailAndUserType("ana@email.com", UserType.ADMIN);
-    console.log("\nUsuário com email E userType específicos (findOneByEmailAndUserType):", exactMatch);
+    console.log("\nUser with a specific email AND userType (findOneByEmailAndUserType):", exactMatch);
 
     // * ---------------------------------------------------------------------
-    // * 4) MÉTODOS COM NOME PERSONALIZADO (proxyTo)
+    // * 4) METHODS WITH A CUSTOM NAME (proxyTo)
     // * ---------------------------------------------------------------------
 
-    // * "buscarUsuariosPaias" é um nome totalmente fora do padrão da lib, por isso no repositories.ts ele foi
-    // * configurado com "proxyTo: 'findByLikesVSRepoIsFalse'", delegando o comportamento pra esse padrão válido
-    const usuariosPaias = await userRepository.buscarUsuariosPaias();
-    console.log("\nUsuários que não curtem o VSRepository (buscarUsuariosPaias -> proxyTo):", usuariosPaias);
+    // * "findLameUsers" is a name completely outside the library's pattern, so in repositories.ts it was
+    // * configured with "proxyTo: 'findByLikesVSRepoIsFalse'", delegating its behavior to that valid pattern
+    const lameUsers = await userRepository.findLameUsers();
+    console.log("\nUsers who don't like VSRepository (findLameUsers -> proxyTo):", lameUsers);
 
     // * ---------------------------------------------------------------------
-    // * 5) SUFIXOS DE PAGINAÇÃO E ORDENAÇÃO
+    // * 5) PAGINATION AND ORDERING SUFFIXES
     // * ---------------------------------------------------------------------
 
-    // * "findByLikesVSRepoIsTruePaginated" combina o modificador "IsTrue" (que NÃO recebe argumento, pois o valor
-    // * "true" já está fixo no nome do método) com o sufixo "Paginated", que injeta o argumento de paginação
-    // * como único parâmetro da função
-    const usuariosQueCurtem = await userRepository.findByLikesVSRepoIsTruePaginated({ skip: 0, take: 10 });
-    console.log("\nUsuários que curtem o VSRepository, paginados (findByLikesVSRepoIsTruePaginated):", usuariosQueCurtem);
+    // * "findByLikesVSRepoIsTruePaginated" combines the "IsTrue" modifier (which does NOT take an argument, since the
+    // * "true" value is already fixed in the method name) with the "Paginated" suffix, which injects the pagination
+    // * argument as the function's only parameter
+    const usersWhoLikeIt = await userRepository.findByLikesVSRepoIsTruePaginated({ skip: 0, take: 10 });
+    console.log("\nUsers who like VSRepository, paginated (findByLikesVSRepoIsTruePaginated):", usersWhoLikeIt);
 
     // * ---------------------------------------------------------------------
-    // * 6) SUFIXO DISTINCT
+    // * 6) DISTINCT SUFFIX
     // * ---------------------------------------------------------------------
 
-    // * "findManyDistinctUserTypeAndLikesVSRepo" não recebe nenhum filtro de campo, só o sufixo "Distinct" com 2
-    // * campos separados por "And". Como user1=(ADMIN,true), user2=(COMMON,false) e user3=(COMMON,true) formam 3
-    // * combinações diferentes, o retorno aqui terá 1 registro para cada uma delas
-    const combinacoesUnicas = await userRepository.findManyDistinctUserTypeAndLikesVSRepo();
+    // * "findManyDistinctUserTypeAndLikesVSRepo" doesn't take any field filter, just the "Distinct" suffix with 2
+    // * fields separated by "And". Since user1=(ADMIN,true), user2=(COMMON,false), and user3=(COMMON,true) form 3
+    // * different combinations, the return here will have 1 record for each of them
+    const uniqueCombinations = await userRepository.findManyDistinctUserTypeAndLikesVSRepo();
     console.log(
-        "\nUma combinação de (userType, likesVSRepo) por registro (findManyDistinctUserTypeAndLikesVSRepo):",
-        combinacoesUnicas,
+        "\nOne combination of (userType, likesVSRepo) per record (findManyDistinctUserTypeAndLikesVSRepo):",
+        uniqueCombinations,
     );
 
-    // * "findManyDistinctUserTypePaginated" combina "Distinct" com o sufixo "Paginated" — aqui o distinct é só em
-    // * "userType", então mesmo tendo 2 usuários "COMMON" (user2 e user3), o retorno traz só 1 registro de cada
-    // * userType (ADMIN e COMMON)
-    const tiposUnicos = await userRepository.findManyDistinctUserTypePaginated({ skip: 0, take: 10 });
-    console.log("\nUm registro por userType (findManyDistinctUserTypePaginated):", tiposUnicos);
+    // * "findManyDistinctUserTypePaginated" combines "Distinct" with the "Paginated" suffix — here the distinct is only on
+    // * "userType", so even though there are 2 "COMMON" users (user2 and user3), the return brings back only 1 record of each
+    // * userType (ADMIN and COMMON)
+    const uniqueTypes = await userRepository.findManyDistinctUserTypePaginated({ skip: 0, take: 10 });
+    console.log("\nOne record per userType (findManyDistinctUserTypePaginated):", uniqueTypes);
 
-    // * "findManyByLikesVSRepoDistinctUserType" combina um filtro de campo comum ("likesVSRepo") com o "Distinct"
-    // * em outro campo ("userType"). Filtrando só quem tem likesVSRepo=true (user1, ADMIN, e user3, COMMON) e
-    // * aplicando distinct em "userType", o resultado traz 2 registros: um ADMIN e um COMMON, ambos com
+    // * "findManyByLikesVSRepoDistinctUserType" combines a regular field filter ("likesVSRepo") with "Distinct"
+    // * on another field ("userType"). Filtering only those with likesVSRepo=true (user1, ADMIN, and user3, COMMON) and
+    // * applying distinct on "userType", the result brings back 2 records: one ADMIN and one COMMON, both with
     // * likesVSRepo=true
-    const porTipoQuemCurte = await userRepository.findManyByLikesVSRepoDistinctUserType(true);
+    const byTypeAmongFans = await userRepository.findManyByLikesVSRepoDistinctUserType(true);
     console.log(
-        "\nUm registro por userType, apenas entre quem curte o VSRepository (findManyByLikesVSRepoDistinctUserType):",
-        porTipoQuemCurte,
+        "\nOne record per userType, only among those who like VSRepository (findManyByLikesVSRepoDistinctUserType):",
+        byTypeAmongFans,
     );
 
     // * ---------------------------------------------------------------------
-    // * 7) OPERAÇÕES NATIVAS DO PRISMA EXPOSTAS COMO MÉTODOS DINÂMICOS
+    // * 7) NATIVE PRISMA OPERATIONS EXPOSED AS DYNAMIC METHODS
     // * ---------------------------------------------------------------------
 
-    // * "updateById" usa o prefixo "updateBy" (operação "update" do Prisma) filtrando pelo "id"
+    // * "updateById" uses the "updateBy" prefix (Prisma's "update" operation) filtering by "id"
     const updatedUser2 = await userRepository.updateById(user2.id, { name: "Carlos Eduardo Silva" });
-    console.log("\nUsuário atualizado via updateById:", updatedUser2);
+    console.log("\nUser updated via updateById:", updatedUser2);
 
-    // * "upsertByEmail" cria ou atualiza com base no email, recebendo os objetos de "update" e "create"
+    // * "upsertByEmail" creates or updates based on the email, receiving the "update" and "create" objects
     const upsertedUser = await userRepository.upsertByEmail(
-        "novo@email.com",
-        { name: "Usuário Atualizado" }, // * update: usado se já existir um usuário com esse email
+        "new@email.com",
+        { name: "Updated User" }, // * update: used if a user already exists with that email
         {
-            name: "Usuário Novo",
-            email: "novo@email.com",
-            password: "senha123",
+            name: "New User",
+            email: "new@email.com",
+            password: "password123",
             likesVSRepo: true,
             userType: UserType.COMMON,
-        }, // * create: usado se não existir
+        }, // * create: used if it doesn't exist
     );
-    console.log("\nResultado do upsertByEmail:", upsertedUser);
+    console.log("\nupsertByEmail result:", upsertedUser);
 
-    // * Por fim, vamos limpar tudo que criamos nesse teste
-    // ! Aqui usamos "removeList" para os produtos, pois diferente do userRepository, o productRepository não tem o
-    // ! método dinâmico "deleteManyByIdIn" configurado em repositories.ts (cada repository expõe só os métodos que
-    // ! você decidir mapear em "methods")
+    // * Finally, let's clean up everything we created in this test
+    // ! Here we use "removeList" for the products, since unlike userRepository, productRepository doesn't have the
+    // ! "deleteManyByIdIn" dynamic method configured in repositories.ts (each repository only exposes the methods
+    // ! you decide to map in "methods")
     await productRepository.removeList([product1.id, product2.id, product3.id]);
     await userRepository.deleteManyByIdIn([user1.id, user2.id, user3.id, upsertedUser.id]);
 
     process.exit(0);
 }
 
-// * Agora para testar os métodos dinâmicos a gente chama a função para executar todas as operações
-// TODO Rode pnpm tsx .\examples\tests\dynamic-methods.test.ts ou npx tsx .\examples\tests\dynamic-methods.test.ts para executar o código
+// * Now, to test the dynamic methods, we call the function to run all the operations
+// TODO Run pnpm tsx .\examples\tests\dynamic-methods.test.ts or npx tsx .\examples\tests\dynamic-methods.test.ts to execute the code
 void dynamicMethodsTest();

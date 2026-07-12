@@ -1,126 +1,126 @@
-// * Nesse arquivo vamos testar como as "relations" funcionam na prática, tanto na hora de salvar/atualizar (save/patch)
-// * quanto na hora de buscar dados relacionados (select e filtros de relação)
+// * In this file we'll test how "relations" work in practice, both when saving/updating (save/patch)
+// * and when fetching related data (select and relation filters)
 
 import { UserType } from "../../generated/prisma/enums";
 import { userRepository, productRepository } from "../repositories";
 
-// * Essa será a função que utilizaremos para testar as relações
+// * This will be the function we use to test the relations
 async function relationsTest() {
-    // * Lembrando a configuração de relations do "userRepository" (declarada em "examples/repositories.ts"):
-    // * - address: one-to-one (oto), restriction "set"  -> sempre que enviado, substitui o endereço atual
-    // * - products: one-to-many (otm), restriction "add" -> adiciona/atualiza produtos sem apagar os que já existem
+    // * Recalling the "userRepository" relations configuration (declared in "examples/repositories.ts"):
+    // * - address: one-to-one (oto), restriction "set"  -> whenever sent, replaces the current address
+    // * - products: one-to-many (otm), restriction "add" -> adds/updates products without deleting the existing ones
 
-    // * Vamos começar criando um usuário já com endereço e produtos no mesmo "save", o VSRepository cuida de criar
-    // * tudo isso de forma relacionada para a gente, sem precisarmos configurar manualmente na chamada ao Prisma
-    // TODO Passe o cursor do mouse em cima de "user1" para ver que o autocomplete sugere "address" e "products" no payload, isso só
-    // TODO é possível pois usamos o "UserGetPayload" com "include" lá no repositories.ts
+    // * Let's start by creating a user already with an address and products in the same "save" call — VSRepository takes
+    // * care of creating all of this in a related way for us, without us having to manually configure the Prisma call
+    // TODO Hover your mouse over "user1" to see that the autocomplete suggests "address" and "products" in the payload, this only
+    // TODO works because we used "UserGetPayload" with "include" back in repositories.ts
     const user1 = await userRepository.save({
-        name: "Maria",
-        email: "maria@email.com",
-        password: "senhaForte123",
+        name: "Mary",
+        email: "mary@email.com",
+        password: "strongPassword123",
         likesVSRepo: true,
         userType: UserType.COMMON,
         address: {
             city: "São Paulo",
             state: "SP",
-            country: "Brasil",
+            country: "Brazil",
         },
         products: [
-            { name: "Camiseta VSRepo", price: 59.9, description: "Camiseta oficial" },
-            { name: "Caneca VSRepo", price: 29.9 },
+            { name: "VSRepo T-Shirt", price: 59.9, description: "Official T-shirt" },
+            { name: "VSRepo Mug", price: 29.9 },
         ],
     });
 
-    console.log("\nUsuário criado com endereço e produtos:", user1);
+    console.log("\nUser created with address and products:", user1);
 
-    // * Repare que o "save" já devolve o endereço e os produtos criados dentro do objeto retornado, pois o selectModel
-    // * "public" desse repository inclui "address" e "products" (veja em examples/repositories.ts)
+    // * Notice that "save" already returns the created address and products inside the returned object, because the
+    // * "public" selectModel of this repository includes "address" and "products" (see examples/repositories.ts)
 
-    // * Agora vamos testar a restriction "set" no "address": ao enviar um novo endereço no "patch", o anterior é
-    // * completamente substituído (não fica endereço "órfão" no banco, pois é uma relação one-to-one)
+    // * Now let's test the "set" restriction on "address": when sending a new address in "patch", the previous one is
+    // * completely replaced (no "orphan" address stays in the database, since it's a one-to-one relation)
     const userWithNewAddress = await userRepository.patch(user1.id, {
         address: {
             city: "Rio de Janeiro",
             state: "RJ",
-            country: "Brasil",
+            country: "Brazil",
         },
     });
 
-    console.log("\nUsuário com endereço substituído (restriction 'set'):", userWithNewAddress);
+    console.log("\nUser with replaced address ('set' restriction):", userWithNewAddress);
 
-    // * Já a restriction "add" no "products" funciona diferente: ao enviar um novo produto no "patch", ele é
-    // * adicionado à lista, os produtos que já existiam continuam lá (não são removidos)
+    // * The "add" restriction on "products" works differently: when sending a new product in "patch", it's
+    // * added to the list, and the products that already existed remain there (they aren't removed)
     const userWithNewProduct = await userRepository.patch(user1.id, {
-        products: [{ name: "Boné VSRepo", price: 39.9 }],
+        products: [{ name: "VSRepo Cap", price: 39.9 }],
     });
 
-    // TODO Note no log abaixo que agora o usuário tem 3 produtos (os 2 criados no save + esse novo), pois a
-    // TODO restriction "add" nunca remove os relacionamentos existentes
-    console.log("\nUsuário com produto adicionado (restriction 'add'):", userWithNewProduct);
+    // TODO Notice in the log below that the user now has 3 products (the 2 created in save + this new one), since the
+    // TODO "add" restriction never removes existing relationships
+    console.log("\nUser with an added product ('add' restriction):", userWithNewProduct);
 
-    // * Também podemos atualizar um produto específico de uma relação "otm" enviando o "id" dele dentro do array,
-    // * nesse caso o VSRepository entende que é para atualizar e não criar um novo
-    // ! Buscamos pelo "name" ao invés de usar uma posição fixa do array, pois o Prisma não garante a ordem de
-    // ! retorno de uma relação sem um "orderBy" explícito
-    const firstProductId = userWithNewProduct.products.find(p => p.name === "Camiseta VSRepo")!.id;
+    // * We can also update a specific product in an "otm" relation by sending its "id" inside the array,
+    // * in this case VSRepository understands it's meant to update rather than create a new one
+    // ! We search by "name" instead of using a fixed array position, since Prisma doesn't guarantee the return
+    // ! order of a relation without an explicit "orderBy"
+    const firstProductId = userWithNewProduct.products.find(p => p.name === "VSRepo T-Shirt")!.id;
 
     const userWithUpdatedProduct = await userRepository.patch(user1.id, {
-        products: [{ id: firstProductId, name: "Camiseta VSRepo (Promoção)", price: 39.9 }],
+        products: [{ id: firstProductId, name: "VSRepo T-Shirt (Sale)", price: 39.9 }],
     });
 
-    console.log("\nUsuário com produto atualizado pelo id:", userWithUpdatedProduct);
+    console.log("\nUser with a product updated by id:", userWithUpdatedProduct);
 
-    // * Agora vamos ver os filtros de relação na prática, eles permitem filtrar uma entidade com base em campos
-    // * de uma relação dela. Esses métodos já estão configurados em "examples/repositories.ts"
+    // * Now let's see relation filters in practice — they let you filter an entity based on fields
+    // * of one of its relations. These methods are already configured in "examples/repositories.ts"
 
-    // * "findByProductsSome" busca usuários que tenham AO MENOS um produto cadastrado
+    // * "findByProductsSome" fetches users who have AT LEAST one registered product
     const usersWithProducts = await userRepository.findByProductsSome();
-    console.log("\nUsuários com pelo menos 1 produto:", usersWithProducts);
+    console.log("\nUsers with at least 1 product:", usersWithProducts);
 
-    // * "findByProductsNone" faz o oposto: busca usuários que NÃO tenham nenhum produto
+    // * "findByProductsNone" does the opposite: fetches users who have NO products at all
     const usersWithoutProducts = await userRepository.findByProductsNone();
-    console.log("\nUsuários sem nenhum produto:", usersWithoutProducts);
+    console.log("\nUsers with no products:", usersWithoutProducts);
 
-    // * "findByAddressWithout" busca usuários que NÃO tenham endereço cadastrado (relação "to-one" nula)
+    // * "findByAddressWithout" fetches users who do NOT have a registered address (null "to-one" relation)
     const usersWithoutAddress = await userRepository.findByAddressWithout();
-    console.log("\nUsuários sem endereço:", usersWithoutAddress);
+    console.log("\nUsers without an address:", usersWithoutAddress);
 
-    // * Também é possível filtrar por um campo específico dentro da relação, como o país do endereço
-    const usersFromBrazil = await userRepository.findByAddressWithCountry("Brasil");
+    // * It's also possible to filter by a specific field inside the relation, like the address's country
+    const usersFromBrazil = await userRepository.findByAddressWithCountry("Brazil");
     console.log(
-        "\nUsuários com endereço no Brasil (ordenados por estado/cidade):",
+        "\nUsers with an address in Brazil (ordered by state/city):",
         usersFromBrazil,
     );
 
-    // * Do lado do "productRepository" também temos filtros de relação, como o "findByTagsSomeName", que busca
-    // * produtos que tenham uma tag com um nome específico (relação many-to-many)
-    // * Vamos criar um produto com tags para testar
+    // * On the "productRepository" side we also have relation filters, like "findByTagsSomeName", which fetches
+    // * products that have a tag with a specific name (many-to-many relation)
+    // * Let's create a product with tags to test this
     const productWithTags = await productRepository.save({
-        name: "Mochila VSRepo",
+        name: "VSRepo Backpack",
         price: 149.9,
         userId: user1.id,
-        tags: [{ name: "promocao" }, { name: "novidade" }],
+        tags: [{ name: "sale" }, { name: "new" }],
     });
 
-    console.log("\nProduto criado com tags (relação many-to-many):", productWithTags);
+    console.log("\nProduct created with tags (many-to-many relation):", productWithTags);
 
-    // * Repare que a relação "tags" usa "pk: 'name'" no repositories.ts, isso significa que se já existir uma
-    // * tag chamada "promocao" ela será conectada ao produto ao invés de criar uma nova (evita duplicatas)
-    const productsTaggedAsPromocao = await productRepository.findByTagsSomeName("promocao");
-    console.log("\nProdutos com a tag 'promocao':", productsTaggedAsPromocao);
+    // * Notice that the "tags" relation uses "pk: 'name'" in repositories.ts, this means that if a tag named
+    // * "sale" already exists, it will be connected to the product instead of creating a new one (avoids duplicates)
+    const productsTaggedAsSale = await productRepository.findByTagsSomeName("sale");
+    console.log("\nProducts with the 'sale' tag:", productsTaggedAsSale);
 
-    // * Também podemos buscar produtos pelo email do usuário dono (relação many-to-one, "findByUserWithEmail")
-    const productsFromMaria = await productRepository.findByUserWithEmail("maria@email.com");
-    console.log("\nProdutos cujo dono tem o email 'maria@email.com':", productsFromMaria);
+    // * We can also fetch products by the owner's email (many-to-one relation, "findByUserWithEmail")
+    const productsFromMary = await productRepository.findByUserWithEmail("mary@email.com");
+    console.log("\nProducts whose owner has the email 'mary@email.com':", productsFromMary);
 
-    // * Por fim, vamos limpar tudo que criamos nesse teste
-    // ! Como a relação "user -> address" e "user -> product" têm "onDelete: Cascade" no schema.prisma, ao remover
-    // ! o usuário o endereço e os produtos dele também são removidos automaticamente pelo banco
+    // * Finally, let's clean up everything we created in this test
+    // ! Since the "user -> address" and "user -> product" relations have "onDelete: Cascade" in schema.prisma, removing
+    // ! the user also automatically removes their address and products at the database level
     await userRepository.deleteManyByIdIn([user1.id]);
 
     process.exit(0);
 }
 
-// * Agora para testar as relações a gente chama a função para executar todas as operações
-// TODO Rode pnpm tsx .\examples\tests\relations.test.ts ou npx tsx .\examples\tests\relations.test.ts para executar o código
+// * Now, to test the relations, we call the function to run all the operations
+// TODO Run pnpm tsx .\examples\tests\relations.test.ts or npx tsx .\examples\tests\relations.test.ts to execute the code
 void relationsTest();
