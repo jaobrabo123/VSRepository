@@ -444,16 +444,16 @@ async function testUserDynamicMethods() {
         Array.isArray(distinctTypeAndLikes),
         "findManyDistinctUserTypeAndLikesVSRepo: deve retornar array",
     );
-    const uniqueCombos = new Set(
-        distinctTypeAndLikes.map(u => `${u.userType}-${u.likesVSRepo}`),
-    );
+    const uniqueCombos = new Set(distinctTypeAndLikes.map(u => `${u.userType}-${u.likesVSRepo}`));
     console.assert(
         uniqueCombos.size === distinctTypeAndLikes.length,
         "findManyDistinctUserTypeAndLikesVSRepo: não deve haver combinações (userType, likesVSRepo) repetidas",
     );
     console.assert(
         distinctTypeAndLikes.some(u => u.userType === UserType.COMMON && u.likesVSRepo === true) &&
-            distinctTypeAndLikes.some(u => u.userType === UserType.ADMIN && u.likesVSRepo === false),
+            distinctTypeAndLikes.some(
+                u => u.userType === UserType.ADMIN && u.likesVSRepo === false,
+            ),
         "findManyDistinctUserTypeAndLikesVSRepo: deve conter as combinações (COMMON,true) e (ADMIN,false)",
     );
     console.log(
@@ -1070,6 +1070,87 @@ async function testIncludeModels() {
 }
 
 // =============================================================================
+// TESTES DO RAW INCLUDE (include literal do Prisma)
+// =============================================================================
+
+async function testRawInclude() {
+    console.log("\n=== RAW INCLUDE (literal do Prisma) ===");
+
+    // 1. Preparar dados
+    const user = await userRepository.save({
+        name: "Raw Include User",
+        email: `rawinclude-${Date.now()}@ex.com`,
+        password: "x",
+        userType: UserType.COMMON,
+        likesVSRepo: true,
+        active: true,
+        address: {
+            city: "Rio de Janeiro",
+            state: "RJ",
+            country: "BR",
+        },
+        products: [
+            { name: "Raw Included Product 1", price: 150 },
+            { name: "Raw Included Product 2", price: 250 },
+        ],
+    });
+
+    // 2. get com include literal simples (apenas address)
+    const userWithAddress = await userRepository.getOrThrow(user.id, {
+        include: { address: true },
+    });
+    console.assert(
+        userWithAddress.address?.city === "Rio de Janeiro",
+        "include literal (address): deve retornar o endereço",
+    );
+    // O ts acusaria erro se tentássemos acessar products aqui direto sem (as any),
+    // provando que o retorno foi inferido só com o que foi incluído
+    console.assert(
+        (userWithAddress as any).products === undefined,
+        "include literal (address): não deve retornar produtos",
+    );
+    console.log("✅ getOrThrow com include literal (address):", userWithAddress.address?.city);
+
+    // 3. get com include literal aninhado (address + products.tags)
+    const userFull = await userRepository.getOrThrow(user.id, {
+        include: {
+            address: true,
+            products: {
+                include: { tags: true },
+            },
+        },
+    });
+    console.assert(
+        userFull.address !== undefined,
+        "include literal (full): deve retornar o endereço",
+    );
+    console.assert(
+        Array.isArray(userFull.products) && userFull.products.length === 2,
+        "include literal (full): deve retornar os produtos",
+    );
+    console.assert(
+        userFull.products.every(p => Array.isArray(p.tags)),
+        "include literal (full): cada produto deve ter tags (array, mesmo que vazio)",
+    );
+    console.log(
+        "✅ getOrThrow com include literal (full): endereço encontrado &",
+        userFull.products.length,
+        "produtos",
+    );
+
+    // 4. getAll com include literal
+    const allWithProducts = await userRepository.getAll({
+        include: { products: true },
+    });
+    const foundInAll = allWithProducts.find(u => u.id === user.id);
+    console.assert(
+        Array.isArray(foundInAll?.products),
+        "include literal em getAll: deve retornar os produtos para todos os itens",
+    );
+    console.log("✅ getAll com include literal (products): OK");
+}
+
+// =============================================================================
 // TRANSAÇÕES
 // =============================================================================
 
@@ -1150,6 +1231,7 @@ async function runAllTests() {
         await testProductDynamicMethods(baseUser.id);
         await testRelations();
         await testIncludeModels();
+        await testRawInclude();
         await testTransactions();
 
         console.log("\n✅✅✅ Todos os testes concluídos com sucesso!\n");

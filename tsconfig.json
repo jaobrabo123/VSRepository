@@ -19,6 +19,7 @@
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
     "experimentalDecorators": true,
+    // "emitDecoratorMetadata": true,
 
     // Style Options
     // "noImplicitReturns": true,

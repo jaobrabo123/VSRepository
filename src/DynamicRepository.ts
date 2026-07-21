@@ -1,10 +1,8 @@
-import prisma from "../examples/prisma";
-import { VSRepoConfigError } from "../generated/vsrepo";
 import { DynamicMethod } from "./internal/decorators/dynamic-method.decorator";
 import { resolveDynamicMethodsMetadata } from "./internal/resolvers/dynamic-methods-metadata.resolve";
 import { validateBuildConfig } from "./internal/validation/build-config.validate";
 import { isObject } from "./internal/validation/is-object.validate";
-import { VSRepository } from "./VSRepository";
+import { VSRepoConfigError, VSRepository } from "./VSRepository";
 
 import "reflect-metadata";
 
@@ -32,7 +30,7 @@ export class DynamicRepository extends VSRepository {
 export class UserRepository extends DynamicRepository {
     constructor() {
         super(
-            prisma,
+            { $transaction: {} },
             {
                 tableName: "user",
                 pkName: "id",
