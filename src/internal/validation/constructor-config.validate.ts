@@ -1,6 +1,6 @@
 import z from "zod";
 import { ConstructorConfig } from "./types/constructor-config.type";
-import { booleanSchema, objectSchema, stringSchema } from "../utils/schemas.util";
+import { booleanSchema, methodSchema, objectSchema, stringSchema } from "../utils/schemas.util";
 import { VSRepoConfigError } from "../errors/vs-repo.error";
 
 export function validateConstructorConfig(config: unknown): ConstructorConfig {
@@ -28,16 +28,7 @@ export function validateConstructorConfig(config: unknown): ConstructorConfig {
             methods: z
                 .record(
                     stringSchema,
-                    z.strictObject({
-                        map: booleanSchema,
-                        selectModel: stringSchema.or(z.literal(false)).optional(),
-                        whereType: z.enum(["overwrite", "extending"]).optional(),
-                        proxyTo: stringSchema.optional(),
-                        pushWhere: objectSchema.optional(),
-                        fbMode: z.enum(["one", "list"]).optional(),
-                        injectOrdenation: objectSchema.or(z.array(objectSchema)).optional(),
-                        injectPagination: objectSchema.optional(),
-                    }),
+                    methodSchema,
                 )
                 .optional(),
             defaultOrdenation: objectSchema.or(z.array(objectSchema)).optional(),

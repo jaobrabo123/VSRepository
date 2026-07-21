@@ -31,7 +31,7 @@ export class VSRepository {
     defaultSelectModel?: string;
     requiredWhere?: object;
     relations?: Record<string, Relation>;
-    methods?: Record<string, Method>;
+    methods?: Record<string | symbol, Method>;
     defaultOrdenation?: object | object[];
 
     constructor(config: unknown) {
@@ -62,10 +62,10 @@ export class VSRepository {
         return extended;
     }
 
-    build(prisma: unknown, config: unknown) {
+    build(prisma: unknown, config: unknown, useInstance?: any) {
         validatePrismaClient(prisma, this);
 
-        const buildInstance: RepositoryBuildInstance = Object.create(this);
+        const buildInstance: RepositoryBuildInstance = useInstance ?? Object.create(this);
         buildInstance.prisma = prisma;
 
         if (
