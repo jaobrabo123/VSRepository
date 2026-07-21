@@ -1,6 +1,6 @@
 import prisma from "./examples/prisma";
 import { UserGetPayload } from "./generated/prisma/models";
-import { DynamicRepository } from "./generated/vsrepo";
+import { DynamicMethod, DynamicRepository, PaginationModel } from "./generated/vsrepo";
 
 type User = UserGetPayload<{
     include: {
@@ -37,8 +37,14 @@ class UserRepository extends DynamicRepository<
             },
         });
     }
+
+    @DynamicMethod<"User">({ injectOrdenation: { createdAt: "desc" } })
+    declare findByNameContainsPaginated: (
+        email: string,
+        pagination: PaginationModel<"User">,
+    ) => Promise<User[]>;
 }
 
 const userRepository = new UserRepository();
 
-userRepository.get(crypto.randomUUID(), {}).then(console.log);
+userRepository.findByNameContainsPaginated("teste", { take: 10 }).then(console.log);

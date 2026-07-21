@@ -12,6 +12,7 @@ import {
     DbClient,
     DbTransaction,
     OrdenationModel,
+    PaginationModel,
     PaginationOptions,
     PrismaModelName,
     RepositoryRelations,
@@ -272,3 +273,68 @@ export declare abstract class DynamicRepository<
     /** Restores multiple records previously marked as deleted (soft-delete) in batch. */
     restoreList(pks: VPKType[], options?: DynamicMethodOptions): Promise<{ count: number }>;
 }
+
+/**
+ * Configuration accepted by the `@DynamicMethod` decorator.
+ *
+ * @template M Prisma model name the dynamic method belongs to. Since a property
+ * decorator cannot infer the generic parameters of the class it decorates,
+ * this defaults to the full union of Prisma model names — pass it explicitly
+ * (e.g. `@DynamicMethod<'User'>({ ... })`) for precise `pushWhere`/`injectOrdenation`/
+ * `injectPagination` typing tied to a single model.
+ */
+export type DynamicMethodConfig<M extends PrismaModelName = PrismaModelName> = {
+    /** Redirects the logic to another valid method pattern. */
+    proxyTo?: string;
+
+    /** Controls whether the method combines (`extending`) or overwrites (`overwrite`) the `requiredWhere`. */
+    whereType?: "overwrite" | "extending";
+
+    /** Adds an extra `where` on top of `requiredWhere`. */
+    pushWhere?: WhereModel<M>;
+
+    /**
+     * Defines whether the method returns a single item (`one`) or a list (`list`).
+     * @deprecated Use `findOneBy` if you want to return a single result.
+     */
+    fbMode?: "one" | "list";
+
+    /** Injects a fixed ordering automatically into the query. */
+    injectOrdenation?: OrdenationModel<M>;
+
+    /** Injects a fixed pagination automatically into the query. */
+    injectPagination?: PaginationModel<M>;
+};
+
+/**
+ * Marks a `declare`d class property as a dynamic repository method.
+ *
+ * The method's behavior and return type are resolved at runtime from the
+ * property name (e.g. `findOneByEmail`, `findByNameContainsInsensitive`,
+ * `findByDescriptionIsNull`), following the same naming conventions used by
+ * `VSRepository`'s `methods` configuration.
+ *
+ * @template M Prisma model name the dynamic method belongs to.
+ *
+ * @example
+ * ```typescript
+ * class UserRepository extends DynamicRepository<User, 'User', string> {
+ *     @DynamicMethod()
+ *     declare findByAge: (age: number) => Promise<object[]>;
+ *
+ *     @DynamicMethod()
+ *     declare findOneByEmail: (email: string) => Promise<object | null>;
+ *
+ *     @DynamicMethod({ whereType: 'overwrite' })
+ *     declare findByNameContainsInsensitiveOrderedAndPaginated: (name: string) => Promise<object[]>;
+ *
+ *     @DynamicMethod({
+ *         injectOrdenation: [{ address: { state: 'asc' } }, { address: { city: 'asc' } }],
+ *     })
+ *     declare findByAddressWithCountry: (country: string) => Promise<object[]>;
+ * }
+ * ```
+ */
+export declare function DynamicMethod<M extends PrismaModelName = PrismaModelName>(
+    config?: DynamicMethodConfig<M>,
+): PropertyDecorator;

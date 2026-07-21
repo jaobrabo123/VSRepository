@@ -20,7 +20,8 @@ export {
 } from './VSRepository.js';
 
 export {
-  DynamicRepository
+  DynamicRepository,
+  DynamicMethod
 } from './DynamicRepository.js';
 
 export type * from './VSRepoError.types';

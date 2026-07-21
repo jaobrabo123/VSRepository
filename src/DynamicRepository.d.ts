@@ -4,6 +4,7 @@ import {
     DbClient,
     DbTransaction,
     OrdenationModel,
+    PaginationModel,
     PaginationOptions,
     PrismaModelName,
     RepositoryRelations,
@@ -20,9 +21,11 @@ type Simplify<T> = { [K in keyof T]: T[K] } & {};
 /**
  * Keys of `TEntity` that were configured as relations in `WRelations`.
  */
-type DynamicRelationKeys<TEntity, WRelations> = WRelations extends Partial<Record<keyof TEntity, true>>
-    ? { [K in keyof WRelations]: WRelations[K] extends true ? K : never }[keyof WRelations] & keyof TEntity
-    : never;
+type DynamicRelationKeys<TEntity, WRelations> =
+    WRelations extends Partial<Record<keyof TEntity, true>>
+        ? { [K in keyof WRelations]: WRelations[K] extends true ? K : never }[keyof WRelations] &
+              keyof TEntity
+        : never;
 
 /**
  * Resolves the shape of an input object based on the relations configured via `WRelations`.
@@ -31,7 +34,9 @@ type DynamicRelationKeys<TEntity, WRelations> = WRelations extends Partial<Recor
  * or cascading deletion is automatically handled by the repository. All other fields
  * keep their original shape from `TEntity`.
  */
-type ResolveRelationsInput<TEntity, WRelations> = [DynamicRelationKeys<TEntity, WRelations>] extends [never]
+type ResolveRelationsInput<TEntity, WRelations> = [
+    DynamicRelationKeys<TEntity, WRelations>,
+] extends [never]
     ? TEntity
     : Simplify<
           Omit<TEntity, DynamicRelationKeys<TEntity, WRelations>> &
@@ -52,7 +57,9 @@ export type DynamicSaveInput<TEntity, WRelations> = ResolveRelationsInput<TEntit
  * Every field is optional, and relation fields configured via `WRelations`
  * are resolved the same way as in `DynamicSaveInput`.
  */
-export type DynamicPatchInput<TEntity, WRelations> = Partial<ResolveRelationsInput<TEntity, WRelations>>;
+export type DynamicPatchInput<TEntity, WRelations> = Partial<
+    ResolveRelationsInput<TEntity, WRelations>
+>;
 
 /**
  * Payload accepted by the `merge` method.
@@ -60,7 +67,9 @@ export type DynamicPatchInput<TEntity, WRelations> = Partial<ResolveRelationsInp
  * Every field is optional, and relation fields configured via `WRelations`
  * are resolved the same way as in `DynamicSaveInput`.
  */
-export type DynamicMergeInput<TEntity, WRelations> = Partial<ResolveRelationsInput<TEntity, WRelations>>;
+export type DynamicMergeInput<TEntity, WRelations> = Partial<
+    ResolveRelationsInput<TEntity, WRelations>
+>;
 
 /**
  * Base options accepted by most `DynamicRepository` methods.
@@ -201,7 +210,10 @@ export declare abstract class DynamicRepository<
     remove(pk: VPKType, options?: DynamicMethodOptions): Promise<TEntity>;
 
     /** Inserts or updates (upsert) a record. */
-    save(obj: DynamicSaveInput<TEntity, WRelations>, options?: DynamicMethodOptions): Promise<TEntity>;
+    save(
+        obj: DynamicSaveInput<TEntity, WRelations>,
+        options?: DynamicMethodOptions,
+    ): Promise<TEntity>;
 
     /** Saves an array of objects in a single automatic transaction. */
     saveList(
@@ -264,3 +276,30 @@ export declare abstract class DynamicRepository<
     /** Restores multiple records previously marked as deleted (soft-delete) in batch. */
     restoreList(pks: VPKType[], options?: DynamicMethodOptions): Promise<{ count: number }>;
 }
+
+export type DynamicMethodConfig<M extends PrismaModelName = PrismaModelName> = {
+    /** Redirects the logic to another valid method pattern. */
+    proxyTo?: string;
+
+    /** Controls whether the method combines (`extending`) or overwrites (`overwrite`) the `requiredWhere`. */
+    whereType?: "overwrite" | "extending";
+
+    /** Adds an extra `where` on top of `requiredWhere`. */
+    pushWhere?: WhereModel<M>;
+
+    /**
+     * Defines whether the method returns a single item (`one`) or a list (`list`).
+     * @deprecated Use `findOneBy` if you want to return a single result.
+     */
+    fbMode?: "one" | "list";
+
+    /** Injects a fixed ordering automatically into the query. */
+    injectOrdenation?: OrdenationModel<M>;
+
+    /** Injects a fixed pagination automatically into the query. */
+    injectPagination?: PaginationModel<M>;
+};
+
+export declare function DynamicMethod<M extends PrismaModelName = PrismaModelName>(
+    config?: DynamicMethodConfig<M>,
+): PropertyDecorator;

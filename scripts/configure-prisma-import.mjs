@@ -178,14 +178,17 @@ export type * from './VSRepository.types';
   {
     fileName: 'DynamicRepository.ts',
     content: `import {
-  DynamicRepository as DynamicRepositoryRuntime
+  DynamicRepository as DynamicRepositoryRuntime,
+  DynamicMethod as DynamicMethodRuntime
 } from 'vsrepo/DynamicRepository';
 
 import type {
-  DynamicRepository as DynamicRepositoryType
+  DynamicRepository as DynamicRepositoryType,
+  DynamicMethod as DynamicMethodType
 } from './DynamicRepository.types';
 
 export const DynamicRepository = DynamicRepositoryRuntime as typeof DynamicRepositoryType;
+export const DynamicMethod = DynamicMethodRuntime as typeof DynamicMethodType;
 
 export type * from './DynamicRepository.types';
 `,
@@ -206,7 +209,8 @@ export {
 } from './VSRepository.js';
 
 export {
-  DynamicRepository
+  DynamicRepository,
+  DynamicMethod
 } from './DynamicRepository.js';
 
 export type * from './VSRepoError.types';
