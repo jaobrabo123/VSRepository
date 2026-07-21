@@ -617,21 +617,21 @@ type ResolveCurrentReturn<M extends PrismaModelName, Models, S, D, IM = never, I
 /**
  * Distributive version of `Omit`, preserving unions when removing properties.
  */
-type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
+export type DistributiveOmit<T, K extends keyof any> = T extends any ? Omit<T, K> : never;
 type ExtractUnionProp<T, K extends PropertyKey> = T extends any ? (K extends keyof T ? T[K] : never) : never;
 
-type ExtractNestedCreateInput<M extends PrismaModelName, K extends PropertyKey> =
+export type ExtractNestedCreateInput<M extends PrismaModelName, K extends PropertyKey> =
     NonNullable<ExtractUnionProp<PrismaModelInputs<M>['createInput'], K>> extends { create?: infer C }
         ? Exclude<C, any[]>
         : never;
 
-type RelationPayload<TField, TRelationConfig, M extends PrismaModelName, K extends PropertyKey> = NonNullable<TField> extends any[]
+export type RelationPayload<TField, TRelationConfig, M extends PrismaModelName, K extends PropertyKey> = NonNullable<TField> extends any[]
     ? ExtractNestedCreateInput<M, K>[]
     : NonNullable<TField> extends object
       ? ExtractNestedCreateInput<M, K> | (TRelationConfig extends { mode: 'oto'; restriction: 'set' } | { mode: 'mto'; nullable: true } | { mode: 'mto'; nullAble: true } ? null : never)
       : never;
 
-type TransformCreatePayload<U, T, M extends PrismaModelName, TRelations> =
+export type TransformCreatePayload<U, T, M extends PrismaModelName, TRelations> =
     Omit<U, keyof TRelations> &
     {
         // Fields that are REQUIRED in this specific branch of the Prisma union
@@ -647,25 +647,25 @@ type TransformCreatePayload<U, T, M extends PrismaModelName, TRelations> =
 /**
  * Payload accepted by `save` when the repository has configured relations.
  */
-type UpsertWithRelations<T, M extends PrismaModelName, TRelations> =
+export type UpsertWithRelations<T, M extends PrismaModelName, TRelations> =
     ModelUpsertInput<M> extends infer U
         ? U extends any
             ? Simplify<TransformCreatePayload<U, T, M, TRelations>>
             : never
         : never;
 
-type CleanNestedInput<T> = T extends any
+export type CleanNestedInput<T> = T extends any
     ? T extends { data: infer D }
         ? CleanNestedInput<Exclude<D, any[]>>
         : Omit<T, 'where' | 'data'>
     : never;
 
-type ExtractNestedUpdateInput<M extends PrismaModelName, K extends PropertyKey> =
+export type ExtractNestedUpdateInput<M extends PrismaModelName, K extends PropertyKey> =
     NonNullable<ExtractUnionProp<PrismaModelInputs<M>['updateInput'], K>> extends { update?: infer U }
         ? CleanNestedInput<Exclude<U, any[]>>
         : never;
 
-type RelationUpdatePayload<TField, TRelationConfig, M extends PrismaModelName, K extends PropertyKey> = NonNullable<TField> extends any[]
+export type RelationUpdatePayload<TField, TRelationConfig, M extends PrismaModelName, K extends PropertyKey> = NonNullable<TField> extends any[]
     ? ExtractNestedUpdateInput<M, K>[]
     : NonNullable<TField> extends object
       ? ExtractNestedUpdateInput<M, K> | (TRelationConfig extends { mode: 'oto'; restriction: 'set' } | { mode: 'mto'; nullable: true } | { mode: 'mto'; nullAble: true } ? null : never)
@@ -674,7 +674,7 @@ type RelationUpdatePayload<TField, TRelationConfig, M extends PrismaModelName, K
 /**
  * Payload accepted by `merge` when the repository has configured relations (uses update input).
  */
-type UpdateWithRelations<T, M extends PrismaModelName, TRelations> =
+export type UpdateWithRelations<T, M extends PrismaModelName, TRelations> =
     DistributiveOmit<PrismaModelInputs<M>['updateInput'], keyof TRelations> & {
         [K in Extract<keyof TRelations, keyof T>]?: RelationUpdatePayload<T[K], TRelations[K], M, K>;
     };
@@ -682,7 +682,7 @@ type UpdateWithRelations<T, M extends PrismaModelName, TRelations> =
 /**
  * Payload accepted by `patch` and `patchList` when the repository has configured relations (uses create input).
  */
-type PatchWithRelations<T, M extends PrismaModelName, TRelations> =
+export type PatchWithRelations<T, M extends PrismaModelName, TRelations> =
     DistributiveOmit<PrismaModelInputs<M>['updateInput'], keyof TRelations> & {
         [K in Extract<keyof TRelations, keyof T>]?: RelationPayload<T[K], TRelations[K], M, K>;
     };

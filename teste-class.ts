@@ -30,7 +30,6 @@ class UserRepository extends DynamicRepository<
                     pk: "id",
                     restriction: "set",
                 },
-
                 products: {
                     mode: "otm",
                     pk: "id",

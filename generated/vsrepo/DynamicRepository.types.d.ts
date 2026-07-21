@@ -11,10 +11,15 @@ import {
     ClientOrTransaction,
     DbClient,
     DbTransaction,
+    DistributiveOmit,
+    ExtractNestedCreateInput,
+    ExtractNestedUpdateInput,
     IncludeModel,
+    ModelUpsertInput,
     OrdenationModel,
     PaginationModel,
     PaginationOptions,
+    PrismaModelInputs,
     PrismaModelName,
     RepositoryRelations,
     SeeMode,
@@ -28,56 +33,117 @@ import {
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
 /**
- * Keys of `TEntity` that were configured as relations in `WRelations`.
+ * Resolves `WRelations` to a concrete relation map, falling back to `{}` when no
+ * relations were flagged (mirrors `VSRepository`'s own internal fallback).
  */
-type DynamicRelationKeys<TEntity, WRelations> =
-    WRelations extends Partial<Record<keyof TEntity, true>>
-        ? { [K in keyof WRelations]: WRelations[K] extends true ? K : never }[keyof WRelations] &
-              keyof TEntity
-        : never;
+type ResolveRelations<WRelations> = WRelations extends object ? WRelations : {};
 
 /**
- * Resolves the shape of an input object based on the relations configured via `WRelations`.
+ * Payload accepted for a relation field mapped as `true` in `WRelations`, used to build
+ * the `create`-shaped payload for `save`/`saveList`/`patch`/`patchList`.
  *
- * Fields that are mapped as relations become optional, since their linking, creation,
- * or cascading deletion is automatically handled by the repository. All other fields
- * keep their original shape from `TEntity`.
+ * To-many relations (array fields) resolve to a list of Prisma's own nested `create`
+ * payload. To-one relations (object fields) resolve to that same nested `create` payload,
+ * but **always also accept `null`** by default — since `WRelations` only flags *which*
+ * fields are relations (not their `mode`/`restriction`/`nullable` config), every to-one
+ * relation here is treated as unlinkable.
  */
-type ResolveRelationsInput<TEntity, WRelations> = [
-    DynamicRelationKeys<TEntity, WRelations>,
-] extends [never]
-    ? TEntity
-    : Simplify<
-          Omit<TEntity, DynamicRelationKeys<TEntity, WRelations>> &
-              Partial<Pick<TEntity, DynamicRelationKeys<TEntity, WRelations>>>
-      >;
+type DynamicRelationCreatePayload<TField, M extends PrismaModelName, K extends PropertyKey> =
+    NonNullable<TField> extends any[]
+        ? ExtractNestedCreateInput<M, K>[]
+        : NonNullable<TField> extends object
+          ? ExtractNestedCreateInput<M, K> | null
+          : never;
+
+/**
+ * Same as `DynamicRelationCreatePayload`, but built from Prisma's nested `update` payload
+ * instead of `create` — used by `merge`. To-one relations still accept `null` by default.
+ */
+type DynamicRelationUpdatePayload<TField, M extends PrismaModelName, K extends PropertyKey> =
+    NonNullable<TField> extends any[]
+        ? ExtractNestedUpdateInput<M, K>[]
+        : NonNullable<TField> extends object
+          ? ExtractNestedUpdateInput<M, K> | null
+          : never;
+
+/**
+ * Distributes over the branches of Prisma's own upsert/create union for `UName`, replacing
+ * every field flagged in `TRelations` with `DynamicRelationCreatePayload`.
+ */
+type DynamicTransformCreatePayload<U, T, M extends PrismaModelName, TRelations> = Omit<
+    U,
+    keyof TRelations
+> & {
+    // Fields that are REQUIRED in this specific branch of the Prisma union
+    [K in Extract<keyof TRelations, keyof U> as {} extends Pick<U, K>
+        ? never
+        : K]: K extends keyof T ? DynamicRelationCreatePayload<T[K], M, K> : never;
+} & {
+    // Fields that are OPTIONAL in this branch or do not originally belong to it
+    [K in keyof TRelations as K extends keyof U
+        ? {} extends Pick<U, K>
+            ? K
+            : never
+        : K]?: K extends keyof T ? DynamicRelationCreatePayload<T[K], M, K> : never;
+};
 
 /**
  * Payload accepted by the `save`/`saveList` methods.
  *
- * Relation fields configured via `WRelations` are optional; every other field
- * follows the shape of `TEntity`.
+ * Built directly from Prisma's own upsert/create input for `UName`, exactly like
+ * `VSRepository`'s `save`: fields flagged as relations via `WRelations` are resolved
+ * into their nested `create` payload shape instead of `TEntity`'s own shape (to-one
+ * relations also accept `null` by default); every other field keeps Prisma's own
+ * validated create input shape.
  */
-export type DynamicSaveInput<TEntity, WRelations> = ResolveRelationsInput<TEntity, WRelations>;
+export type DynamicSaveInput<TEntity, UName extends PrismaModelName, WRelations = undefined> =
+    ModelUpsertInput<UName> extends infer U
+        ? U extends any
+            ? Simplify<DynamicTransformCreatePayload<U, TEntity, UName, ResolveRelations<WRelations>>>
+            : never
+        : never;
 
 /**
  * Payload accepted by the `patch`/`patchList` methods.
  *
- * Every field is optional, and relation fields configured via `WRelations`
- * are resolved the same way as in `DynamicSaveInput`.
+ * Built from Prisma's own `update` input for `UName` (so every field is already
+ * optional); fields flagged as relations via `WRelations` are resolved into their
+ * nested `create` payload shape, the same way as in `DynamicSaveInput` (to-one
+ * relations also accept `null` by default).
  */
-export type DynamicPatchInput<TEntity, WRelations> = Partial<
-    ResolveRelationsInput<TEntity, WRelations>
+export type DynamicPatchInput<
+    TEntity,
+    UName extends PrismaModelName,
+    WRelations = undefined,
+> = Simplify<
+    DistributiveOmit<PrismaModelInputs<UName>["updateInput"], keyof ResolveRelations<WRelations>> & {
+        [K in Extract<keyof ResolveRelations<WRelations>, keyof TEntity>]?: DynamicRelationCreatePayload<
+            TEntity[K],
+            UName,
+            K
+        >;
+    }
 >;
 
 /**
  * Payload accepted by the `merge` method.
  *
- * Every field is optional, and relation fields configured via `WRelations`
- * are resolved the same way as in `DynamicSaveInput`.
+ * Built from Prisma's own `update` input for `UName` (so every field is already
+ * optional); fields flagged as relations via `WRelations` are resolved into their
+ * nested `update` payload shape (to-one relations also accept `null` by default).
  */
-export type DynamicMergeInput<TEntity, WRelations> = Partial<
-    ResolveRelationsInput<TEntity, WRelations>
+export type DynamicMergeInput<
+    TEntity,
+    UName extends PrismaModelName,
+    WRelations = undefined,
+> = Simplify<
+    DistributiveOmit<PrismaModelInputs<UName>["updateInput"], keyof ResolveRelations<WRelations>> & {
+        [K in Extract<keyof ResolveRelations<WRelations>, keyof TEntity>]?: DynamicRelationUpdatePayload<
+            TEntity[K],
+            UName,
+            K
+        >;
+    }
 >;
 
 /**
@@ -183,7 +249,11 @@ export interface DynamicRepositoryConstructorConfig<T, U extends PrismaModelName
  * @template TEntity Type of the entity managed by the repository.
  * @template UName Prisma model name.
  * @template VPKType Type of the entity's primary key value.
- * @template WRelations Map indicating which fields of `TEntity` are configured as relations.
+ * @template WRelations Keys of `TEntity` configured as relations (flags only, `true`
+ * per relation field). The actual relation behavior (`mode`, `restriction`, `nullable`)
+ * still comes from `relations` in the constructor config; `WRelations` here only tells
+ * `DynamicSaveInput`/`DynamicPatchInput`/`DynamicMergeInput` which fields to resolve
+ * into their nested Prisma create/update payload shape instead of `TEntity`'s own shape.
  */
 export declare abstract class DynamicRepository<
     TEntity extends object,
@@ -210,13 +280,13 @@ export declare abstract class DynamicRepository<
 
     /** Inserts or updates (upsert) a record. */
     save(
-        obj: DynamicSaveInput<TEntity, WRelations>,
+        obj: DynamicSaveInput<TEntity, UName, WRelations>,
         options?: DynamicMethodOptions<UName>,
     ): Promise<TEntity>;
 
     /** Saves an array of objects in a single automatic transaction. */
     saveList(
-        objs: DynamicSaveInput<TEntity, WRelations>[],
+        objs: DynamicSaveInput<TEntity, UName, WRelations>[],
         options?: Omit<DynamicMethodOptions<UName>, "include"> & {
             /** Transaction client to use for this operation. */
             db?: DbTransaction;
@@ -226,13 +296,13 @@ export declare abstract class DynamicRepository<
     /** Partially updates (patch) an existing record by its primary key (PK). */
     patch(
         pk: VPKType,
-        obj: DynamicPatchInput<TEntity, WRelations>,
+        obj: DynamicPatchInput<TEntity, UName, WRelations>,
         options?: DynamicMethodOptions<UName>,
     ): Promise<TEntity>;
 
     /** Partially updates multiple records via `[pk, obj]` tuples in an automatic transaction. */
     patchList(
-        tuples: [pk: VPKType, obj: DynamicPatchInput<TEntity, WRelations>][],
+        tuples: [pk: VPKType, obj: DynamicPatchInput<TEntity, UName, WRelations>][],
         options?: Omit<DynamicMethodOptions<UName>, "include"> & {
             /** Transaction client to use for this operation. */
             db?: DbTransaction;
@@ -242,7 +312,7 @@ export declare abstract class DynamicRepository<
     /** Fetches a record by PK and deep-merges it with the provided object **in memory**. */
     merge(
         pk: VPKType,
-        obj: DynamicMergeInput<TEntity, WRelations>,
+        obj: DynamicMergeInput<TEntity, UName, WRelations>,
         options?: DynamicMethodOptions<UName>,
     ): Promise<TEntity | null>;
 
