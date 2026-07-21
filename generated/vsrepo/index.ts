@@ -19,5 +19,10 @@ export {
   setupVSRepo
 } from './VSRepository.js';
 
+export {
+  DynamicRepository
+} from './DynamicRepository.js';
+
 export type * from './VSRepoError.types';
 export type * from './VSRepository.types';
+export type * from './DynamicRepository.types';

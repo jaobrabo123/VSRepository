@@ -20,6 +20,11 @@
       "import": "./dist/VSRepository.js",
       "require": "./dist/VSRepository.js"
     },
+    "./DynamicRepository": {
+      "types": "./dist/DynamicRepository.d.ts",
+      "import": "./dist/DynamicRepository.js",
+      "require": "./dist/DynamicRepository.js"
+    },
     "./VSRepoError": {
       "types": "./dist/VSRepoError.d.ts",
       "import": "./dist/VSRepoError.js",
