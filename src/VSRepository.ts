@@ -114,30 +114,30 @@ export class VSRepository {
 
                 if (!dinamicMethodInfo.ignoreWhere) {
                     resolvePrettyWheres(dinamicMethodInfo, dinamicMethodWhereOps);
-                    if (showWorking) {
-                        const argsSimulation: any[] = [];
+                    // if (showWorking) {
+                    //     const argsSimulation: any[] = [];
 
-                        for (let x = 0; x < dinamicMethodInfo.argsCount; x++) {
-                            argsSimulation[x] = "00";
-                        }
+                    //     for (let x = 0; x < dinamicMethodInfo.argsCount; x++) {
+                    //         argsSimulation[x] = "00";
+                    //     }
 
-                        logger(
-                            `Where object resolved to ${methodToMap}:`,
-                            "build",
-                            buildInstance.tableName,
-                            resolveSpecificWhere(
-                                argsSimulation,
-                                dinamicMethodWhereOps.prettyWheres,
-                            ),
-                        );
+                    //     logger(
+                    //         `Where object resolved to ${methodToMap}:`,
+                    //         "build",
+                    //         buildInstance.tableName,
+                    //         resolveSpecificWhere(
+                    //             argsSimulation,
+                    //             dinamicMethodWhereOps.prettyWheres,
+                    //         ),
+                    //     );
 
-                        // logger(
-                        //     `Where object resolved to ${methodToMap}:`,
-                        //     "build",
-                        //     buildInstance.tableName,
-                        //     dinamicMethodWhereOps.prettyWheres,
-                        // );
-                    }
+                    //     // logger(
+                    //     //     `Where object resolved to ${methodToMap}:`,
+                    //     //     "build",
+                    //     //     buildInstance.tableName,
+                    //     //     dinamicMethodWhereOps.prettyWheres,
+                    //     // );
+                    // }
                 }
 
                 let select: object | undefined = undefined;
@@ -208,6 +208,19 @@ export class VSRepository {
                         return prismaArgs;
                     },
                 );
+
+                if (showWorking) {
+                    const argsSimulation = new Array<string>(dinamicMethodInfo.argsCount).fill("00");
+
+                    const prismaArgs = buildInstance.vsrepocache.get(originalKey)!(argsSimulation);
+
+                    logger(
+                        `PrismaArgs preview for ${methodToMap}:`,
+                        "build",
+                        buildInstance.tableName,
+                        prismaArgs,
+                    );
+                }
 
                 (buildInstance as any)[originalKey] = async (...args: any[]) => {
                     let db = buildInstance.prisma;

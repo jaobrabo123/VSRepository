@@ -1,3 +1,4 @@
+import prisma from "../examples/prisma";
 import { VSRepoConfigError } from "../generated/vsrepo";
 import { DynamicMethod } from "./internal/decorators/dynamic-method.decorator";
 import { resolveDynamicMethodsMetadata } from "./internal/resolvers/dynamic-methods-metadata.resolve";
@@ -30,16 +31,39 @@ export class DynamicRepository extends VSRepository {
 
 export class UserRepository extends DynamicRepository {
     constructor() {
-        super({ $transaction: {} }, { tableName: "user", pkName: "id", build: { showWorking: true } });
+        super(
+            prisma,
+            {
+                tableName: "user",
+                pkName: "id",
+                requiredWhere: { active: true },
+                softRemovekName: "createdAt",
+                build: { showWorking: true },
+            },
+        );
     }
 
-    @DynamicMethod({})
+    @DynamicMethod()
     declare findByAge: (age: number) => Promise<object[]>;
 
-    @DynamicMethod({})
+    @DynamicMethod()
     declare findOneByEmail: (email: number) => Promise<object[]>;
+
+    @DynamicMethod()
+    declare findByNameStartsWithInsensitive: (email: number) => Promise<object[]>;
+
+    @DynamicMethod()
+    declare findByDescriptionIsNull: (email: number) => Promise<object[]>;
+
+    @DynamicMethod({ whereType: "overwrite" })
+    declare findByNameContainsInsensitiveOrderedAndPaginated: (email: number) => Promise<object[]>;
+
+    @DynamicMethod({
+        injectOrdenation: [{ address: { state: "asc" } }, { address: { city: "asc" } }],
+    })
+    declare findByAddressWithCountry: (email: number) => Promise<object[]>;
 }
 
 const userRepository = new UserRepository();
 
-console.log(userRepository);
+// console.log(userRepository);
