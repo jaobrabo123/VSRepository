@@ -1,6 +1,11 @@
 import prisma from "./examples/prisma";
 import { UserGetPayload } from "./generated/prisma/models";
-import { DynamicMethod, DynamicRepository, PaginationModel } from "./generated/vsrepo";
+import {
+    DynamicMethod,
+    DynamicMethodOptions,
+    DynamicRepository,
+    PaginationModel,
+} from "./generated/vsrepo";
 
 type User = UserGetPayload<{
     include: {
@@ -42,9 +47,15 @@ class UserRepository extends DynamicRepository<
     declare findByNameContainsPaginated: (
         email: string,
         pagination: PaginationModel<"User">,
+        options?: DynamicMethodOptions<"User">,
     ) => Promise<User[]>;
+
+    @DynamicMethod()
+    declare findOneByEmail: (email: string) => Promise<User | null>;
 }
 
 const userRepository = new UserRepository();
 
-userRepository.findByNameContainsPaginated("teste", { take: 10 }).then(console.log);
+userRepository
+    .findByNameContainsPaginated("teste", { take: 10 }, { include: { address: true } })
+    .then(console.log);

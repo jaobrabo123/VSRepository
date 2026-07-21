@@ -3,6 +3,7 @@ import {
     ClientOrTransaction,
     DbClient,
     DbTransaction,
+    IncludeModel,
     OrdenationModel,
     PaginationModel,
     PaginationOptions,
@@ -74,28 +75,18 @@ export type DynamicMergeInput<TEntity, WRelations> = Partial<
 /**
  * Base options accepted by most `DynamicRepository` methods.
  */
-export type DynamicMethodOptions = {
+export type DynamicMethodOptions<TName extends PrismaModelName = PrismaModelName> = {
     /** Database client or transaction to use for this operation. */
     db?: ClientOrTransaction;
-};
 
-/**
- * Options accepted by methods that respect soft-delete visibility.
- */
-export type DynamicMethodOptionsWithSee = DynamicMethodOptions & {
     /**
      * Controls visibility of soft-deleted records.
      * Only takes effect if `softRemovekName` is configured.
      */
     see?: SeeMode;
-};
 
-/**
- * Options accepted by methods that run in a batch/automatic transaction.
- */
-export type DynamicTransactionOptions = {
-    /** Transaction client to use for this operation. */
-    db?: DbTransaction;
+    /** Raw Prisma `include`. */
+    include?: IncludeModel<TName>;
 };
 
 /**
@@ -198,13 +189,13 @@ export declare abstract class DynamicRepository<
     constructor(prisma: DbClient, config: DynamicRepositoryConstructorConfig<TEntity, UName>);
 
     /** Fetches a record by its primary key (PK). */
-    get(pk: VPKType, options?: DynamicMethodOptionsWithSee): Promise<TEntity | null>;
+    get(pk: VPKType, options?: DynamicMethodOptions): Promise<TEntity | null>;
 
     /** Fetches a record by PK and throws `VSRepoRuntimeError` if not found. */
-    getOrThrow(pk: VPKType, options?: DynamicMethodOptionsWithSee): Promise<TEntity>;
+    getOrThrow(pk: VPKType, options?: DynamicMethodOptions): Promise<TEntity>;
 
     /** Fetches multiple records by a list of primary keys (PKs). */
-    getList(pks: VPKType[], options?: DynamicMethodOptionsWithSee): Promise<TEntity[]>;
+    getList(pks: VPKType[], options?: DynamicMethodOptions): Promise<TEntity[]>;
 
     /** Deletes a record identified by its primary key (PK). */
     remove(pk: VPKType, options?: DynamicMethodOptions): Promise<TEntity>;
@@ -218,7 +209,10 @@ export declare abstract class DynamicRepository<
     /** Saves an array of objects in a single automatic transaction. */
     saveList(
         objs: DynamicSaveInput<TEntity, WRelations>[],
-        options?: DynamicTransactionOptions,
+        options?: Omit<DynamicMethodOptions, "include"> & {
+            /** Transaction client to use for this operation. */
+            db?: DbTransaction;
+        },
     ): Promise<TEntity[]>;
 
     /** Partially updates (patch) an existing record by its primary key (PK). */
@@ -231,7 +225,10 @@ export declare abstract class DynamicRepository<
     /** Partially updates multiple records via `[pk, obj]` tuples in an automatic transaction. */
     patchList(
         tuples: [pk: VPKType, obj: DynamicPatchInput<TEntity, WRelations>][],
-        options?: DynamicTransactionOptions,
+        options?: Omit<DynamicMethodOptions, "include"> & {
+            /** Transaction client to use for this operation. */
+            db?: DbTransaction;
+        },
     ): Promise<TEntity[]>;
 
     /** Fetches a record by PK and deep-merges it with the provided object **in memory**. */
@@ -242,11 +239,14 @@ export declare abstract class DynamicRepository<
     ): Promise<TEntity | null>;
 
     /** Deletes multiple records by their primary keys. */
-    removeList(pks: VPKType[], options?: DynamicMethodOptions): Promise<{ count: number }>;
+    removeList(
+        pks: VPKType[],
+        options?: Omit<DynamicMethodOptions, "include">,
+    ): Promise<{ count: number }>;
 
     /** Fetches all records (respects `requiredWhere` when set). */
     getAll(
-        options?: DynamicMethodOptionsWithSee & {
+        options?: DynamicMethodOptions & {
             /** Pagination options for the query. */
             pagination?: PaginationOptions;
             /**
@@ -259,22 +259,28 @@ export declare abstract class DynamicRepository<
     ): Promise<TEntity[]>;
 
     /** Returns the total number of records. */
-    total(options?: DynamicMethodOptionsWithSee): Promise<number>;
+    total(options?: Omit<DynamicMethodOptions, "include">): Promise<number>;
 
     /** Checks whether a record exists by its primary key (PK). */
-    has(pk: VPKType, options?: DynamicMethodOptionsWithSee): Promise<boolean>;
+    has(pk: VPKType, options?: Omit<DynamicMethodOptions, "include">): Promise<boolean>;
 
     /** Marks a record as deleted (soft-delete). */
-    softRemove(pk: VPKType, options?: DynamicMethodOptionsWithSee): Promise<TEntity>;
+    softRemove(pk: VPKType, options?: Omit<DynamicMethodOptions, "see">): Promise<TEntity>;
 
     /** Marks multiple records as deleted (soft-delete) in batch. */
-    softRemoveList(pks: VPKType[], options?: DynamicMethodOptions): Promise<{ count: number }>;
+    softRemoveList(
+        pks: VPKType[],
+        options?: Omit<DynamicMethodOptions, "see" | "include">,
+    ): Promise<{ count: number }>;
 
     /** Restores a record previously marked as deleted (soft-delete). */
-    restore(pk: VPKType, options?: DynamicMethodOptionsWithSee): Promise<TEntity>;
+    restore(pk: VPKType, options?: Omit<DynamicMethodOptions, "see">): Promise<TEntity>;
 
     /** Restores multiple records previously marked as deleted (soft-delete) in batch. */
-    restoreList(pks: VPKType[], options?: DynamicMethodOptions): Promise<{ count: number }>;
+    restoreList(
+        pks: VPKType[],
+        options?: Omit<DynamicMethodOptions, "see" | "include">,
+    ): Promise<{ count: number }>;
 }
 
 export type DynamicMethodConfig<M extends PrismaModelName = PrismaModelName> = {
