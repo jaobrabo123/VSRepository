@@ -189,27 +189,27 @@ export declare abstract class DynamicRepository<
     constructor(prisma: DbClient, config: DynamicRepositoryConstructorConfig<TEntity, UName>);
 
     /** Fetches a record by its primary key (PK). */
-    get(pk: VPKType, options?: DynamicMethodOptions): Promise<TEntity | null>;
+    get(pk: VPKType, options?: DynamicMethodOptions<UName>): Promise<TEntity | null>;
 
     /** Fetches a record by PK and throws `VSRepoRuntimeError` if not found. */
-    getOrThrow(pk: VPKType, options?: DynamicMethodOptions): Promise<TEntity>;
+    getOrThrow(pk: VPKType, options?: DynamicMethodOptions<UName>): Promise<TEntity>;
 
     /** Fetches multiple records by a list of primary keys (PKs). */
-    getList(pks: VPKType[], options?: DynamicMethodOptions): Promise<TEntity[]>;
+    getList(pks: VPKType[], options?: DynamicMethodOptions<UName>): Promise<TEntity[]>;
 
     /** Deletes a record identified by its primary key (PK). */
-    remove(pk: VPKType, options?: DynamicMethodOptions): Promise<TEntity>;
+    remove(pk: VPKType, options?: DynamicMethodOptions<UName>): Promise<TEntity>;
 
     /** Inserts or updates (upsert) a record. */
     save(
         obj: DynamicSaveInput<TEntity, WRelations>,
-        options?: DynamicMethodOptions,
+        options?: DynamicMethodOptions<UName>,
     ): Promise<TEntity>;
 
     /** Saves an array of objects in a single automatic transaction. */
     saveList(
         objs: DynamicSaveInput<TEntity, WRelations>[],
-        options?: Omit<DynamicMethodOptions, "include"> & {
+        options?: Omit<DynamicMethodOptions<UName>, "include"> & {
             /** Transaction client to use for this operation. */
             db?: DbTransaction;
         },
@@ -219,13 +219,13 @@ export declare abstract class DynamicRepository<
     patch(
         pk: VPKType,
         obj: DynamicPatchInput<TEntity, WRelations>,
-        options?: DynamicMethodOptions,
+        options?: DynamicMethodOptions<UName>,
     ): Promise<TEntity>;
 
     /** Partially updates multiple records via `[pk, obj]` tuples in an automatic transaction. */
     patchList(
         tuples: [pk: VPKType, obj: DynamicPatchInput<TEntity, WRelations>][],
-        options?: Omit<DynamicMethodOptions, "include"> & {
+        options?: Omit<DynamicMethodOptions<UName>, "include"> & {
             /** Transaction client to use for this operation. */
             db?: DbTransaction;
         },
@@ -235,18 +235,18 @@ export declare abstract class DynamicRepository<
     merge(
         pk: VPKType,
         obj: DynamicMergeInput<TEntity, WRelations>,
-        options?: DynamicMethodOptions,
+        options?: DynamicMethodOptions<UName>,
     ): Promise<TEntity | null>;
 
     /** Deletes multiple records by their primary keys. */
     removeList(
         pks: VPKType[],
-        options?: Omit<DynamicMethodOptions, "include">,
+        options?: Omit<DynamicMethodOptions<UName>, "include">,
     ): Promise<{ count: number }>;
 
     /** Fetches all records (respects `requiredWhere` when set). */
     getAll(
-        options?: DynamicMethodOptions & {
+        options?: DynamicMethodOptions<UName> & {
             /** Pagination options for the query. */
             pagination?: PaginationOptions;
             /**
@@ -259,27 +259,27 @@ export declare abstract class DynamicRepository<
     ): Promise<TEntity[]>;
 
     /** Returns the total number of records. */
-    total(options?: Omit<DynamicMethodOptions, "include">): Promise<number>;
+    total(options?: Omit<DynamicMethodOptions<UName>, "include">): Promise<number>;
 
     /** Checks whether a record exists by its primary key (PK). */
-    has(pk: VPKType, options?: Omit<DynamicMethodOptions, "include">): Promise<boolean>;
+    has(pk: VPKType, options?: Omit<DynamicMethodOptions<UName>, "include">): Promise<boolean>;
 
     /** Marks a record as deleted (soft-delete). */
-    softRemove(pk: VPKType, options?: Omit<DynamicMethodOptions, "see">): Promise<TEntity>;
+    softRemove(pk: VPKType, options?: Omit<DynamicMethodOptions<UName>, "see">): Promise<TEntity>;
 
     /** Marks multiple records as deleted (soft-delete) in batch. */
     softRemoveList(
         pks: VPKType[],
-        options?: Omit<DynamicMethodOptions, "see" | "include">,
+        options?: Omit<DynamicMethodOptions<UName>, "see" | "include">,
     ): Promise<{ count: number }>;
 
     /** Restores a record previously marked as deleted (soft-delete). */
-    restore(pk: VPKType, options?: Omit<DynamicMethodOptions, "see">): Promise<TEntity>;
+    restore(pk: VPKType, options?: Omit<DynamicMethodOptions<UName>, "see">): Promise<TEntity>;
 
     /** Restores multiple records previously marked as deleted (soft-delete) in batch. */
     restoreList(
         pks: VPKType[],
-        options?: Omit<DynamicMethodOptions, "see" | "include">,
+        options?: Omit<DynamicMethodOptions<UName>, "see" | "include">,
     ): Promise<{ count: number }>;
 }
 
@@ -306,6 +306,26 @@ export type DynamicMethodConfig<M extends PrismaModelName = PrismaModelName> = {
     injectPagination?: PaginationModel<M>;
 };
 
+/**
+ * Property decorator used to declare a dynamic method on a `DynamicRepository` subclass.
+ *
+ * Applied to a `declare` class field whose name follows one of the supported method
+ * patterns (e.g. `findByEmail`, `findManyByStatusPaginated`); the method's behavior and
+ * return type are inferred from the field name, optionally adjusted via `config`.
+ *
+ * @template M Prisma model name the decorated method operates on.
+ *
+ * @example
+ * ```typescript
+ * class UserRepository extends DynamicRepository<User, "User", string> {
+ *     `@DynamicMethod()`
+ *     declare findOneByEmail: (email: string) => Promise<User | null>;
+ * 
+ *     @DynamicMethod<"User">({ injectOrdenation: { createdAt: "desc" } })
+ *     declare findByAge: (email: number) => Promise<User[]>;
+ * }
+ * ```
+ */
 export declare function DynamicMethod<M extends PrismaModelName = PrismaModelName>(
     config?: DynamicMethodConfig<M>,
 ): PropertyDecorator;
