@@ -258,6 +258,11 @@ export declare abstract class DynamicRepository<
      */
     constructor(prisma: DbClient, config: DynamicRepositoryConstructorConfig<TEntity, UName>);
 
+    /**
+     * The Prisma Client instance passed to constructor.
+     */
+    readonly prisma: DbClient;
+
     /** Fetches a record by its primary key (PK). */
     get(pk: VPKType, options?: DynamicMethodOptions<UName>): Promise<TEntity | null>;
 

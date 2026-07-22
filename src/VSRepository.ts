@@ -161,7 +161,7 @@ export class VSRepository {
                                 ignoreRequiredWhere:
                                     dinamicMethodWhereOps.whereType === "overwrite",
                             },
-                            withoutWhere: dinamicMethodInfo.ignoreWhere,
+                            withoutWhere: dinamicMethodInfo.ignoreWhere && !dinamicMethodInfo.onlyBaseWheres,
                             specificSelect: select,
                             pushWhere: dinamicMethodWhereOps.pushWhere,
                             withoutSelect: dinamicMethodInfo.ignoreSelect,

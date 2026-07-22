@@ -25,6 +25,7 @@ VSRepository lets you create strongly-typed repositories with:
 - [Installation](#installation)
 - [Generating the types](#generating-the-types)
 - [Basic usage](#basic-usage)
+- [Class-based approach (DynamicRepository)](#class-based-approach-dynamicrepository)
 - [NestJS integration](#nestjs-integration)
 - [Base methods](#base-methods)
   - [Soft-delete](#soft-delete)
@@ -173,6 +174,14 @@ user.name = "John Smith";
 await userRepository.save(user);
 await userRepository.remove(user.id);
 ```
+
+---
+
+## Class-based approach (DynamicRepository)
+
+If you prefer an OOP style with decorators instead of the functional `setupVSRepo` approach, VSRepository also provides `DynamicRepository` — a class you can extend with `@DynamicMethod()` decorators to define your dynamic methods.
+
+See **[README-DynamicRepo.md](./README-DynamicRepo.md)** for full documentation on the class-based approach, including NestJS integration examples, decorator config, and a comparison with `setupVSRepo`.
 
 ---
 
