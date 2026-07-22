@@ -7,6 +7,7 @@ VSRepository offers two ways to create repositories: the functional `setupVSRepo
 ## Table of contents
 
 - [When to use DynamicRepository](#when-to-use-dynamicrepository)
+- [Requirements](#requirements)
 - [Creating a class](#creating-a-class)
 - [The @DynamicMethod decorator](#the-dynamicmethod-decorator)
 - [Decorator config options](#decorator-config-options)
@@ -30,6 +31,24 @@ Use `DynamicRepository` when you prefer an **OOP style with decorators** over th
 - `selectModels` and `includeModels` are **not supported** (use raw `include` via `DynamicMethodOptions` instead)
 - Base methods are always active (no `active` toggle per method)
 - The repository is built automatically in the constructor (no explicit `.build()` call)
+
+---
+
+## Requirements
+
+`DynamicRepository` relies on TypeScript's legacy decorators, so your project's `tsconfig.json` must have:
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true
+  }
+}
+```
+
+`reflect-metadata` is already a dependency of `vsrepo` and is imported internally — you don't need to import it yourself.
+
+Without `experimentalDecorators: true`, `@DynamicMethod()` will fail to compile (or silently fail to register the method at runtime, depending on your build tool).
 
 ---
 
@@ -100,7 +119,7 @@ class UserRepository extends DynamicRepository<User, "User", string> {
 
     // With decorator config
     @DynamicMethod<"User">({ proxyTo: "findMany", pushWhere: { active: false } })
-    declare findDisabled () => Promise<User[]>;
+    declare findDisabled: () => Promise<User[]>;
 
     // Proxy to another method
     @DynamicMethod<"User">({ proxyTo: "findOneByEmail", whereType: "overwrite" })
@@ -135,6 +154,7 @@ The `@DynamicMethod<M>()` decorator accepts an optional config object:
 | `pushWhere` | `WhereModel<M>` | Extra `where` clause added on top of `requiredWhere` |
 | `injectOrdenation` | `OrdenationModel<M>` | Fixed ordering injected into the query |
 | `injectPagination` | `PaginationModel<M>` | Fixed pagination injected into the query |
+| `fbMode` | `"one" \| "list"` | **Deprecated.** Only relevant for `findBy`-prefixed methods. Use `findOneBy` instead if you want a single result. |
 
 ---
 
@@ -154,7 +174,7 @@ All `DynamicRepository` instances automatically include these methods:
 | `merge(pk, obj)` | Fetch and deep-merge in memory (does not persist) |
 | `remove(pk)` | Delete a record by PK |
 | `removeList(pks)` | Batch delete by PKs |
-| `getAll()` | Fetch all records (respects `requiredWhere`) |
+| `getAll()` | Fetch all records (respects `requiredWhere`). Accepts `pagination` and `order` in `options` — see below |
 | `total()` | Count all records |
 | `has(pk)` | Check if a record exists |
 | `softRemove(pk)` | Soft-delete (requires `softRemovekName` config) |
@@ -162,7 +182,21 @@ All `DynamicRepository` instances automatically include these methods:
 | `restore(pk)` | Restore soft-deleted record |
 | `restoreList(pks)` | Batch restore |
 
-All methods accept `options?: DynamicMethodOptions` with `db`, `see`, and `include`.
+All methods accept an optional `options` argument based on `DynamicMethodOptions` (`db`, `see`, `include`), but a few methods narrow it further:
+
+- **`getAll`** additionally accepts `pagination?: PaginationOptions` and `order?: OrdenationModel<UName>` (falls back to `defaultOrdenation` when omitted).
+- **`saveList` / `patchList`** omit `include`, and `db` only accepts a `DbTransaction` (the return of `prisma.$transaction`) — not the plain Prisma client.
+- **`removeList`, `total`, `has`** omit `include`.
+- **`softRemove`, `restore`** omit `see` (soft-delete visibility doesn't apply to the record being changed).
+- **`softRemoveList`, `restoreList`** omit both `see` and `include`.
+
+```typescript
+// getAll with pagination and ordering
+const page = await userRepository.getAll({
+    pagination: { skip: 0, take: 20 },
+    order: { createdAt: "desc" },
+});
+```
 
 ---
 
@@ -470,7 +504,6 @@ constructor(prisma: DbClient, config: DynamicRepositoryConstructorConfig<TEntity
 | Property | Type | Description |
 |----------|------|-------------|
 | `showWorking?` | `boolean` | Show internal logs (default: `false`) |
-| `showQueries?` | `boolean` | Show Prisma queries |
 | `baseMethods?` | `Record<string, { ignoreRequiredWhere?: boolean }>` | Per-method config |
 
 ### @DynamicMethod<M>(config?)
