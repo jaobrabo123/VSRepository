@@ -4,6 +4,8 @@
 ![NPM License](https://img.shields.io/npm/l/vsrepo?style=flat-square)
 ![NPM Downloads](https://img.shields.io/npm/dt/vsrepo?style=flat-square)
 
+🇺🇸 You're reading the English version. [🇧🇷 Ler em português](./README.pt-BR.md)
+
 Repository pattern library for projects using **Prisma**, with full **TypeScript** support and automatic **type inference**.
 
 VSRepository lets you create strongly-typed repositories with:
@@ -34,6 +36,7 @@ VSRepository lets you create strongly-typed repositories with:
   - [Configuring the base methods](#configuring-the-base-methods)
 - [Select Models](#select-models)
 - [Include Models](#include-models)
+  - [Raw include (options.include)](#raw-include-optionsinclude)
 - [Required Where](#required-where)
 - [Default Ordenation](#default-ordenation)
 - [`see` option](#see-option)
@@ -181,7 +184,7 @@ await userRepository.remove(user.id);
 
 If you prefer an OOP style with decorators instead of the functional `setupVSRepo` approach, VSRepository also provides `DynamicRepository` — a class you can extend with `@DynamicMethod()` decorators to define your dynamic methods.
 
-See **[README-DynamicRepo.md](./README-DynamicRepo.md)** for full documentation on the class-based approach, including NestJS integration examples, decorator config, and a comparison with `setupVSRepo`.
+See **[README-DynamicRepo.md](./README-DynamicRepo.md)** (or the [pt-BR version](./README-DynamicRepo.pt-BR.md)) for full documentation on the class-based approach, including NestJS integration examples, decorator config, and a comparison with `setupVSRepo`.
 
 ---
 
@@ -571,6 +574,35 @@ await userRepository.get(id, { selectModel: "public" });
 // WRONG ❌ — combining both is not allowed
 await userRepository.get(id, { selectModel: "public", includeModel: "withPosts" });
 ```
+
+### Raw `include` (`options.include`)
+
+Besides `includeModel` (named, pre-configured in `includeModels`), you can pass a raw Prisma `include` directly in the call, without registering it beforehand on the repository.
+
+```ts
+const user = await userRepository.get(id, {
+  include: { posts: true, profile: true },
+});
+```
+
+`options.include` accepts any valid `include` for the repository's Prisma model — it's fully typed and offers the same autocomplete/validation as calling `prisma.user.findMany({ include: ... })` directly.
+
+**Rules and behavior:**
+
+- **Mutually exclusive with `selectModel` and `includeModel`.** Only one of the three can be provided per call; the types enforce this — passing more than one is a compile-time error.
+- **Ad hoc, not reusable.** Unlike `includeModel`, it doesn't need to be declared in `includeModels`. Use it for one-off includes that don't justify a named model.
+- **No `selectModel` default is applied.** As with `includeModel`, when `include` is provided the select (including `defaultSelectModel`) is ignored and only the `include` is sent to Prisma.
+
+```ts
+// CORRECT ✅ — raw include only
+await userRepository.get(id, { include: { posts: true } });
+
+// WRONG ❌ — combining include with selectModel/includeModel is not allowed
+await userRepository.get(id, { selectModel: "public", include: { posts: true } });
+await userRepository.get(id, { includeModel: "withPosts", include: { posts: true } });
+```
+
+> **When to use `includeModel` vs. `include`:** prefer `includeModel` for includes reused across multiple calls (defined once in `includeModels`); use `include` for specific, occasional includes that don't need a name.
 
 ---
 
@@ -1438,9 +1470,9 @@ Recommended `tsconfig.json`:
 
 **Select model returns unexpected fields** — Check that the select model defines exactly the fields your TypeScript type expects.
 
-**`selectModel` and `includeModel` together in the same call** — Not allowed. Choose one or the other: if `includeModel` is provided, the `select` (including `defaultSelectModel`) is ignored and only the `include` is sent to Prisma.
+**`selectModel`, `includeModel` and `include` together in the same call** — Not allowed. Only one of the three can be provided per call: if `includeModel` or `include` is provided, the `select` (including `defaultSelectModel`) is ignored and only the `include` is sent to Prisma.
 
-**`includeModel` doesn't appear as a default repository option** — This is expected. Unlike `defaultSelectModel`, there's no `defaultIncludeModel`/`defaultInclude`. An `includeModel` can only be set in the method call, via `options.includeModel`.
+**`includeModel` doesn't appear as a default repository option** — This is expected. Unlike `defaultSelectModel`, there's no `defaultIncludeModel`/`defaultInclude`. An `includeModel` can only be set in the method call, via `options.includeModel`. A raw, ad hoc include can be set via `options.include`, without needing to be registered in `includeModels`.
 
 **`softRemovekName` throws an error at build** — The provided field must be of type `DateTime` in the Prisma schema. Types like `Boolean` or `String` are not accepted.
 

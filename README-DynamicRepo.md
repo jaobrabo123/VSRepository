@@ -1,5 +1,7 @@
 # DynamicRepository (Class-based approach)
 
+🇺🇸 You're reading the English version. [🇧🇷 Ler em português](./README-DynamicRepo.pt-BR.md)
+
 VSRepository offers two ways to create repositories: the functional `setupVSRepo` approach and the OOP `DynamicRepository` class-based approach. This document covers the class-based approach using `DynamicRepository` and the `@DynamicMethod` decorator.
 
 > For the functional approach, see the main [README.md](./README.md).
