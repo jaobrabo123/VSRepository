@@ -5,7 +5,7 @@ export function logger(
     obj?: object,
 ) {
     console.log(
-        `[VSRepository] (${tableName ?? "unknown"}: ${moment}) ${message}`
+        `\n[VSRepository] (${tableName ?? "unknown"}: ${moment}) ${message}`
     );
     if(obj) console.log(JSON.stringify(obj, null, 2));
 }

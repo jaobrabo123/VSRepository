@@ -5,7 +5,8 @@ export type VSRepoErrorType =
     | 'VSREPO_CONFIG'
     | 'VSREPO_BUILD'
     | 'VSREPO_EXTEND'
-    | 'VSREPO_RUNTIME';
+    | 'VSREPO_RUNTIME'
+    | 'VSREPO_DECORATOR';
 
 /**
  * Base class for all errors thrown by the VSRepository.
@@ -41,6 +42,14 @@ export declare class VSRepoBuildError extends VSRepoError {
  */
 export declare class VSRepoExtendError extends VSRepoError {
     readonly type: 'VSREPO_EXTEND';
+    constructor(message: string);
+}
+
+/**
+ * Thrown when invalid arguments are passed to a decorator.
+ */
+export declare class VSRepoDecoratorError extends VSRepoError {
+    readonly type: 'VSREPO_DECORATOR';
     constructor(message: string);
 }
 

@@ -81,7 +81,24 @@ fs.mkdirSync(outputDir, { recursive: true });
 const typeFiles = [
   'VSRepoError.d.ts',
   'VSRepository.d.ts',
+  'DynamicRepository.d.ts'
 ];
+
+// Mapa de basename original (com e sem extensao) -> basename final `.types`,
+// usado para corrigir os imports relativos entre os proprios arquivos gerados
+// (ex: DynamicRepository.d.ts importando de "./VSRepository.d" ou
+// VSRepository.d.ts importando de "./VSRepoError").
+const crossFileReplacements = typeFiles.flatMap((fileName) => {
+  const originalBase = fileName.replace(/\.d\.ts$/, '');
+  const finalBase = `${originalBase}.types`;
+
+  return [
+    // from "./VSRepository.d" -> from "./VSRepository.types"
+    { pattern: new RegExp(`from(\\s+)(['"])\\./${originalBase}\\.d\\2`, 'g'), replacement: `from$1$2./${finalBase}$2` },
+    // from "./VSRepoError" -> from "./VSRepoError.types"
+    { pattern: new RegExp(`from(\\s+)(['"])\\./${originalBase}\\2`, 'g'), replacement: `from$1$2./${finalBase}$2` },
+  ];
+});
 
 for (const fileName of typeFiles) {
   const sourceFile = path.join(sourceDir, fileName);
@@ -102,6 +119,10 @@ for (const fileName of typeFiles) {
     /from\s+(['"])\.\.\/generated\/prisma\/client\1/g,
     `from '${prismaTargetPath === CLASSIC_PRISMA_GENERATED_PATH ? prismaTargetPath : relativeImportPath(path.dirname(targetFile), prismaTargetPath)}'`
   );
+
+  for (const { pattern, replacement } of crossFileReplacements) {
+    contents = contents.replace(pattern, replacement);
+  }
 
   fs.writeFileSync(targetFile, GENERATED_HEADER + contents, 'utf8');
 
@@ -155,6 +176,24 @@ export type * from './VSRepository.types';
 `,
   },
   {
+    fileName: 'DynamicRepository.ts',
+    content: `import {
+  DynamicRepository as DynamicRepositoryRuntime,
+  DynamicMethod as DynamicMethodRuntime
+} from 'vsrepo/DynamicRepository';
+
+import type {
+  DynamicRepository as DynamicRepositoryType,
+  DynamicMethod as DynamicMethodType
+} from './DynamicRepository.types';
+
+export const DynamicRepository = DynamicRepositoryRuntime as typeof DynamicRepositoryType;
+export const DynamicMethod = DynamicMethodRuntime as typeof DynamicMethodType;
+
+export type * from './DynamicRepository.types';
+`,
+  },
+  {
     fileName: 'index.ts',
     content: `export {
   VSRepoError,
@@ -169,8 +208,14 @@ export {
   setupVSRepo
 } from './VSRepository.js';
 
+export {
+  DynamicRepository,
+  DynamicMethod
+} from './DynamicRepository.js';
+
 export type * from './VSRepoError.types';
 export type * from './VSRepository.types';
+export type * from './DynamicRepository.types';
 `,
   },
 ];

@@ -17,6 +17,7 @@ export function validateMethodOptions(
                 .optional(),
             includeModel: z.enum(Object.keys(instance.includeModels ?? {})).optional(),
             see: z.enum(["active", "removed", "all"]).default("active"),
+            include: objectSchema.optional(),
         })
         .refine(
             data => {
@@ -35,7 +36,7 @@ export function validateMethodOptions(
         const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
         throw new VSRepoRuntimeError(
             `[VSRepository] (${instance.tableName}: runtime) ${path}: ${firstIssue?.message}`,
-            "67542"
+            "67542",
         );
     }
 

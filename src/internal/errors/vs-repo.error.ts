@@ -16,6 +16,10 @@ export class VSRepoExtendError extends VSRepoError {
     override readonly type = "VSREPO_EXTEND";
 }
 
+export class VSRepoDecoratorError extends VSRepoError {
+    override readonly type = "VSREPO_DECORATOR";
+}
+
 export class VSRepoRuntimeError extends VSRepoError {
     override readonly type = "VSREPO_RUNTIME";
     code: string;

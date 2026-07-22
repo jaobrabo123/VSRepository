@@ -22,8 +22,9 @@ This folder contains practical, commented examples of how to use **VSRepository*
 
 ```
 examples/
-├── prisma.ts            # PrismaClient instance used by the examples
-├── repositories.ts       # Configuration of all repositories (User, Address, Product)
+├── prisma.ts                       # PrismaClient instance used by the examples
+├── repositories.ts                  # Configuration of all repositories (User, Address, Product) — functional "setupVSRepo" approach
+├── dynamic-repositories.ts          # Same User/Product domain, but using the class-based "DynamicRepository" approach
 └── tests/
     ├── base-methods.test.ts       # Base methods: get, save, patch, remove, getAll, total, has...
     ├── relations.test.ts          # How to configure and use relations in save/patch and in filters
@@ -31,11 +32,13 @@ examples/
     ├── dynamic-methods.test.ts    # Prefixes, field filters, logical operators, pagination/ordering and distinct
     ├── transactions.test.ts       # Transactions with options.db and instance access via repository.prisma
     ├── soft-delete.test.ts        # Soft-delete: softRemove, softRemoveList, restore, restoreList and SeeMode
-    └── batch-methods.test.ts      # Batch operations: getList, saveList, patchList and merge
+    ├── batch-methods.test.ts      # Batch operations: getList, saveList, patchList and merge
+    └── dynamic-repository.test.ts # The class-based "DynamicRepository" approach in practice (@DynamicMethod, include, soft-delete)
 ```
 
 - **`prisma.ts`** configures the `PrismaClient` instance (with the Postgres adapter) used by all repositories.
 - **`repositories.ts`** is the starting point: this is where the `User`, `Address`, and `Product` repositories are configured with `setupVSRepo`, including `selectModels`, `requiredWhere`, `softRemovekName`, `relations`, and the dynamic methods (`methods`). All files in `tests/` import the already-configured repositories from here.
+- **`dynamic-repositories.ts`** configures the same `User` and `Product` domain, but with the OOP class-based `DynamicRepository` + `@DynamicMethod` approach — useful for comparing both styles side by side. See [README-DynamicRepo.md](../README-DynamicRepo.md) for the full documentation of this approach.
 - **`tests/`** is where the hands-on part happens: each file is an independent, runnable script that demonstrates a specific set of features, with `console.log` at each step so you can see the result of each operation in the terminal.
 
 ---
@@ -113,6 +116,7 @@ npx tsx examples/tests/dynamic-methods.test.ts
 npx tsx examples/tests/transactions.test.ts
 npx tsx examples/tests/soft-delete.test.ts
 npx tsx examples/tests/batch-methods.test.ts
+npx tsx examples/tests/dynamic-repository.test.ts
 ```
 
 Or, if you prefer to use `pnpm`:
@@ -125,6 +129,7 @@ pnpm tsx examples/tests/dynamic-methods.test.ts
 pnpm tsx examples/tests/transactions.test.ts
 pnpm tsx examples/tests/soft-delete.test.ts
 pnpm tsx examples/tests/batch-methods.test.ts
+pnpm tsx examples/tests/dynamic-repository.test.ts
 ```
 
 > ⚠️ The tests create and remove real data in the database configured in your `DATABASE_URL`. Because of this, it's recommended to run them against a development/test database.
@@ -158,8 +163,9 @@ If you're just starting out with VSRepository, this is the recommended order for
 6. **[`tests/transactions.test.ts`](./tests/transactions.test.ts)** — understand how to access the Prisma instance with `repository.prisma`, open a transaction with `$transaction`, and have multiple repositories participate in it via `options.db`, including a rollback example.
 7. **[`tests/soft-delete.test.ts`](./tests/soft-delete.test.ts)** — learn how to use soft-delete (`softRemovekName`, `softRemove`, `softRemoveList`, `restore`, `restoreList`) and `SeeMode` to control which records the queries see (`"active"`, `"removed"`, `"all"`).
 8. **[`tests/batch-methods.test.ts`](./tests/batch-methods.test.ts)** — explore the batch operations: `getList` (fetch by a list of PKs), `saveList` (creates several in an automatic transaction), `patchList` (updates several via tuples in an automatic transaction), and `merge` (fetch + deep merge in memory).
+9. **[`dynamic-repositories.ts`](./dynamic-repositories.ts)** and **[`tests/dynamic-repository.test.ts`](./tests/dynamic-repository.test.ts)** — once you're comfortable with the functional approach, see the same `User`/`Product` domain rebuilt with the OOP class-based `DynamicRepository` + `@DynamicMethod` decorator, including `include`, soft-delete, and transactions. See [README-DynamicRepo.md](../README-DynamicRepo.md) for the full write-up of this approach.
 
-After going through these 8 files, you'll have seen practically everything documented in the [main README](../README.md) in practice. From there, the best way to learn is to edit the examples yourself: swap out fields, create new dynamic methods in `repositories.ts`, and watch the autocomplete and typing react in real time.
+After going through these files, you'll have seen practically everything documented in the [main README](../README.md) and in [README-DynamicRepo.md](../README-DynamicRepo.md) in practice. From there, the best way to learn is to edit the examples yourself: swap out fields, create new dynamic methods, and watch the autocomplete and typing react in real time.
 
 ---
 

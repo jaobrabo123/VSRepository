@@ -31,7 +31,7 @@ export class VSRepository {
     defaultSelectModel?: string;
     requiredWhere?: object;
     relations?: Record<string, Relation>;
-    methods?: Record<string, Method>;
+    methods?: Record<string | symbol, Method>;
     defaultOrdenation?: object | object[];
 
     constructor(config: unknown) {
@@ -62,10 +62,10 @@ export class VSRepository {
         return extended;
     }
 
-    build(prisma: unknown, config: unknown) {
+    build(prisma: unknown, config: unknown, useInstance?: any) {
         validatePrismaClient(prisma, this);
 
-        const buildInstance: RepositoryBuildInstance = Object.create(this);
+        const buildInstance: RepositoryBuildInstance = useInstance ?? Object.create(this);
         buildInstance.prisma = prisma;
 
         if (
@@ -114,30 +114,30 @@ export class VSRepository {
 
                 if (!dinamicMethodInfo.ignoreWhere) {
                     resolvePrettyWheres(dinamicMethodInfo, dinamicMethodWhereOps);
-                    if (showWorking) {
-                        const argsSimulation: any[] = [];
+                    // if (showWorking) {
+                    //     const argsSimulation: any[] = [];
 
-                        for (let x = 0; x < dinamicMethodInfo.argsCount; x++) {
-                            argsSimulation[x] = "00";
-                        }
+                    //     for (let x = 0; x < dinamicMethodInfo.argsCount; x++) {
+                    //         argsSimulation[x] = "00";
+                    //     }
 
-                        logger(
-                            `Where object resolved to ${methodToMap}:`,
-                            "build",
-                            buildInstance.tableName,
-                            resolveSpecificWhere(
-                                argsSimulation,
-                                dinamicMethodWhereOps.prettyWheres,
-                            ),
-                        );
+                    //     logger(
+                    //         `Where object resolved to ${methodToMap}:`,
+                    //         "build",
+                    //         buildInstance.tableName,
+                    //         resolveSpecificWhere(
+                    //             argsSimulation,
+                    //             dinamicMethodWhereOps.prettyWheres,
+                    //         ),
+                    //     );
 
-                        // logger(
-                        //     `Where object resolved to ${methodToMap}:`,
-                        //     "build",
-                        //     buildInstance.tableName,
-                        //     dinamicMethodWhereOps.prettyWheres,
-                        // );
-                    }
+                    //     // logger(
+                    //     //     `Where object resolved to ${methodToMap}:`,
+                    //     //     "build",
+                    //     //     buildInstance.tableName,
+                    //     //     dinamicMethodWhereOps.prettyWheres,
+                    //     // );
+                    // }
                 }
 
                 let select: object | undefined = undefined;
@@ -161,7 +161,7 @@ export class VSRepository {
                                 ignoreRequiredWhere:
                                     dinamicMethodWhereOps.whereType === "overwrite",
                             },
-                            withoutWhere: dinamicMethodInfo.ignoreWhere,
+                            withoutWhere: dinamicMethodInfo.ignoreWhere && !dinamicMethodInfo.onlyBaseWheres,
                             specificSelect: select,
                             pushWhere: dinamicMethodWhereOps.pushWhere,
                             withoutSelect: dinamicMethodInfo.ignoreSelect,
@@ -208,6 +208,19 @@ export class VSRepository {
                         return prismaArgs;
                     },
                 );
+
+                if (showWorking) {
+                    const argsSimulation = new Array<string>(dinamicMethodInfo.argsCount).fill("00");
+
+                    const prismaArgs = buildInstance.vsrepocache.get(originalKey)!(argsSimulation);
+
+                    logger(
+                        `PrismaArgs preview for ${methodToMap}:`,
+                        "build",
+                        buildInstance.tableName,
+                        prismaArgs,
+                    );
+                }
 
                 (buildInstance as any)[originalKey] = async (...args: any[]) => {
                     let db = buildInstance.prisma;

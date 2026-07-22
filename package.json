@@ -20,6 +20,11 @@
       "import": "./dist/VSRepository.js",
       "require": "./dist/VSRepository.js"
     },
+    "./DynamicRepository": {
+      "types": "./dist/DynamicRepository.d.ts",
+      "import": "./dist/DynamicRepository.js",
+      "require": "./dist/DynamicRepository.js"
+    },
     "./VSRepoError": {
       "types": "./dist/VSRepoError.d.ts",
       "import": "./dist/VSRepoError.js",
@@ -67,6 +72,7 @@
   },
   "dependencies": {
     "deepmerge": "^4.3.1",
+    "reflect-metadata": "^0.2.2",
     "zod": "^4.4.3"
   }
 }

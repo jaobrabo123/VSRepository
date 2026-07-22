@@ -54,6 +54,8 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
             prismaArgs.select = specificSelect;
         } else if (validatedOptions.includeModel) {
             prismaArgs.include = instance.includeModels?.[validatedOptions.includeModel];
+        } else if (validatedOptions.include) {
+            prismaArgs.include = validatedOptions.include;
         } else {
             prismaArgs.select = resolveSelect(
                 instance,
