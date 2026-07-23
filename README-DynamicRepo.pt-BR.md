@@ -105,7 +105,7 @@ class UserRepository extends DynamicRepository<
 | `TEntity` | O tipo completo da entidade, incluindo as relações que você quer disponíveis |
 | `UName` | O nome do modelo no Prisma como string literal (capitalizado, ex.: `"User"`) |
 | `VPKType` | O tipo da chave primária (`string`, `number`, etc.) |
-| `WRelations` | Um objeto de flags indicando quais campos são relações (ex.: `{ address: true }`) |
+| `WRelations` *(opcional)* | Um objeto de flags indicando quais campos são relações (ex.: `{ address: true }`). Só é necessário se você for configurar as relações do repository — caso contrário, pode ser omitido |
 
 ---
 
@@ -224,7 +224,7 @@ class UserRepository extends DynamicRepository<
 }
 ```
 
-O quarto parâmetro genérico (`WRelations`) deve sinalizar quais campos são relações. Isso garante que `DynamicSaveInput` e `DynamicPatchInput` resolvam esses campos para o formato de payload aninhado de create/update do Prisma.
+O quarto parâmetro genérico (`WRelations`) é **opcional** — só é necessário quando você for configurar as relações do repository. Quando fornecido, ele deve sinalizar quais campos são relações. Isso garante que `DynamicSaveInput` e `DynamicPatchInput` resolvam esses campos para o formato de payload aninhado de create/update do Prisma. Se o seu repository não gerenciar nenhuma relação, você pode simplesmente omitir esse parâmetro.
 
 **Modos de relação:** `oto` (um-para-um), `otm` (um-para-muitos), `mto` (muitos-para-um), `mtm` (muitos-para-muitos).
 
@@ -482,6 +482,8 @@ abstract class DynamicRepository<
     WRelations extends Partial<Record<keyof TEntity, true>> | undefined = undefined,
 >
 ```
+
+> `WRelations` é opcional (o padrão é `undefined`) e só precisa ser informado quando você for configurar as relações do repository.
 
 **Construtor:**
 
