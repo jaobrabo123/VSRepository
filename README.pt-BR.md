@@ -104,6 +104,8 @@ npx vsrepo generate \
 
 ```
 generated/vsrepo/
+├── DynamicRepository.ts
+├── DynamicRepository.types.d.ts
 ├── VSRepoError.ts
 ├── VSRepoError.types.d.ts
 ├── VSRepository.ts
