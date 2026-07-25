@@ -148,6 +148,21 @@ const userVSRepo = setupVSRepo<User, "User">()({
         deleteById: { map: true, selectModel: "minimal" },
         aggregate: { map: true },
         groupBy: { map: true },
+
+        findActiveUsersByCountryRaw: {
+            map: true,
+            query: {
+                value: 'SELECT u.* FROM "user" u JOIN "address" a ON a."user_id" = u.id WHERE u.active = $1 AND a.country = $2',
+            },
+        },
+
+        deactivateUsersWithoutProductsRaw: {
+            map: true,
+            query: {
+                value: 'UPDATE "user" SET active = false WHERE id NOT IN (SELECT DISTINCT "user_id" FROM "product")',
+                modifying: true,
+            },
+        },
     },
 });
 
@@ -247,6 +262,20 @@ const productVSRepo = setupVSRepo<Product, "Product">()({
         findByIdIn: { map: true },
 
         deleteManyWhere: { map: true },
+
+        findExpensiveProductsRaw: {
+            map: true,
+            query: {
+                value: 'SELECT * FROM "product" WHERE price > $1 AND "deleted_at" IS NULL',
+            },
+        },
+
+        countProductsByUserRaw: {
+            map: true,
+            query: {
+                value: 'SELECT COUNT(*)::int as count FROM "product" WHERE "user_id" = $1 AND "deleted_at" IS NULL',
+            },
+        },
     },
 });
 
@@ -1216,6 +1245,180 @@ async function testTransactions() {
 }
 
 // =============================================================================
+// TESTES DE QUERY METHODS
+// =============================================================================
+
+async function testQueryMethods(userId: string) {
+    console.log("\n=== QUERY METHODS ===");
+
+    // --- User query methods ---
+
+    // findActiveUsersByCountryRaw — select com join e parâmetros posicionais
+    // Preparar: salvar um user com address no Brasil
+    const userWithBRAddress = await userRepository.save({
+        name: "BR User",
+        email: `br-${Date.now()}@ex.com`,
+        password: "x",
+        userType: UserType.COMMON,
+        likesVSRepo: true,
+        active: true,
+        address: {
+            city: "São Paulo",
+            state: "SP",
+            country: "BR",
+        },
+    });
+
+    const brUsers = await userRepository.findActiveUsersByCountryRaw<User[]>({
+        args: [true, "BR"],
+    });
+    console.assert(Array.isArray(brUsers), "findActiveUsersByCountryRaw: deve retornar array");
+    console.assert(
+        brUsers.some(u => u.id === userWithBRAddress.id),
+        "findActiveUsersByCountryRaw: deve conter o usuário com address BR",
+    );
+    console.log("✅ findActiveUsersByCountryRaw:", brUsers.length, "usuários");
+
+    // findActiveUsersByCountryRaw com país inexistente
+    const noUsers = await userRepository.findActiveUsersByCountryRaw<User[]>({
+        args: [true, "ZZ"],
+    });
+    console.assert(
+        Array.isArray(noUsers) && noUsers.length === 0,
+        "findActiveUsersByCountryRaw (país inexistente): deve retornar array vazio",
+    );
+    console.log("✅ findActiveUsersByCountryRaw (ZZ):", noUsers.length);
+
+    // deactivateUsersWithoutProductsRaw — modifying query (UPDATE)
+    // Criar usuário sem produtos
+    const userNoProducts = await createTestUser({
+        email: `noprod-${Date.now()}@ex.com`,
+        likesVSRepo: true,
+        active: true,
+    });
+
+    const deactivateCount = await userRepository.deactivateUsersWithoutProductsRaw({
+        args: [],
+    });
+    console.assert(
+        typeof deactivateCount === "number",
+        "deactivateUsersWithoutProductsRaw: deve retornar number (affected rows)",
+    );
+    console.assert(
+        deactivateCount >= 1,
+        "deactivateUsersWithoutProductsRaw: deve desativar ao menos 1 usuário",
+    );
+    console.log("✅ deactivateUsersWithoutProductsRaw (modifying):", deactivateCount, "afetados");
+
+    // Verificar que o usuário sem produtos foi desativado
+    const deactivated = await userRepository.get(userNoProducts.id, { selectModel: "internal" });
+    // Nota: get usa requiredWhere (active=true), então deve retornar null se desativado
+    console.assert(
+        deactivated === null,
+        "deactivateUsersWithoutProductsRaw: usuário sem produto não deve mais ser encontrado (active=false)",
+    );
+    console.log("✅ deactivateUsersWithoutProductsRaw: verificação pós-update OK");
+
+    // --- Product query methods ---
+
+    // findExpensiveProductsRaw — select com filtro de preço
+    const expensiveProduct = await createTestProduct(userId, {
+        name: "Expensive Widget",
+        price: 999.99,
+    });
+
+    const expensive = await productRepository.findExpensiveProductsRaw<Product[]>({
+        args: [500],
+    });
+    console.assert(Array.isArray(expensive), "findExpensiveProductsRaw: deve retornar array");
+    console.assert(
+        expensive.some(p => p.id === expensiveProduct.id),
+        "findExpensiveProductsRaw: deve conter o produto caro",
+    );
+    console.log("✅ findExpensiveProductsRaw:", expensive.length, "produtos");
+
+    // findExpensiveProductsRaw com limite alto
+    const noneExpensive = await productRepository.findExpensiveProductsRaw<Product[]>({
+        args: [99999],
+    });
+    console.assert(
+        Array.isArray(noneExpensive) && noneExpensive.length === 0,
+        "findExpensiveProductsRaw (limite alto): deve retornar array vazio",
+    );
+    console.log("✅ findExpensiveProductsRaw (limite alto):", noneExpensive.length);
+
+    // countProductsByUserRaw — select com COUNT
+    const countResult = await productRepository.countProductsByUserRaw({
+        args: [userId],
+    });
+    console.assert(
+        Array.isArray(countResult) && countResult.length === 1,
+        "countProductsByUserRaw: deve retornar array com 1 elemento",
+    );
+    console.assert(
+        typeof countResult[0]?.count === "number",
+        "countProductsByUserRaw: count deve ser number",
+    );
+    console.assert(
+        countResult[0].count >= 1,
+        "countProductsByUserRaw: count deve ser >= 1",
+    );
+    console.log("✅ countProductsByUserRaw:", countResult[0].count, "produtos");
+
+    // countProductsByUserRaw com userId inexistente
+    const zeroCount = await productRepository.countProductsByUserRaw({
+        args: [crypto.randomUUID()],
+    });
+    console.assert(
+        zeroCount[0]?.count === 0,
+        "countProductsByUserRaw (userId fake): count deve ser 0",
+    );
+    console.log("✅ countProductsByUserRaw (userId fake):", zeroCount[0]?.count);
+
+    // --- Query method com db (transaction) ---
+    await userRepository.prisma.$transaction(async tx => {
+        const txUser = await userRepository.findActiveUsersByCountryRaw<User[]>({
+            args: [true, "BR"],
+            db: tx,
+        });
+        console.assert(
+            Array.isArray(txUser),
+            "findActiveUsersByCountryRaw (com db: tx): deve retornar array dentro de transação",
+        );
+        console.log("✅ findActiveUsersByCountryRaw (transação):", txUser.length, "usuários");
+
+        // modifying query dentro de transaction
+        const txDeactivateCount = await userRepository.deactivateUsersWithoutProductsRaw({
+            args: [],
+            db: tx,
+        });
+        console.assert(
+            typeof txDeactivateCount === "number",
+            "deactivateUsersWithoutProductsRaw (com db: tx): deve retornar number dentro de transação",
+        );
+        console.log(
+            "✅ deactivateUsersWithoutProductsRaw (transação):",
+            txDeactivateCount,
+            "afetados",
+        );
+
+        // Força rollback
+        throw new Error("forced rollback for query method test");
+    }).catch(() => {});
+
+    // Verificar rollback: o deactivate foi feito fora da tx, então persistiu.
+    // get usa requiredWhere (active=true), então retorna null para users inativos.
+    const brUserAfterRollback = await userRepository.get(userWithBRAddress.id, {
+        selectModel: "internal",
+    });
+    console.assert(
+        brUserAfterRollback === null,
+        "query method (rollback): BR user should be inactive (deactivate committed before tx, get returns null due to requiredWhere)",
+    );
+    console.log("✅ query method (rollback): verificação OK");
+}
+
+// =============================================================================
 // RUNNER PRINCIPAL
 // =============================================================================
 
@@ -1233,6 +1436,7 @@ async function runAllTests() {
         await testIncludeModels();
         await testRawInclude();
         await testTransactions();
+        await testQueryMethods(baseUser.id);
 
         console.log("\n✅✅✅ Todos os testes concluídos com sucesso!\n");
     } catch (err) {

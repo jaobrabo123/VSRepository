@@ -1020,6 +1020,96 @@ async function testTransactions() {
     console.log("transaction commit:", txUser?.id);
 }
 
+async function testQueryMethods() {
+    console.log("\n=== QUERY METHODS (DynamicRepository) ===");
+
+    // findByEmail — raw SELECT com parâmetro posicional
+    const user = await userRepository.save({
+        name: "Query Test User",
+        email: "querytest@ex.com",
+        password: "x",
+        userType: UserType.COMMON,
+        likesVSRepo: true,
+        active: true,
+    });
+
+    const foundByEmail = await userRepository.findByEmail({
+        args: ["querytest@ex.com"],
+    });
+    console.assert(Array.isArray(foundByEmail), "findByEmail: must return array");
+    console.assert(
+        foundByEmail.some(u => u.id === user.id),
+        "findByEmail: must contain the user with matching email",
+    );
+    console.log("findByEmail:", foundByEmail.length);
+
+    // findByEmail com email inexistente
+    const noEmail = await userRepository.findByEmail({
+        args: ["nonexistent@ex.com"],
+    });
+    console.assert(
+        Array.isArray(noEmail) && noEmail.length === 0,
+        "findByEmail (nonexistent): must return empty array",
+    );
+    console.log("findByEmail (nonexistent):", noEmail.length);
+
+    // activateUser — raw UPDATE (modifying query)
+    // Primeiro desativar o usuário
+    await userRepository.patch(user.id, { active: false });
+
+    const activateCount = await userRepository.activateUser({
+        args: [user.id],
+    });
+    console.assert(
+        typeof activateCount === "number",
+        "activateUser: must return number (affected rows)",
+    );
+    console.assert(activateCount === 1, "activateUser: must affect 1 row");
+    console.log("activateUser (modifying):", activateCount);
+
+    // Verificar que o usuário foi reativado
+    const reactivated = await userRepository.findInternalByEmail("querytest@ex.com");
+    console.assert(
+        reactivated !== null,
+        "activateUser: user must be findable after reactivation",
+    );
+    console.log("activateUser: verification OK");
+
+    // activateUser com id inexistente
+    const zeroActivate = await userRepository.activateUser({
+        args: [crypto.randomUUID()],
+    });
+    console.assert(zeroActivate === 0, "activateUser (fake id): must affect 0 rows");
+    console.log("activateUser (fake id):", zeroActivate);
+
+    // Query method com db (transaction) — rollback
+    await userRepository.prisma.$transaction(async tx => {
+        const txFound = await userRepository.findByEmail({
+            args: ["querytest@ex.com"],
+            db: tx,
+        });
+        console.assert(
+            Array.isArray(txFound),
+            "findByEmail (tx): must return array inside transaction",
+        );
+        console.log("findByEmail (transaction):", txFound.length);
+
+        const txActivate = await userRepository.activateUser({
+            args: [user.id],
+            db: tx,
+        });
+        console.assert(
+            typeof txActivate === "number",
+            "activateUser (tx): must return number inside transaction",
+        );
+        console.log("activateUser (transaction):", txActivate);
+
+        throw new Error("forced rollback for query method test");
+    }).catch(() => {});
+
+    console.log("query method (transaction): rollback executed OK");
+}
+
 async function runAllTests() {
     console.log("Starting DynamicRepository tests...\n");
     try {
@@ -1031,6 +1121,7 @@ async function runAllTests() {
         await testRelations();
         await testRawInclude();
         await testTransactions();
+        await testQueryMethods();
         console.log("\nAll DynamicRepository tests passed!\n");
     } catch (err) {
         console.error("\nError during tests:", err);
