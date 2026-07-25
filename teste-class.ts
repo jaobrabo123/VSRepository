@@ -1069,10 +1069,7 @@ async function testQueryMethods() {
 
     // Verificar que o usuário foi reativado
     const reactivated = await userRepository.findInternalByEmail("querytest@ex.com");
-    console.assert(
-        reactivated !== null,
-        "activateUser: user must be findable after reactivation",
-    );
+    console.assert(reactivated !== null, "activateUser: user must be findable after reactivation");
     console.log("activateUser: verification OK");
 
     // activateUser com id inexistente
@@ -1083,29 +1080,31 @@ async function testQueryMethods() {
     console.log("activateUser (fake id):", zeroActivate);
 
     // Query method com db (transaction) — rollback
-    await userRepository.prisma.$transaction(async tx => {
-        const txFound = await userRepository.findByEmail({
-            args: ["querytest@ex.com"],
-            db: tx,
-        });
-        console.assert(
-            Array.isArray(txFound),
-            "findByEmail (tx): must return array inside transaction",
-        );
-        console.log("findByEmail (transaction):", txFound.length);
+    await userRepository.prisma
+        .$transaction(async tx => {
+            const txFound = await userRepository.findByEmail({
+                args: ["querytest@ex.com"],
+                db: tx,
+            });
+            console.assert(
+                Array.isArray(txFound),
+                "findByEmail (tx): must return array inside transaction",
+            );
+            console.log("findByEmail (transaction):", txFound.length);
 
-        const txActivate = await userRepository.activateUser({
-            args: [user.id],
-            db: tx,
-        });
-        console.assert(
-            typeof txActivate === "number",
-            "activateUser (tx): must return number inside transaction",
-        );
-        console.log("activateUser (transaction):", txActivate);
+            const txActivate = await userRepository.activateUser({
+                args: [user.id],
+                db: tx,
+            });
+            console.assert(
+                typeof txActivate === "number",
+                "activateUser (tx): must return number inside transaction",
+            );
+            console.log("activateUser (transaction):", txActivate);
 
-        throw new Error("forced rollback for query method test");
-    }).catch(() => {});
+            throw new Error("forced rollback for query method test");
+        })
+        .catch(() => {});
 
     console.log("query method (transaction): rollback executed OK");
 }

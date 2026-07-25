@@ -18,14 +18,22 @@ export function validateMethodOptions(
             includeModel: z.enum(Object.keys(instance.includeModels ?? {})).optional(),
             see: z.enum(["active", "removed", "all"]).default("active"),
             include: objectSchema.optional(),
+            select: objectSchema.optional(),
         })
         .refine(
             data => {
-                return !(data.selectModel !== undefined && data.includeModel !== undefined);
+                const provided = [
+                    data.select !== undefined,
+                    data.selectModel !== undefined,
+                    data.include !== undefined,
+                    data.includeModel !== undefined,
+                ].filter(Boolean).length;
+                return provided <= 1;
             },
             {
-                message: "cannot be provided with 'selectModel'.",
-                path: ["includeModel"],
+                message:
+                    "'select', 'selectModel', 'include' and 'includeModel' are mutually exclusive — only one can be provided.",
+                path: ["options"],
             },
         );
 

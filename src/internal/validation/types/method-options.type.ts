@@ -6,4 +6,5 @@ export interface MethodOptions {
     includeModel?: string;
     include?: object;
     see: SeeMode;
+    select?: object;
 }
