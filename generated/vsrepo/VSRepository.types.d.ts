@@ -416,18 +416,47 @@ type GroupByMethod<M extends PrismaModelName> = <A extends Prisma.TypeMap['model
     options?: { db?: ClientOrTransaction }
 ) => Promise<Prisma.Result<PrismaDelegate<M>, A, 'groupBy'>>;
 
+/**
+ * Function type generated for a dynamic method configured with `query` (non-modifying).
+ *
+ * The result of a raw SQL `SELECT` isn't statically known, so the method itself
+ * resolves to `any` by default, but exposes a generic parameter so the caller can
+ * infer/assert the shape of the result: `repo.myRawQuery<User[]>({ args: [...] })`.
+ *
+ * @template TReturn Return type asserted at the call site. Defaults to `any`.
+ */
+type QueryMethodFn = <TReturn = any>(
+    arg: { args: any[]; db?: ClientOrTransaction },
+) => Promise<TReturn>;
+
+/**
+ * Function type generated for a dynamic method configured with `query` and
+ * `modifying: true`.
+ *
+ * Modifying raw queries run through `$executeRawUnsafe` and always resolve to the
+ * number of affected rows, so — unlike `QueryMethodFn` — no generic return type is
+ * exposed here.
+ */
+type QueryMethodModifyingFn = (
+    arg: { args: any[]; db?: ClientOrTransaction },
+) => Promise<number>;
+
 type DynamicMethods<T, M extends PrismaModelName, Config, I> = Config extends { methods: infer Methods }
     ? {
           [K in keyof Methods as Methods[K] extends { map: true } ? K : never]: K extends string
-              ? (Methods[K] extends { proxyTo: infer P extends string } ? P : K) extends infer ResolvedKey
-                  ? ResolvedKey extends 'aggregate'
-                      ? AggregateMethod<M>
-                      : ResolvedKey extends 'groupBy'
-                      ? GroupByMethod<M>
-                      : ResolvedKey extends string
-                      ? MethodFactory<T, M, ResolvedKey, ExtractSelectModels<Config>, ResolveSelectModel<Methods[K], Config, ExtractSelectModels<Config>>, I, Methods[K], ExtractIncludeModels<Config>>
+              ? Methods[K] extends { query: { modifying: true } }
+                  ? QueryMethodModifyingFn
+                  : Methods[K] extends { query: infer Q }
+                  ? QueryMethodFn
+                  : (Methods[K] extends { proxyTo: infer P extends string } ? P : K) extends infer ResolvedKey
+                      ? ResolvedKey extends 'aggregate'
+                          ? AggregateMethod<M>
+                          : ResolvedKey extends 'groupBy'
+                          ? GroupByMethod<M>
+                          : ResolvedKey extends string
+                          ? MethodFactory<T, M, ResolvedKey, ExtractSelectModels<Config>, ResolveSelectModel<Methods[K], Config, ExtractSelectModels<Config>>, I, Methods[K], ExtractIncludeModels<Config>>
+                          : never
                       : never
-                  : never
               : never;
       }
     : {};
@@ -532,6 +561,53 @@ export type MethodConfig<M extends PrismaModelName, SelectModels = any> = {
     readonly injectOrdenation?: OrdenationModel<M>;
     /** Injects a fixed pagination automatically into the query. */
     readonly injectPagination?: PaginationModel<M>;
+    /**
+     * Turns this method into a **raw SQL query method**, bypassing name-based parsing
+     * entirely. The method executes the given SQL directly through Prisma, with
+     * parameters injected positionally via the `args` array passed at the call site
+     * (`$1`, `$2`, ... placeholders), so no other option in `MethodConfig` applies
+     * (`selectModels`, `requiredWhere`, `pushWhere`, etc. are all ignored).
+     *
+     * - `modifying: false` (default) runs through `$queryRawUnsafe` and the method
+     *   resolves to `TReturn` (`any` by default), inferable/assertable via a generic
+     *   at the call site.
+     * - `modifying: true` runs through `$executeRawUnsafe` and the method **always**
+     *   resolves to `number` (the count of affected rows).
+     *
+     * @example
+     * ```typescript
+     * methods: {
+     *   findActiveUsersRaw: {
+     *     map: true,
+     *     query: { value: 'SELECT * FROM "user" WHERE active = $1' },
+     *   },
+     *   deactivateUsersOlderThanRaw: {
+     *     map: true,
+     *     query: { value: 'UPDATE "user" SET active = false WHERE "createdAt" < $1', modifying: true },
+     *   },
+     * }
+     *
+     * // Uso:
+     * const users = await repo.findActiveUsersRaw<User[]>({ args: [true] });
+     * const affected = await repo.deactivateUsersOlderThanRaw({ args: [cutoffDate] });
+     * ```
+     */
+    readonly query?: {
+        /**
+         * Raw SQL statement to execute. Use positional placeholders (`$1`, `$2`, ...)
+         * for the values passed in `args`, never string-interpolate the values
+         * directly, or you'll re-introduce the SQL injection risk this API exists to avoid.
+         */
+        readonly value: string;
+        /**
+         * When `true`, executes via `$executeRawUnsafe` and the method always resolves
+         * to `number` (rows affected). When `false`/omitted, executes via
+         * `$queryRawUnsafe` and the method resolves to `TReturn` (`any` by default).
+         *
+         * @default false
+         */
+        readonly modifying?: boolean;
+    };
 };
 
 type BaseMethodConfig<TSelectKeys extends PropertyKey = string> = {
@@ -1070,7 +1146,14 @@ export type ValidateRepoConfig<T extends object, M extends PrismaModelName, Conf
      */
     methods?: {
         [K in keyof (Config extends { methods: infer Meth } ? Meth : {})]: K extends string
-            ? MethodConfig<M, Config extends { selectModels: infer SM } ? SM : any> & (K extends ValidMethodPatterns ? {} : { proxyTo: ValidMethodPatterns })
+            ? MethodConfig<M, Config extends { selectModels: infer SM } ? SM : any> &
+              (K extends ValidMethodPatterns
+                  ? {}
+                  : (Config extends { methods: infer Meth }
+                        ? (K extends keyof Meth ? Meth[K] : never)
+                        : never) extends { query: any }
+                    ? {}
+                    : { proxyTo: ValidMethodPatterns })
             : never;
     };
 };

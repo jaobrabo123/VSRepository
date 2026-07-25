@@ -302,9 +302,6 @@ class ProductRepository extends DynamicRepository<
 const userRepository = new UserRepository();
 const productRepository = new ProductRepository();
 
-userRepository.findByEmail({ args: ["joao@email.com"] }).then(console.log);
-userRepository.activateUser({ args: [crypto.randomUUID()] }).then(console.log);
-
 // process.exit(0)
 
 async function cleanDatabase() {

@@ -13,6 +13,7 @@ VSRepository offers two ways to create repositories: the functional `setupVSRepo
 - [Creating a class](#creating-a-class)
 - [The @DynamicMethod decorator](#the-dynamicmethod-decorator)
 - [Decorator config options](#decorator-config-options)
+- [The @QueryMethod decorator](#the-querymethod-decorator)
 - [Base methods](#base-methods)
 - [Working with relations](#working-with-relations)
 - [Transactions](#transactions)
@@ -157,6 +158,44 @@ The `@DynamicMethod<M>()` decorator accepts an optional config object:
 | `injectOrdenation` | `OrdenationModel<M>` | Fixed ordering injected into the query |
 | `injectPagination` | `PaginationModel<M>` | Fixed pagination injected into the query |
 | `fbMode` | `"one" \| "list"` | **Deprecated.** Only relevant for `findBy`-prefixed methods. Use `findOneBy` instead if you want a single result. |
+
+---
+
+## The @QueryMethod decorator
+
+`@QueryMethod` declares a **raw SQL query method** on a `declare` class field, completely bypassing the name-based method parser used by `@DynamicMethod`. It's useful for complex queries (heavy joins, CTEs, database-specific functions) that aren't practical to express through the standard prefixes/suffixes.
+
+Under the hood, the SQL is executed through Prisma using `$queryRawUnsafe` (reads) or `$executeRawUnsafe` (writes), and the values passed in `args` are injected as **positional parameters** (`$1`, `$2`, ...) — the same prepared-statement technique Prisma itself uses. Values are never concatenated into the SQL string, which is what actually prevents SQL injection.
+
+```typescript
+class UserRepository extends DynamicRepository<User, "User", string> {
+    // Read query method (non-modifying) — return type comes from the field declaration
+    @QueryMethod('SELECT * FROM "user" WHERE email = $1')
+    declare findByEmailRaw: (arg: QueryMethodArg<[email: string]>) => Promise<User[]>;
+
+    // Write query method — must always resolve to 'number'
+    @QueryMethod('UPDATE "user" SET active = true WHERE id = $1', { modifying: true })
+    declare activateUser: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
+}
+
+const userRepository = new UserRepository(prisma, { tableName: "user", pkName: "id" });
+
+const users = await userRepository.findByEmailRaw({ args: ["joao@email.com"] });
+const affected = await userRepository.activateUser({ args: ["1"] });
+```
+
+> [!WARNING]
+> `$1`, `$2`, ... must always represent **values**, never column/table names or dynamic SQL fragments. Identifier names can't be passed as a positional parameter — if a method needs to vary those, build the SQL from a fixed, known set of options in your own code, never from untrusted input.
+
+Since `@QueryMethod` skips name parsing, there's no automatic type inference for the field: the method's parameter and return types come entirely from how you `declare` the field. Use `QueryMethodArg<T>` to type the single `{ args, db? }` argument the method receives.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `value` (1st argument) | `string` | — | **Required.** Raw SQL to execute. Use `$1`, `$2`, ... for the `args` placeholders. |
+| `options.modifying` | `boolean` | `false` | When `true`, runs via `$executeRawUnsafe`; the field must be declared to return `Promise<number>`. When `false`, runs via `$queryRawUnsafe`. |
+
+> [!NOTE]
+> `@QueryMethod` ignores every other dynamic-method concept — `requiredWhere`, `pushWhere`, `whereType`, `selectModels`/`includeModels`, `injectOrdenation`, `injectPagination`. None of it applies here.
 
 ---
 
@@ -525,6 +564,25 @@ function DynamicMethod<M extends PrismaModelName>(
 | `db?` | `ClientOrTransaction` | Database client or transaction |
 | `see?` | `"active" \| "removed" \| "all"` | Soft-delete visibility |
 | `include?` | `IncludeModel<TName>` | Raw Prisma include |
+
+### @QueryMethod(value, options?)
+
+```typescript
+function QueryMethod(value: string, options?: QueryMethodOptions): PropertyDecorator;
+```
+
+### QueryMethodArg<T>
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `args` | `T` (tuple) | Positional parameters injected into the SQL placeholders (`$1`, `$2`, ...) |
+| `db?` | `ClientOrTransaction` | Transaction client to run this query in |
+
+### QueryMethodOptions
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `modifying?` | `boolean` | `false` | `true` executes via `$executeRawUnsafe` (field must return `Promise<number>`); `false` executes via `$queryRawUnsafe` |
 
 ---
 

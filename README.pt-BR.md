@@ -49,6 +49,7 @@ O VSRepository permite criar repositórios fortemente tipados com:
   - [Distinct](#distinct)
   - [Configuração de método](#configuração-de-método)
   - [Aggregate e GroupBy](#aggregate-e-groupby)
+  - [Query Methods](#query-methods)
 - [Relações no save](#relações-no-save)
 - [Transações](#transações)
 - [Estendendo um repositório](#estendendo-um-repositório)
@@ -1054,6 +1055,7 @@ Cada entrada em `methods` aceita as seguintes opções:
 | `pushWhere`             | `WhereModel<M>`                      | —                | `where` extra adicionado à query além do `requiredWhere`.                                                            |
 | `injectOrdenation`      | `OrdenationModel<M>`                 | —                | Ordenação fixa injetada automaticamente na query.                                                                    |
 | `injectPagination`      | `PaginationModel<M>`                 | —                | Paginação fixa injetada automaticamente na query.                                                                    |
+| `query`                 | `{ value: string; modifying?: boolean }` | —            | Transforma o método em um **Query Method** (SQL bruto). Ignora todas as outras opções acima — veja [Query Methods](#query-methods). |
 
 ---
 
@@ -1073,6 +1075,77 @@ const userRepository = setupVSRepo<User, "user">()(({
 > [!NOTE]
 > Esses métodos devem ter exatamente esses nomes (`aggregate` e `groupBy`).
 > Diferente dos demais métodos dinâmicos, eles recebem argumentos nativos do Prisma e **ignoram** as configurações `selectModels`, `pushWhere` e `requiredWhere`.
+
+---
+
+### Query Methods
+
+Query Methods permitem que um método execute **SQL bruto** diretamente, contornando totalmente o parser de nomes dos métodos dinâmicos. São úteis para consultas complexas (joins pesados, CTEs, funções específicas do banco) que não são práticas de expressar com os prefixos/sufixos padrão.
+
+Internamente, o VSRepository executa a SQL através do Prisma usando `$queryRawUnsafe` (para leitura) ou `$executeRawUnsafe` (para escrita), e os valores do array `args` são passados como **parâmetros posicionais** (`$1`, `$2`, ...) — a mesma técnica de *prepared statements* usada pelo próprio Prisma. Isso significa que os valores nunca são concatenados na string SQL, o que é o que efetivamente previne SQL Injection.
+
+> [!WARNING]
+> `$1`, `$2`, ... na sua SQL devem representar sempre **valores** (parâmetros de dados), nunca nomes de colunas, tabelas ou trechos de SQL dinâmicos. Nomes de identificadores (colunas/tabelas) não podem ser passados como parâmetro posicional — se seu método precisar variar isso, monte o SQL a partir de um conjunto fixo e conhecido de opções no seu próprio código, nunca a partir de entrada não confiável.
+
+```ts
+const userRepository = setupVSRepo<User, "user">()({
+  tableName: "user",
+  pkName: "id",
+  methods: {
+    // Query method de leitura (não-modifying)
+    findActiveUsersRaw: {
+      map: true,
+      query: {
+        value: 'SELECT * FROM "user" WHERE active = $1',
+      },
+    },
+
+    // Query method de escrita (modifying: true)
+    deactivateUsersOlderThanRaw: {
+      map: true,
+      query: {
+        value: 'UPDATE "user" SET active = false WHERE "createdAt" < $1',
+        modifying: true,
+      },
+    },
+  },
+}).build(prisma);
+```
+
+**Chamando um Query Method:**
+
+Todo Query Method recebe um único argumento no formato `{ args: [...], db? }`:
+
+```ts
+// Não-modifying: retorna 'any' por padrão, mas aceita um generic para
+// inferir/afirmar o tipo de retorno na própria chamada
+const usuariosAtivos = await userRepository.findActiveUsersRaw<User[]>({
+  args: [true],
+});
+
+// Modifying: sempre retorna 'number' (quantidade de linhas afetadas)
+const afetados = await userRepository.deactivateUsersOlderThanRaw({
+  args: [new Date("2024-01-01")],
+});
+
+// Participando de uma transação, via 'db'
+await userRepository.prisma.$transaction(async (tx) => {
+  await userRepository.deactivateUsersOlderThanRaw({
+    args: [new Date("2024-01-01")],
+    db: tx,
+  });
+});
+```
+
+| Opção        | Tipo      | Padrão | Descrição                                                                                                                   |
+| ------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `value`       | `string`  | —       | **Obrigatório.** SQL bruto a ser executado. Use `$1`, `$2`, ... para os placeholders dos valores em `args`.                    |
+| `modifying`   | `boolean` | `false` | Quando `true`, executa via `$executeRawUnsafe` e o método sempre resolve para `number`. Quando `false`, executa via `$queryRawUnsafe` e o método resolve para `TReturn` (`any` por padrão, inferível via generic na chamada). |
+
+> [!NOTE]
+> Diferente dos demais métodos dinâmicos, Query Methods **ignoram completamente** `selectModels`, `requiredWhere`, `pushWhere`, `whereType`, `injectOrdenation`, `injectPagination` e `proxyTo` — nada disso se aplica, já que não há parsing de nome nem montagem de `where`/`select` pelo VSRepository. Nomes de métodos livres (fora dos padrões de `findBy`, `updateBy`, etc.) também **não** exigem `proxyTo`.
+
+A mesma funcionalidade está disponível na abordagem baseada em classes através do decorator `@QueryMethod` — veja o [README-DynamicRepo.pt-BR.md](./README-DynamicRepo.pt-BR.md#o-decorator-querymethod).
 
 ---
 

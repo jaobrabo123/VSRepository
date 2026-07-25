@@ -419,10 +419,66 @@ export declare function DynamicMethod<M extends PrismaModelName = PrismaModelNam
     config?: DynamicMethodConfig<M>,
 ): PropertyDecorator;
 
-export type QueryMethodArg<T extends Array<any>> = { args: T; db?: ClientOrTransaction };
+/**
+ * Single argument accepted by a method declared with `@QueryMethod`.
+ *
+ * `args` are injected positionally into the raw SQL statement (`$1`, `$2`, ...),
+ * exactly like Prisma's `$queryRawUnsafe`/`$executeRawUnsafe` parameters — this is
+ * what allows safe parameter injection instead of string-concatenating values into
+ * the SQL text.
+ *
+ * @template T Tuple type of the positional SQL parameters, e.g. `[email: string]`.
+ *
+ * @example
+ * ```typescript
+ * declare findByEmail: (arg: QueryMethodArg<[email: string]>) => Promise<User[]>;
+ * ```
+ */
+export type QueryMethodArg<T extends Array<any>> = {
+    /** Positional parameters injected into the SQL placeholders (`$1`, `$2`, ...). */
+    args: T;
+    /** Transaction client to run this query in, instead of the repository's default client. */
+    db?: ClientOrTransaction;
+};
 
+/**
+ * Options accepted by the `@QueryMethod` decorator.
+ */
 export type QueryMethodOptions = {
+    /**
+     * When `true`, the SQL is executed with `$executeRawUnsafe` (INSERT/UPDATE/DELETE)
+     * and the decorated method must resolve to `number` (the count of affected rows).
+     * When `false`/omitted, the SQL is executed with `$queryRawUnsafe` and the method
+     * resolves to whatever return type you declare on the field.
+     *
+     * @default false
+     */
     modifying?: boolean;
 };
 
+/**
+ * Property decorator used to declare a **raw SQL query method** on a `DynamicRepository`
+ * subclass, bypassing name-based method parsing entirely.
+ *
+ * Applied to a `declare` class field, it executes `value` directly through Prisma
+ * (`$queryRawUnsafe` or `$executeRawUnsafe`, depending on `options.modifying`), with
+ * parameters injected positionally via `QueryMethodArg["args"]`. Since the SQL result
+ * isn't statically known, the field's own declared function type is what determines
+ * the method's return type — for `modifying: true` it must always resolve to `number`.
+ *
+ * @param value Raw SQL statement to execute. Use `$1`, `$2`, ... placeholders for the
+ * values that will be passed via `args` — never interpolate values directly into `value`.
+ * @param options Optional configuration; set `modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements.
+ *
+ * @example
+ * ```typescript
+ * class UserRepository extends DynamicRepository<User, "User", string> {
+ *     @QueryMethod('SELECT * FROM "user" WHERE email = $1')
+ *     declare findByEmailRaw: (arg: QueryMethodArg<[email: string]>) => Promise<User[]>;
+ *
+ *     @QueryMethod('UPDATE "user" SET active = true WHERE id = $1', { modifying: true })
+ *     declare activateUser: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
+ * }
+ * ```
+ */
 export declare function QueryMethod(value: string, options?: QueryMethodOptions): PropertyDecorator;

@@ -200,6 +200,29 @@ const userVSRepo = setupVSRepo<User, "User">()({
         // ! Important note: "aggregate" and "groupBy" ignore selectModels, requiredWhere, and pushWhere
         aggregate: { map: true },
         groupBy: { map: true },
+
+        // * "Query Methods" let a method run raw SQL directly, bypassing the whole name-parsing engine.
+        // * Useful for complex queries that aren't practical to express with the standard prefixes/suffixes.
+        // * The values in "args" are injected as positional parameters ($1, $2, ...) via Prisma's own
+        // * $queryRawUnsafe/$executeRawUnsafe, so they're never concatenated into the SQL string.
+        // * Read more: https://github.com/jaobrabo123/VSRepository#query-methods
+        findActiveUsersByCountryRaw: {
+            map: true,
+            query: {
+                // ! $1, $2, ... must always be VALUES, never column/table names or dynamic SQL fragments
+                value: 'SELECT u.* FROM "user" u JOIN "address" a ON a."userId" = u.id WHERE u.active = $1 AND a.country = $2',
+            },
+        },
+
+        // * Set "modifying: true" for INSERT/UPDATE/DELETE statements — the method will always
+        // * resolve to "number" (the count of affected rows), regardless of any generic passed at the call site
+        deactivateUsersWithoutProductsRaw: {
+            map: true,
+            query: {
+                value: 'UPDATE "user" SET active = false WHERE id NOT IN (SELECT DISTINCT "userId" FROM "product")',
+                modifying: true,
+            },
+        },
     },
 });
 

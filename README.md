@@ -49,6 +49,7 @@ VSRepository lets you create strongly-typed repositories with:
   - [Distinct](#distinct)
   - [Method configuration](#method-configuration)
   - [Aggregate and GroupBy](#aggregate-and-groupby)
+  - [Query Methods](#query-methods)
 - [Relations in save](#relations-in-save)
 - [Transactions](#transactions)
 - [Extending a repository](#extending-a-repository)
@@ -1054,6 +1055,7 @@ Each entry in `methods` accepts the following options:
 | `pushWhere`           | `WhereModel<M>`                    | —              | Extra `where` added to the query in addition to `requiredWhere`.                                                   |
 | `injectOrdenation`    | `OrdenationModel<M>`               | —              | Fixed ordering automatically injected into the query.                                                              |
 | `injectPagination`    | `PaginationModel<M>`               | —              | Fixed pagination automatically injected into the query.                                                            |
+| `query`               | `{ value: string; modifying?: boolean }` | —        | Turns the method into a **Query Method** (raw SQL). Ignores every other option above — see [Query Methods](#query-methods). |
 
 ---
 
@@ -1073,6 +1075,77 @@ const userRepository = setupVSRepo<User, "user">()(({
 > [!NOTE]
 > These methods must have exactly these names (`aggregate` and `groupBy`).
 > Unlike the other dynamic methods, they receive native Prisma arguments and **ignore** the `selectModels`, `pushWhere`, and `requiredWhere` configurations.
+
+---
+
+### Query Methods
+
+Query Methods let a method run **raw SQL** directly, completely bypassing the dynamic-method name parser. They're useful for complex queries (heavy joins, CTEs, database-specific functions) that aren't practical to express with the standard prefixes/suffixes.
+
+Internally, VSRepository executes the SQL through Prisma using `$queryRawUnsafe` (for reads) or `$executeRawUnsafe` (for writes), and the values in the `args` array are passed as **positional parameters** (`$1`, `$2`, ...) — the same prepared-statement technique Prisma itself uses. This means the values are never concatenated into the SQL string, which is what actually prevents SQL injection.
+
+> [!WARNING]
+> `$1`, `$2`, ... in your SQL must always represent **values** (data parameters), never column names, table names, or dynamic SQL fragments. Identifier names (columns/tables) can't be passed as a positional parameter — if your method needs to vary those, build the SQL from a fixed, known set of options in your own code, never from untrusted input.
+
+```ts
+const userRepository = setupVSRepo<User, "user">()({
+  tableName: "user",
+  pkName: "id",
+  methods: {
+    // Read query method (non-modifying)
+    findActiveUsersRaw: {
+      map: true,
+      query: {
+        value: 'SELECT * FROM "user" WHERE active = $1',
+      },
+    },
+
+    // Write query method (modifying: true)
+    deactivateUsersOlderThanRaw: {
+      map: true,
+      query: {
+        value: 'UPDATE "user" SET active = false WHERE "createdAt" < $1',
+        modifying: true,
+      },
+    },
+  },
+}).build(prisma);
+```
+
+**Calling a Query Method:**
+
+Every Query Method takes a single argument shaped as `{ args: [...], db? }`:
+
+```ts
+// Non-modifying: returns 'any' by default, but accepts a generic to
+// infer/assert the return type right at the call site
+const activeUsers = await userRepository.findActiveUsersRaw<User[]>({
+  args: [true],
+});
+
+// Modifying: always returns 'number' (count of affected rows)
+const affected = await userRepository.deactivateUsersOlderThanRaw({
+  args: [new Date("2024-01-01")],
+});
+
+// Participating in a transaction, via 'db'
+await userRepository.prisma.$transaction(async (tx) => {
+  await userRepository.deactivateUsersOlderThanRaw({
+    args: [new Date("2024-01-01")],
+    db: tx,
+  });
+});
+```
+
+| Option        | Type      | Default | Description                                                                                                                 |
+| ------------- | --------- | ------- | -------------------------------------------------------------------------------------------------------------------------------|
+| `value`       | `string`  | —       | **Required.** Raw SQL to execute. Use `$1`, `$2`, ... for the placeholders of the values in `args`.                            |
+| `modifying`   | `boolean` | `false` | When `true`, executes via `$executeRawUnsafe` and the method always resolves to `number`. When `false`, executes via `$queryRawUnsafe` and the method resolves to `TReturn` (`any` by default, inferable via a generic at the call site). |
+
+> [!NOTE]
+> Unlike the other dynamic methods, Query Methods **completely ignore** `selectModels`, `requiredWhere`, `pushWhere`, `whereType`, `injectOrdenation`, `injectPagination`, and `proxyTo` — none of that applies, since there's no name parsing or `where`/`select` assembly by VSRepository. Free-form method names (outside the `findBy`, `updateBy`, etc. patterns) also **don't** require `proxyTo`.
+
+The same functionality is available in the class-based approach via the `@QueryMethod` decorator — see [README-DynamicRepo.md](./README-DynamicRepo.md#the-querymethod-decorator).
 
 ---
 

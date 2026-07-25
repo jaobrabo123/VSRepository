@@ -6,4 +6,8 @@ export interface DynamicMethodConfig {
     fbMode?: "one" | "list";
     injectOrdenation?: object;
     injectPagination?: object;
+    query?: {
+        value: string;
+        modifying: boolean;
+    };
 }

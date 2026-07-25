@@ -19,6 +19,8 @@ import {
     DynamicMethodOptions,
     OrdenationModel,
     PaginationModel,
+    QueryMethod,
+    QueryMethodArg,
 } from "../generated/vsrepo";
 import prisma from "./prisma";
 
@@ -174,6 +176,20 @@ class UserRepository extends DynamicRepository<
         pagination: PaginationModel<"User">,
         options?: DynamicMethodOptions<"User">,
     ) => Promise<User[]>;
+
+    // * "@QueryMethod" declares a raw SQL method, bypassing the name-parsing engine entirely.
+    // * Since there's no name parsing here, the parameter/return types come purely from how you
+    // * declare the field — use "QueryMethodArg<T>" to type the single { args, db? } argument.
+    // * Read more: https://github.com/jaobrabo123/VSRepository/blob/main/README-DynamicRepo.md#the-querymethod-decorator
+    @QueryMethod('SELECT * FROM "user" WHERE "userType" = $1 AND active = $2')
+    declare findByUserTypeRaw: (
+        arg: QueryMethodArg<[userType: UserType, active: boolean]>,
+    ) => Promise<User[]>;
+
+    // * "modifying: true" runs through "$executeRawUnsafe" — the field must always be declared
+    // * returning "Promise<number>" (the count of affected rows)
+    @QueryMethod('UPDATE "user" SET "likesVSRepo" = true WHERE id = $1', { modifying: true })
+    declare markAsVSRepoFanRaw: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
 }
 
 // * Unlike the functional approach (where you export the result of ".build(prisma, config)"), here we simply
