@@ -20,6 +20,7 @@ import { MethodOptions } from "./internal/validation/types/method-options.type";
 import { resolveSpecificWhere } from "./internal/resolvers/specific-where.resolve";
 import { resolveDbAndPrismaArgs } from "./internal/resolvers/dbAndPrismaArgs.resolve";
 import { validateMethodOptions } from "./internal/validation/method-options.validate";
+import { validateQueryMethodArg } from "./internal/validation/query-method-arg.validate";
 
 export class VSRepository {
     vsrepocache: Map<string, (args: any[], methodOptions?: MethodOptions) => PrismaArgs>;
@@ -91,6 +92,44 @@ export class VSRepository {
 
             for (let methodToMap of methodsToMap) {
                 const originalKey = methodToMap;
+
+                if (methods[originalKey]?.query) {
+                    const modifyingQueryMethod = methods[originalKey].query.modifying;
+                    const valueQueryMethod = methods[originalKey].query.value;
+
+                    (buildInstance as any)[originalKey] = async (arg: unknown) => {
+                        const queryArgValidated = validateQueryMethodArg(arg, buildInstance);
+                        const db = queryArgValidated.db ?? buildInstance.prisma;
+
+                        const start = showWorking
+                            ? performanceLoggerStart(
+                                  buildInstance.tableName,
+                                  `Query method: ${originalKey} (Modifying: ${modifyingQueryMethod})`,
+                                  queryArgValidated.args,
+                              )
+                            : undefined;
+
+                        try {
+                            const result = await db[
+                                modifyingQueryMethod ? "$executeRawUnsafe" : "$queryRawUnsafe"
+                            ](valueQueryMethod, ...queryArgValidated.args);
+
+                            if (showWorking)
+                                performanceLoggerEnd(
+                                    buildInstance.tableName,
+                                    `Query method: ${originalKey} (Modifying: ${modifyingQueryMethod})`,
+                                    start!,
+                                );
+
+                            return result;
+                        } catch (err) {
+                            throw err;
+                        }
+                    };
+
+                    continue;
+                }
+
                 methodToMap = methods[originalKey]?.proxyTo ?? methodToMap;
 
                 const dinamicMethodInfo = resolveDinamicMethodInfo(
@@ -161,7 +200,8 @@ export class VSRepository {
                                 ignoreRequiredWhere:
                                     dinamicMethodWhereOps.whereType === "overwrite",
                             },
-                            withoutWhere: dinamicMethodInfo.ignoreWhere && !dinamicMethodInfo.onlyBaseWheres,
+                            withoutWhere:
+                                dinamicMethodInfo.ignoreWhere && !dinamicMethodInfo.onlyBaseWheres,
                             specificSelect: select,
                             pushWhere: dinamicMethodWhereOps.pushWhere,
                             withoutSelect: dinamicMethodInfo.ignoreSelect,
@@ -210,7 +250,9 @@ export class VSRepository {
                 );
 
                 if (showWorking) {
-                    const argsSimulation = new Array<string>(dinamicMethodInfo.argsCount).fill("00");
+                    const argsSimulation = new Array<string>(dinamicMethodInfo.argsCount).fill(
+                        "00",
+                    );
 
                     const prismaArgs = buildInstance.vsrepocache.get(originalKey)!(argsSimulation);
 

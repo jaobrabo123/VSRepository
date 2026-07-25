@@ -11,7 +11,7 @@ export function DynamicMethod(config?: unknown): PropertyDecorator {
         methods.push(
             new DynamicMethodMetadata(
                 propertyKey,
-                validatedConfig?.map ?? true,
+                true,
                 validatedConfig?.proxyTo,
                 validatedConfig?.whereType,
                 validatedConfig?.pushWhere,

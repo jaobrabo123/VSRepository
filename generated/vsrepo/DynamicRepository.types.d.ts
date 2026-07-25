@@ -99,7 +99,9 @@ type DynamicTransformCreatePayload<U, T, M extends PrismaModelName, TRelations> 
 export type DynamicSaveInput<TEntity, UName extends PrismaModelName, WRelations = undefined> =
     ModelUpsertInput<UName> extends infer U
         ? U extends any
-            ? Simplify<DynamicTransformCreatePayload<U, TEntity, UName, ResolveRelations<WRelations>>>
+            ? Simplify<
+                  DynamicTransformCreatePayload<U, TEntity, UName, ResolveRelations<WRelations>>
+              >
             : never
         : never;
 
@@ -116,12 +118,14 @@ export type DynamicPatchInput<
     UName extends PrismaModelName,
     WRelations = undefined,
 > = Simplify<
-    DistributiveOmit<PrismaModelInputs<UName>["updateInput"], keyof ResolveRelations<WRelations>> & {
-        [K in Extract<keyof ResolveRelations<WRelations>, keyof TEntity>]?: DynamicRelationCreatePayload<
-            TEntity[K],
-            UName,
-            K
-        >;
+    DistributiveOmit<
+        PrismaModelInputs<UName>["updateInput"],
+        keyof ResolveRelations<WRelations>
+    > & {
+        [K in Extract<
+            keyof ResolveRelations<WRelations>,
+            keyof TEntity
+        >]?: DynamicRelationCreatePayload<TEntity[K], UName, K>;
     }
 >;
 
@@ -137,12 +141,14 @@ export type DynamicMergeInput<
     UName extends PrismaModelName,
     WRelations = undefined,
 > = Simplify<
-    DistributiveOmit<PrismaModelInputs<UName>["updateInput"], keyof ResolveRelations<WRelations>> & {
-        [K in Extract<keyof ResolveRelations<WRelations>, keyof TEntity>]?: DynamicRelationUpdatePayload<
-            TEntity[K],
-            UName,
-            K
-        >;
+    DistributiveOmit<
+        PrismaModelInputs<UName>["updateInput"],
+        keyof ResolveRelations<WRelations>
+    > & {
+        [K in Extract<
+            keyof ResolveRelations<WRelations>,
+            keyof TEntity
+        >]?: DynamicRelationUpdatePayload<TEntity[K], UName, K>;
     }
 >;
 
@@ -403,7 +409,7 @@ export type DynamicMethodConfig<M extends PrismaModelName = PrismaModelName> = {
  * class UserRepository extends DynamicRepository<User, "User", string> {
  *     `@DynamicMethod()`
  *     declare findOneByEmail: (email: string) => Promise<User | null>;
- * 
+ *
  *     @DynamicMethod<"User">({ injectOrdenation: { createdAt: "desc" } })
  *     declare findByAge: (email: number) => Promise<User[]>;
  * }
@@ -412,3 +418,11 @@ export type DynamicMethodConfig<M extends PrismaModelName = PrismaModelName> = {
 export declare function DynamicMethod<M extends PrismaModelName = PrismaModelName>(
     config?: DynamicMethodConfig<M>,
 ): PropertyDecorator;
+
+export type QueryMethodArg<T extends Array<any>> = { args: T; db?: ClientOrTransaction };
+
+export type QueryMethodOptions = {
+    modifying?: boolean;
+};
+
+export declare function QueryMethod(value: string, options?: QueryMethodOptions): PropertyDecorator;

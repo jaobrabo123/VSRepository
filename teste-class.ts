@@ -5,6 +5,8 @@ import {
     DynamicMethod,
     DynamicMethodOptions,
     PaginationModel,
+    QueryMethod,
+    QueryMethodArg,
 } from "./generated/vsrepo";
 import prisma from "./examples/prisma";
 
@@ -215,6 +217,12 @@ class UserRepository extends DynamicRepository<
         email: string,
         options?: DynamicMethodOptions<"User">,
     ) => Promise<User | null>;
+
+    @QueryMethod('select * from "user" where email = $1')
+    declare findByEmail: (arg: QueryMethodArg<[email: string]>) => Promise<User[]>;
+
+    @QueryMethod('update "user" set active = true where id = $1', { modifying: true })
+    declare activateUser: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
 }
 
 class ProductRepository extends DynamicRepository<
@@ -293,6 +301,9 @@ class ProductRepository extends DynamicRepository<
 
 const userRepository = new UserRepository();
 const productRepository = new ProductRepository();
+
+userRepository.findByEmail({ args: ["joao@email.com"] }).then(console.log);
+userRepository.activateUser({ args: [crypto.randomUUID()] }).then(console.log);
 
 // process.exit(0)
 
@@ -436,9 +447,7 @@ async function testUserDynamicMethods() {
         Array.isArray(distinctTypeAndLikes),
         "findManyDistinctUserTypeAndLikesVSRepo: must return array",
     );
-    const uniqueCombos = new Set(
-        distinctTypeAndLikes.map(u => `${u.userType}-${u.likesVSRepo}`),
-    );
+    const uniqueCombos = new Set(distinctTypeAndLikes.map(u => `${u.userType}-${u.likesVSRepo}`));
     console.assert(
         uniqueCombos.size === distinctTypeAndLikes.length,
         "findManyDistinctUserTypeAndLikesVSRepo: no duplicate combos",

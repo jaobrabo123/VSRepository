@@ -21,7 +21,8 @@ export {
 
 export {
   DynamicRepository,
-  DynamicMethod
+  DynamicMethod,
+  QueryMethod,
 } from './DynamicRepository.js';
 
 export type * from './VSRepoError.types';

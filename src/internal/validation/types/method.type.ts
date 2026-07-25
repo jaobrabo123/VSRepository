@@ -9,4 +9,8 @@ export interface Method {
     fbMode?: "one" | "list";
     injectOrdenation?: object | object[];
     injectPagination?: Pagination;
+    query?: {
+        value: string;
+        modifying: boolean;
+    }
 }

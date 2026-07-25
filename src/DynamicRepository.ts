@@ -6,6 +6,7 @@ import { VSRepoConfigError, VSRepository } from "./VSRepository";
 import "reflect-metadata";
 
 export { DynamicMethod } from "./internal/decorators/dynamic-method.decorator";
+export { QueryMethod } from "./internal/decorators/query-method.decorator";
 
 export class DynamicRepository extends VSRepository {
     constructor(prisma: unknown, config: unknown) {
