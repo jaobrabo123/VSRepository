@@ -31,7 +31,7 @@ Use `DynamicRepository` quando preferir um **estilo OOP com decorators** em vez 
 
 - Métodos são definidos como campos `declare` com decorators `@DynamicMethod()`
 - O repositório é uma classe que você pode estender e injetar via injeção de dependência
-- `selectModels` e `includeModels` **não são suportados** (use `include` bruto via `DynamicMethodOptions`)
+- `selectModels` e `includeModels` **não são suportados** (use `select`/`include` brutos via `DynamicMethodOptions`)
 - Os métodos base estão sempre ativos (sem toggle `active` por método)
 - O repositório é construído automaticamente no construtor (sem chamada explícita a `.build()`)
 
@@ -223,13 +223,13 @@ Todas as instâncias de `DynamicRepository` incluem automaticamente estes métod
 | `restore(pk)` | Restaura registro com soft-delete |
 | `restoreList(pks)` | Restauração em lote |
 
-Todos os métodos aceitam um argumento opcional `options` baseado em `DynamicMethodOptions` (`db`, `see`, `include`), mas alguns métodos restringem esse tipo:
+Todos os métodos aceitam um argumento opcional `options` baseado em `DynamicMethodOptions` (`db`, `see`, `include`, `select`), mas alguns métodos restringem esse tipo:
 
 - **`getAll`** aceita adicionalmente `pagination?: PaginationOptions` e `order?: OrdenationModel<UName>` (usa `defaultOrdenation` quando omitido).
-- **`saveList` / `patchList`** omitem `include`, e `db` só aceita uma `DbTransaction` (o retorno de `prisma.$transaction`) — não o client Prisma comum.
-- **`removeList`, `total`, `has`** omitem `include`.
+- **`saveList` / `patchList`** omitem `include` e `select`, e `db` só aceita uma `DbTransaction` (o retorno de `prisma.$transaction`) — não o client Prisma comum.
+- **`removeList`, `total`, `has`** omitem `include` e `select`.
 - **`softRemove`, `restore`** omitem `see` (a visibilidade de soft-delete não se aplica ao registro sendo alterado).
-- **`softRemoveList`, `restoreList`** omitem tanto `see` quanto `include`.
+- **`softRemoveList`, `restoreList`** omitem `see`, `include` e `select`.
 
 ```typescript
 // getAll com paginação e ordenação
@@ -323,15 +323,18 @@ const all = await userRepository.getAll({
 
 ## DynamicMethodOptions
 
-Todo método base e todo método dinâmico decorado aceita um segundo argumento opcional do tipo `DynamicMethodOptions`. Esse objeto tem três campos opcionais:
+Todo método base e todo método dinâmico decorado aceita um segundo argumento opcional do tipo `DynamicMethodOptions`. Esse objeto tem quatro campos opcionais:
 
 ```typescript
 type DynamicMethodOptions<TName extends PrismaModelName> = {
     db?: ClientOrTransaction;          // Client ou transação do Prisma
     see?: "active" | "removed" | "all"; // Visibilidade do soft-delete
     include?: IncludeModel<TName>;      // Include bruto do Prisma
+    select?: SelectModel<TName>;        // Select bruto do Prisma
 };
 ```
+
+> `include` e `select` são mutuamente exclusivos. Diferente da API funcional `setupVSRepo`, o tipo de options mais simples do `DynamicRepository` não garante isso em tempo de compilação — passar os dois gera um `VSRepoRuntimeError` em tempo de execução.
 
 ### `db` — Usando uma transação
 
@@ -405,9 +408,27 @@ const admin = await userRepository.findAdminByEmail(email, {
 });
 ```
 
+### `select` — Select bruto do Prisma
+
+Use `select` para projetar um conjunto específico de campos em qualquer chamada de método. É o equivalente ao `selectModels` da abordagem funcional, mas com a sintaxe bruta de select do Prisma:
+
+```typescript
+// Select simples
+const user = await userRepository.get(id, {
+    select: { id: true, email: true },
+});
+
+// Também funciona em métodos dinâmicos
+const admin = await userRepository.findAdminByEmail(email, {
+    select: { id: true, email: true },
+});
+```
+
+> Como o `DynamicRepository` não tem estreitamento de tipo orientado por `selectModels`/`selectedModel`, o tipo de retorno permanece `TEntity` independentemente do `select` passado — o resultado em tempo de execução conterá apenas os campos selecionados, mas o TypeScript não vai estreitar isso para você. Faça cast ou desestruture conforme necessário.
+
 ### Combinando opções
 
-Os três campos podem ser usados juntos:
+`db` e `see` podem ser combinados livremente com `include` ou `select` (mas não com os dois juntos):
 
 ```typescript
 // Dentro de uma transação, busca um usuário com relações, incluindo os com soft-delete
@@ -564,6 +585,7 @@ function DynamicMethod<M extends PrismaModelName>(
 | `db?` | `ClientOrTransaction` | Client ou transação do banco de dados |
 | `see?` | `"active" \| "removed" \| "all"` | Visibilidade do soft-delete |
 | `include?` | `IncludeModel<TName>` | Include bruto do Prisma |
+| `select?` | `SelectModel<TName>` | Select bruto do Prisma |
 
 ### @QueryMethod(value, options?)
 
@@ -600,3 +622,4 @@ function QueryMethod(value: string, options?: QueryMethodOptions): PropertyDecor
 | **Instância do Prisma** | Passada no `.build()` | Passada para `super()` no construtor |
 | **Extensibilidade** | Método `.extend()` | Herança de classe |
 | **Includes brutos** | Via `options.include` | Via `DynamicMethodOptions.include` |
+| **Selects brutos** | Via `options.select` (com estreitamento de tipo) | Via `DynamicMethodOptions.select` (sem estreitamento de tipo) |

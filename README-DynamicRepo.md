@@ -31,7 +31,7 @@ Use `DynamicRepository` when you prefer an **OOP style with decorators** over th
 
 - Methods are defined as `declare` fields with `@DynamicMethod()` decorators
 - The repository is a class you can extend and inject via dependency injection
-- `selectModels` and `includeModels` are **not supported** (use raw `include` via `DynamicMethodOptions` instead)
+- `selectModels` and `includeModels` are **not supported** (use raw `select`/`include` via `DynamicMethodOptions` instead)
 - Base methods are always active (no `active` toggle per method)
 - The repository is built automatically in the constructor (no explicit `.build()` call)
 
@@ -223,13 +223,13 @@ All `DynamicRepository` instances automatically include these methods:
 | `restore(pk)` | Restore soft-deleted record |
 | `restoreList(pks)` | Batch restore |
 
-All methods accept an optional `options` argument based on `DynamicMethodOptions` (`db`, `see`, `include`), but a few methods narrow it further:
+All methods accept an optional `options` argument based on `DynamicMethodOptions` (`db`, `see`, `include`, `select`), but a few methods narrow it further:
 
 - **`getAll`** additionally accepts `pagination?: PaginationOptions` and `order?: OrdenationModel<UName>` (falls back to `defaultOrdenation` when omitted).
-- **`saveList` / `patchList`** omit `include`, and `db` only accepts a `DbTransaction` (the return of `prisma.$transaction`) — not the plain Prisma client.
-- **`removeList`, `total`, `has`** omit `include`.
+- **`saveList` / `patchList`** omit `include` and `select`, and `db` only accepts a `DbTransaction` (the return of `prisma.$transaction`) — not the plain Prisma client.
+- **`removeList`, `total`, `has`** omit `include` and `select`.
 - **`softRemove`, `restore`** omit `see` (soft-delete visibility doesn't apply to the record being changed).
-- **`softRemoveList`, `restoreList`** omit both `see` and `include`.
+- **`softRemoveList`, `restoreList`** omit `see`, `include`, and `select`.
 
 ```typescript
 // getAll with pagination and ordering
@@ -323,15 +323,18 @@ const all = await userRepository.getAll({
 
 ## DynamicMethodOptions
 
-Every base method and every decorated dynamic method accepts an optional second argument of type `DynamicMethodOptions`. This object has three optional fields:
+Every base method and every decorated dynamic method accepts an optional second argument of type `DynamicMethodOptions`. This object has four optional fields:
 
 ```typescript
 type DynamicMethodOptions<TName extends PrismaModelName> = {
     db?: ClientOrTransaction;          // Prisma client or transaction
     see?: "active" | "removed" | "all"; // Soft-delete visibility
     include?: IncludeModel<TName>;      // Raw Prisma include
+    select?: SelectModel<TName>;        // Raw Prisma select
 };
 ```
+
+> `include` and `select` are mutually exclusive. Unlike the functional `setupVSRepo` API, `DynamicRepository`'s simpler options type doesn't enforce this at compile time — passing both raises a `VSRepoRuntimeError` at runtime.
 
 ### `db` — Using a transaction
 
@@ -405,9 +408,27 @@ const admin = await userRepository.findAdminByEmail(email, {
 });
 ```
 
+### `select` — Raw Prisma select
+
+Use `select` to project a specific set of fields in any method call. This is the equivalent of `selectModels` in the functional approach, but with raw Prisma select syntax:
+
+```typescript
+// Simple select
+const user = await userRepository.get(id, {
+    select: { id: true, email: true },
+});
+
+// Works on dynamic methods too
+const admin = await userRepository.findAdminByEmail(email, {
+    select: { id: true, email: true },
+});
+```
+
+> Because `DynamicRepository` has no `selectModels`/`selectedModel`-driven type narrowing, the return type stays `TEntity` regardless of the `select` passed — the runtime result will only contain the selected fields, but TypeScript won't narrow it for you. Cast or destructure as needed.
+
 ### Combining options
 
-All three fields can be used together:
+`db` and `see` can be freely combined with either `include` or `select` (but not both `include` and `select` together):
 
 ```typescript
 // Inside a transaction, fetch a user with relations, including soft-deleted
@@ -564,6 +585,7 @@ function DynamicMethod<M extends PrismaModelName>(
 | `db?` | `ClientOrTransaction` | Database client or transaction |
 | `see?` | `"active" \| "removed" \| "all"` | Soft-delete visibility |
 | `include?` | `IncludeModel<TName>` | Raw Prisma include |
+| `select?` | `SelectModel<TName>` | Raw Prisma select |
 
 ### @QueryMethod(value, options?)
 
@@ -600,3 +622,4 @@ function QueryMethod(value: string, options?: QueryMethodOptions): PropertyDecor
 | **Prisma instance** | Passed at `.build()` time | Passed to `super()` in constructor |
 | **Extensibility** | `.extend()` method | Class inheritance |
 | **Raw includes** | Via `options.include` | Via `DynamicMethodOptions.include` |
+| **Raw selects** | Via `options.select` (type-narrowed) | Via `DynamicMethodOptions.select` (not type-narrowed) |

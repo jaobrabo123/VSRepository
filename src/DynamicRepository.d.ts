@@ -15,6 +15,7 @@ import {
     PrismaModelName,
     RepositoryRelations,
     SeeMode,
+    SelectModel,
     WhereModel,
 } from "./VSRepository.d";
 
@@ -157,8 +158,11 @@ export type DynamicMethodOptions<TName extends PrismaModelName = PrismaModelName
      */
     see?: SeeMode;
 
-    /** Raw Prisma `include`. */
+    /** Raw Prisma `include`. Cannot be used together with `select`. */
     include?: IncludeModel<TName>;
+
+    /** Raw Prisma `select`. Cannot be used together with `include`. */
+    select?: SelectModel<TName>;
 };
 
 /**
@@ -290,7 +294,7 @@ export declare abstract class DynamicRepository<
     /** Saves an array of objects in a single automatic transaction. */
     saveList(
         objs: DynamicSaveInput<TEntity, UName, WRelations>[],
-        options?: Omit<DynamicMethodOptions<UName>, "include"> & {
+        options?: Omit<DynamicMethodOptions<UName>, "include" | "select"> & {
             /** Transaction client to use for this operation. */
             db?: DbTransaction;
         },
@@ -306,7 +310,7 @@ export declare abstract class DynamicRepository<
     /** Partially updates multiple records via `[pk, obj]` tuples in an automatic transaction. */
     patchList(
         tuples: [pk: VPKType, obj: DynamicPatchInput<TEntity, UName, WRelations>][],
-        options?: Omit<DynamicMethodOptions<UName>, "include"> & {
+        options?: Omit<DynamicMethodOptions<UName>, "include" | "select"> & {
             /** Transaction client to use for this operation. */
             db?: DbTransaction;
         },
@@ -322,7 +326,7 @@ export declare abstract class DynamicRepository<
     /** Deletes multiple records by their primary keys. */
     removeList(
         pks: VPKType[],
-        options?: Omit<DynamicMethodOptions<UName>, "include">,
+        options?: Omit<DynamicMethodOptions<UName>, "include" | "select">,
     ): Promise<{ count: number }>;
 
     /** Fetches all records (respects `requiredWhere` when set). */
@@ -340,10 +344,10 @@ export declare abstract class DynamicRepository<
     ): Promise<TEntity[]>;
 
     /** Returns the total number of records. */
-    total(options?: Omit<DynamicMethodOptions<UName>, "include">): Promise<number>;
+    total(options?: Omit<DynamicMethodOptions<UName>, "include" | "select">): Promise<number>;
 
     /** Checks whether a record exists by its primary key (PK). */
-    has(pk: VPKType, options?: Omit<DynamicMethodOptions<UName>, "include">): Promise<boolean>;
+    has(pk: VPKType, options?: Omit<DynamicMethodOptions<UName>, "include" | "select">): Promise<boolean>;
 
     /** Marks a record as deleted (soft-delete). */
     softRemove(pk: VPKType, options?: Omit<DynamicMethodOptions<UName>, "see">): Promise<TEntity>;
@@ -351,7 +355,7 @@ export declare abstract class DynamicRepository<
     /** Marks multiple records as deleted (soft-delete) in batch. */
     softRemoveList(
         pks: VPKType[],
-        options?: Omit<DynamicMethodOptions<UName>, "see" | "include">,
+        options?: Omit<DynamicMethodOptions<UName>, "see" | "include" | "select">,
     ): Promise<{ count: number }>;
 
     /** Restores a record previously marked as deleted (soft-delete). */
@@ -360,7 +364,7 @@ export declare abstract class DynamicRepository<
     /** Restores multiple records previously marked as deleted (soft-delete) in batch. */
     restoreList(
         pks: VPKType[],
-        options?: Omit<DynamicMethodOptions<UName>, "see" | "include">,
+        options?: Omit<DynamicMethodOptions<UName>, "see" | "include" | "select">,
     ): Promise<{ count: number }>;
 }
 

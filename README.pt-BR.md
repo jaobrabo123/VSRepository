@@ -35,6 +35,7 @@ O VSRepository permite criar repositórios fortemente tipados com:
   - [Merge](#merge)
   - [Configurando os métodos base](#configurando-os-métodos-base)
 - [Select Models](#select-models)
+  - [Select bruto (options.select)](#select-bruto-optionsselect)
 - [Include Models](#include-models)
   - [Include bruto (options.include)](#include-bruto-optionsinclude)
 - [Required Where](#required-where)
@@ -532,6 +533,35 @@ const user = await userRepository.get(id, { selectModel: "minimal" });
 ```ts
 const fullUser = await userRepository.get(id, { selectModel: false });
 ```
+
+### Select bruto (`options.select`)
+
+Além do `selectModel` (nomeado, pré-configurado em `selectModels`), você pode passar um `select` bruto do Prisma diretamente na chamada, sem precisar registrá-lo antecipadamente no repositório.
+
+```ts
+const usuario = await usuarioRepository.get(id, {
+  select: { id: true, nome: true },
+});
+```
+
+`options.select` aceita qualquer `select` válido para o modelo Prisma do repositório — é totalmente tipado e oferece o mesmo autocomplete/validação de chamar `prisma.usuario.findMany({ select: ... })` diretamente, e o tipo de retorno do método é restrito exatamente aos campos selecionados.
+
+**Regras e comportamento:**
+
+- **Mutuamente exclusivo com `selectModel`, `includeModel` e `include`.** Apenas um dos quatro pode ser fornecido por chamada; os tipos garantem isso — passar mais de um é um erro em tempo de compilação.
+- **Ad hoc, não reutilizável.** Diferente do `selectModel`, não precisa ser declarado em `selectModels`. Use-o para projeções pontuais que não justificam um select model nomeado.
+- **Nenhum `defaultSelectModel` é aplicado.** Quando `select` é fornecido, o select padrão (`defaultSelectModel`) é ignorado e apenas o `select` bruto é enviado ao Prisma.
+
+```ts
+// CORRETO ✅ — apenas select bruto
+await usuarioRepository.get(id, { select: { id: true, nome: true } });
+
+// ERRADO ❌ — combinar select com selectModel/includeModel/include não é permitido
+await usuarioRepository.get(id, { selectModel: "public", select: { id: true } });
+await usuarioRepository.get(id, { include: { posts: true }, select: { id: true } });
+```
+
+> **Quando usar `selectModel` vs. `select`:** prefira `selectModel` para projeções reutilizadas em várias chamadas (definidas uma vez em `selectModels`); use `select` para projeções específicas e ocasionais que não precisam de um nome.
 
 ---
 
@@ -1369,6 +1399,8 @@ type OptsModel = MethodOptionsModel<typeof userVSRepo>;
 ```
 
 > O segundo parâmetro de `MethodOptions` (`IM`) representa as chaves válidas de `includeModels`. Quando informado, `selectModel` e `includeModel` se tornam mutuamente exclusivos no tipo — não é possível passar os dois na mesma chamada.
+>
+> `MethodOptions` também aceita mais dois parâmetros genéricos, `RI` e `RS`, para tipar `include` e `select` brutos respectivamente (ambos com padrão `never`, ou seja, não são aceitos a menos que tipados explicitamente): `MethodOptions<"public", "withPosts", "usuario", IncludeModel<"usuario">, SelectModel<"usuario">>`. O `MethodOptionsModel`, derivado diretamente de um repositório configurado, não expõe `RI`/`RS` — use `MethodOptions` diretamente se precisar tipar as opções de `include`/`select` brutos.
 
 ### Tipos de configuração
 

@@ -35,6 +35,7 @@ VSRepository lets you create strongly-typed repositories with:
   - [Merge](#merge)
   - [Configuring the base methods](#configuring-the-base-methods)
 - [Select Models](#select-models)
+  - [Raw select (options.select)](#raw-select-optionsselect)
 - [Include Models](#include-models)
   - [Raw include (options.include)](#raw-include-optionsinclude)
 - [Required Where](#required-where)
@@ -532,6 +533,35 @@ const user = await userRepository.get(id, { selectModel: "minimal" });
 ```ts
 const fullUser = await userRepository.get(id, { selectModel: false });
 ```
+
+### Raw `select` (`options.select`)
+
+Besides `selectModel` (named, pre-configured in `selectModels`), you can pass a raw Prisma `select` directly in the call, without registering it beforehand on the repository.
+
+```ts
+const user = await userRepository.get(id, {
+  select: { id: true, name: true },
+});
+```
+
+`options.select` accepts any valid Prisma `select` for the repository's model — it's fully typed and offers the same autocomplete/validation as calling `prisma.user.findMany({ select: ... })` directly, and the method's return type is narrowed to exactly the fields selected.
+
+**Rules and behavior:**
+
+- **Mutually exclusive with `selectModel`, `includeModel` and `include`.** Only one of the four can be provided per call; the types enforce this — passing more than one is a compile-time error.
+- **Ad hoc, not reusable.** Unlike `selectModel`, it doesn't need to be declared in `selectModels`. Use it for one-off projections that don't justify a named select model.
+- **No `defaultSelectModel` is applied.** When `select` is provided, the default select (`defaultSelectModel`) is ignored and only the raw `select` is sent to Prisma.
+
+```ts
+// CORRECT ✅ — raw select only
+await userRepository.get(id, { select: { id: true, name: true } });
+
+// WRONG ❌ — combining select with selectModel/includeModel/include is not allowed
+await userRepository.get(id, { selectModel: "public", select: { id: true } });
+await userRepository.get(id, { include: { posts: true }, select: { id: true } });
+```
+
+> **When to use `selectModel` vs. `select`:** prefer `selectModel` for projections reused across multiple calls (defined once in `selectModels`); use `select` for specific, occasional projections that don't need a name.
 
 ---
 
@@ -1369,6 +1399,8 @@ type OptsModel = MethodOptionsModel<typeof userVSRepo>;
 ```
 
 > The second parameter of `MethodOptions` (`IM`) represents the valid keys of `includeModels`. When provided, `selectModel` and `includeModel` become mutually exclusive in the type — it's not possible to pass both in the same call.
+>
+> `MethodOptions` also accepts two further generic parameters, `RI` and `RS`, for typing raw `include` and raw `select` respectively (both default to `never`, meaning they're not accepted unless explicitly typed): `MethodOptions<"public", "withPosts", "user", IncludeModel<"user">, SelectModel<"user">>`. `MethodOptionsModel`, derived directly from a configured repository, does not expose `RI`/`RS` — use `MethodOptions` directly if you need to type raw `include`/`select` options.
 
 ### Configuration types
 
