@@ -101,11 +101,11 @@ class UserRepository extends DynamicRepository<
 
 **Generic parameters:**
 
-| Parameter | Description |
-|-----------|-------------|
-| `TEntity` | The full entity type, including any relations you want available |
-| `UName` | The Prisma model name as a string literal (capitalized, e.g. `"User"`) |
-| `VPKType` | The type of the primary key (`string`, `number`, etc.) |
+| Parameter                 | Description                                                                                                                                                           |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TEntity`                 | The full entity type, including any relations you want available                                                                                                      |
+| `UName`                   | The Prisma model name as a string literal (capitalized, e.g. `"User"`)                                                                                                |
+| `VPKType`                 | The type of the primary key (`string`, `number`, etc.)                                                                                                                |
 | `WRelations` *(optional)* | An object flags indicating which fields are relations (e.g. `{ address: true }`). Only needed if you plan to configure the repository's relations — omit it otherwise |
 
 ---
@@ -150,14 +150,14 @@ The `@DynamicMethod<M>()` decorator accepts an optional config object:
 })
 ```
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `proxyTo` | `string` | Delegates to another valid method pattern (e.g. `"findOneByEmail"`) |
-| `whereType` | `"extending" \| "overwrite"` | `extending` combines with `requiredWhere`; `overwrite` ignores it |
-| `pushWhere` | `WhereModel<M>` | Extra `where` clause added on top of `requiredWhere` |
-| `injectOrdenation` | `OrdenationModel<M>` | Fixed ordering injected into the query |
-| `injectPagination` | `PaginationModel<M>` | Fixed pagination injected into the query |
-| `fbMode` | `"one" \| "list"` | **Deprecated.** Only relevant for `findBy`-prefixed methods. Use `findOneBy` instead if you want a single result. |
+| Option             | Type                         | Description                                                                                                       |
+| ------------------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `proxyTo`          | `string`                     | Delegates to another valid method pattern (e.g. `"findOneByEmail"`)                                               |
+| `whereType`        | `"extending" \| "overwrite"` | `extending` combines with `requiredWhere`; `overwrite` ignores it                                                 |
+| `pushWhere`        | `WhereModel<M>`              | Extra `where` clause added on top of `requiredWhere`                                                              |
+| `injectOrdenation` | `OrdenationModel<M>`         | Fixed ordering injected into the query                                                                            |
+| `injectPagination` | `PaginationModel<M>`         | Fixed pagination injected into the query                                                                          |
+| `fbMode`           | `"one" \| "list"`            | **Deprecated.** Only relevant for `findBy`-prefixed methods. Use `findOneBy` instead if you want a single result. |
 
 ---
 
@@ -189,10 +189,10 @@ const affected = await userRepository.activateUser({ args: ["1"] });
 
 Since `@QueryMethod` skips name parsing, there's no automatic type inference for the field: the method's parameter and return types come entirely from how you `declare` the field. Use `QueryMethodArg<T>` to type the single `{ args, db? }` argument the method receives.
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `value` (1st argument) | `string` | — | **Required.** Raw SQL to execute. Use `$1`, `$2`, ... for the `args` placeholders. |
-| `options.modifying` | `boolean` | `false` | When `true`, runs via `$executeRawUnsafe`; the field must be declared to return `Promise<number>`. When `false`, runs via `$queryRawUnsafe`. |
+| Option                 | Type      | Default | Description                                                                                                                                  |
+| ---------------------- | --------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `value` (1st argument) | `string`  | —       | **Required.** Raw SQL to execute. Use `$1`, `$2`, ... for the `args` placeholders.                                                           |
+| `options.modifying`    | `boolean` | `false` | When `true`, runs via `$executeRawUnsafe`; the field must be declared to return `Promise<number>`. When `false`, runs via `$queryRawUnsafe`. |
 
 > [!NOTE]
 > `@QueryMethod` ignores every other dynamic-method concept — `requiredWhere`, `pushWhere`, `whereType`, `selectModels`/`includeModels`, `injectOrdenation`, `injectPagination`. None of it applies here.
@@ -203,25 +203,25 @@ Since `@QueryMethod` skips name parsing, there's no automatic type inference for
 
 All `DynamicRepository` instances automatically include these methods:
 
-| Method | Description |
-|--------|-------------|
-| `get(pk)` | Fetch a record by primary key |
-| `getOrThrow(pk)` | Fetch by PK, throws if not found |
-| `getList(pks)` | Fetch multiple records by PKs |
-| `save(obj)` | Create or upsert a record |
-| `saveList(objs)` | Batch save in an automatic transaction |
-| `patch(pk, obj)` | Partial update by PK |
-| `patchList(tuples)` | Batch partial update via `[pk, obj]` tuples |
-| `merge(pk, obj)` | Fetch and deep-merge in memory (does not persist) |
-| `remove(pk)` | Delete a record by PK |
-| `removeList(pks)` | Batch delete by PKs |
-| `getAll()` | Fetch all records (respects `requiredWhere`). Accepts `pagination` and `order` in `options` — see below |
-| `total()` | Count all records |
-| `has(pk)` | Check if a record exists |
-| `softRemove(pk)` | Soft-delete (requires `softRemovekName` config) |
-| `softRemoveList(pks)` | Batch soft-delete |
-| `restore(pk)` | Restore soft-deleted record |
-| `restoreList(pks)` | Batch restore |
+| Method                | Description                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| `get(pk)`             | Fetch a record by primary key                                                                            |
+| `getOrThrow(pk)`      | Fetch by PK, throws if not found                                                                         |
+| `getList(pks)`        | Fetch multiple records by PKs                                                                            |
+| `save(obj)`           | Create or upsert a record                                                                                |
+| `saveList(objs)`      | Batch save in an automatic transaction                                                                   |
+| `patch(pk, obj)`      | Partial update by PK                                                                                     |
+| `patchList(tuples)`   | Batch partial update via `[pk, obj]` tuples                                                              |
+| `merge(pk, obj)`      | Fetch and deep-merge in memory (does not persist)                                                        |
+| `remove(pk)`          | Delete a record by PK                                                                                    |
+| `removeList(pks)`     | Batch delete by PKs                                                                                      |
+| `getAll()`            | Fetch all records (respects `requiredWhere`). Accepts `pagination` and `order` in `options` — see below  |
+| `total()`             | Count all records                                                                                        |
+| `has(pk)`             | Check if a record exists                                                                                 |
+| `softRemove(pk)`      | Soft-delete (requires `softRemovekName` config)                                                          |
+| `softRemoveList(pks)` | Batch soft-delete                                                                                        |
+| `restore(pk)`         | Restore soft-deleted record                                                                              |
+| `restoreList(pks)`    | Batch restore                                                                                            |
 
 All methods accept an optional `options` argument based on `DynamicMethodOptions` (`db`, `see`, `include`, `select`), but a few methods narrow it further:
 
@@ -367,11 +367,11 @@ await userRepository.prisma.$transaction(async (tx) => {
 
 If `softRemovekName` is configured, the `see` field controls which records are visible:
 
-| Value | Behavior |
-|-------|----------|
-| `"active"` (default) | Only non-deleted records |
-| `"removed"` | Only soft-deleted records |
-| `"all"` | Both active and deleted records |
+| Value                | Behavior                        |
+| -------------------- | ------------------------------- |
+| `"active"` (default) | Only non-deleted records        |
+| `"removed"`          | Only soft-deleted records       |
+| `"all"`              | Both active and deleted records |
 
 ```typescript
 // Fetch only soft-deleted users
@@ -553,24 +553,24 @@ constructor(prisma: DbClient, config: DynamicRepositoryConstructorConfig<TEntity
 
 ### DynamicRepositoryConstructorConfig
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `tableName` | `Uncapitalize<UName>` | Table name in Prisma |
-| `pkName` | `keyof TEntity` | Primary key field |
-| `softRemovekName?` | `keyof TEntity` | DateTime field for soft-delete |
-| `requiredWhere?` | `WhereModel<UName>` | Global filters |
-| `defaultOrdenation?` | `OrdenationModel<UName>` | Default ordering |
-| `relations?` | `RepositoryRelations<TEntity>` | Relation configuration |
-| `build?` | `DynamicRepositoryBuildConfig` | Build-time options |
+| Property             | Type                           | Description                    |
+| -------------------- | ------------------------------ | ------------------------------ |
+| `tableName`          | `Uncapitalize<UName>`          | Table name in Prisma           |
+| `pkName`             | `keyof TEntity`                | Primary key field              |
+| `softRemovekName?`   | `keyof TEntity`                | DateTime field for soft-delete |
+| `requiredWhere?`     | `WhereModel<UName>`            | Global filters                 |
+| `defaultOrdenation?` | `OrdenationModel<UName>`       | Default ordering               |
+| `relations?`         | `RepositoryRelations<TEntity>` | Relation configuration         |
+| `build?`             | `DynamicRepositoryBuildConfig` | Build-time options             |
 
 ### DynamicRepositoryBuildConfig
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `showWorking?` | `boolean` | Show internal logs (default: `false`) |
-| `baseMethods?` | `Record<string, { ignoreRequiredWhere?: boolean }>` | Per-method config |
+| Property       | Type                                                | Description                           |
+| -------------- | --------------------------------------------------- | ------------------------------------- |
+| `showWorking?` | `boolean`                                           | Show internal logs (default: `false`) |
+| `baseMethods?` | `Record<string, { ignoreRequiredWhere?: boolean }>` | Per-method config                     |
 
-### @DynamicMethod<M>(config?)
+### @DynamicMethod\<M>(config?)
 
 ```typescript
 function DynamicMethod<M extends PrismaModelName>(
@@ -578,14 +578,14 @@ function DynamicMethod<M extends PrismaModelName>(
 ): PropertyDecorator;
 ```
 
-### DynamicMethodOptions<TName>
+### DynamicMethodOptions\<TName>
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `db?` | `ClientOrTransaction` | Database client or transaction |
-| `see?` | `"active" \| "removed" \| "all"` | Soft-delete visibility |
-| `include?` | `IncludeModel<TName>` | Raw Prisma include |
-| `select?` | `SelectModel<TName>` | Raw Prisma select |
+| Property   | Type                             | Description                    |
+| ---------- | -------------------------------- | ------------------------------ |
+| `db?`      | `ClientOrTransaction`            | Database client or transaction |
+| `see?`     | `"active" \| "removed" \| "all"` | Soft-delete visibility         |
+| `include?` | `IncludeModel<TName>`            | Raw Prisma include             |
+| `select?`  | `SelectModel<TName>`             | Raw Prisma select              |
 
 ### @QueryMethod(value, options?)
 
@@ -593,33 +593,33 @@ function DynamicMethod<M extends PrismaModelName>(
 function QueryMethod(value: string, options?: QueryMethodOptions): PropertyDecorator;
 ```
 
-### QueryMethodArg<T>
+### QueryMethodArg\<T>
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `args` | `T` (tuple) | Positional parameters injected into the SQL placeholders (`$1`, `$2`, ...) |
-| `db?` | `ClientOrTransaction` | Transaction client to run this query in |
+| Property | Type                  | Description                                                                |
+| -------- | --------------------- | -------------------------------------------------------------------------- |
+| `args`   | `T` (tuple)           | Positional parameters injected into the SQL placeholders (`$1`, `$2`, ...) |
+| `db?`    | `ClientOrTransaction` | Transaction client to run this query in                                    |
 
 ### QueryMethodOptions
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
+| Property     | Type      | Default | Description                                                                                                           |
+| ----------   | --------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
 | `modifying?` | `boolean` | `false` | `true` executes via `$executeRawUnsafe` (field must return `Promise<number>`); `false` executes via `$queryRawUnsafe` |
 
 ---
 
 ## Differences from setupVSRepo
 
-| Aspect | `setupVSRepo` | `DynamicRepository` |
-|--------|---------------|---------------------|
-| **Style** | Functional / curried | OOP / class-based |
-| **Methods defined via** | `methods` config object | `@DynamicMethod()` decorators |
-| **selectModels** | Supported | Not supported |
-| **includeModels** | Supported | Not supported |
-| **Default select** | `defaultSelectModel` config | Not available |
-| **Build step** | Explicit `.build(prisma)` | Automatic in constructor |
-| **Base method toggles** | `active`, `defaultSelect` per method | Always active, no defaultSelect |
-| **Prisma instance** | Passed at `.build()` time | Passed to `super()` in constructor |
-| **Extensibility** | `.extend()` method | Class inheritance |
-| **Raw includes** | Via `options.include` | Via `DynamicMethodOptions.include` |
-| **Raw selects** | Via `options.select` (type-narrowed) | Via `DynamicMethodOptions.select` (not type-narrowed) |
+| Aspect                  | `setupVSRepo`                          | `DynamicRepository`                                   |
+| ----------------------- | -------------------------------------- | ----------------------------------------------------- |
+| **Style**               | Functional / curried                   | OOP / class-based                                     |
+| **Methods defined via** | `methods` config object                | `@DynamicMethod()` decorators                         |
+| **selectModels**        | Supported                              | Not supported                                         |
+| **includeModels**       | Supported                              | Not supported                                         |
+| **Default select**      | `defaultSelectModel` config            | Not available                                         |
+| **Build step**          | Explicit `.build(prisma)`              | Automatic in constructor                              |
+| **Base method toggles** | `active`, `defaultSelect` per method   | Always active, no defaultSelect                       |
+| **Prisma instance**     | Passed at `.build()` time              | Passed to `super()` in constructor                    |
+| **Extensibility**       | `.extend()` method                     | Class inheritance                                     |
+| **Raw includes**        | Via `options.include`                  | Via `DynamicMethodOptions.include`                    |
+| **Raw selects**         | Via `options.select` (type-narrowed)   | Via `DynamicMethodOptions.select` (not type-narrowed) |

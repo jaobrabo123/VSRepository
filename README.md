@@ -96,14 +96,14 @@ npx vsrepo generate \
 
 **Available flags:**
 
-| Flag       | Alias | Default             |
+| Flag       | Alias | Default              |
 | ---------- | ----- | -------------------- |
 | `--output` | `-o`  | `generated/vsrepo`   |
 | `--prisma` | `-p`  | `generated/prisma`   |
 
 **Generated files:**
 
-```
+```text
 generated/vsrepo/
 ├── DynamicRepository.ts
 ├── DynamicRepository.types.d.ts
@@ -337,18 +337,18 @@ When calling `.build(prisma)`, the base methods below are automatically made ava
 | Method                   | Description                                                                                                  |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------|
 | `get(pk)`                | Fetches a record by its primary key                                                                          |
-| `getOrThrow(pk)`         | Fetches a record by its primary key; throws `VSRepoRuntimeError` (code `"20727"`) if not found                |
-| `getList(pks)`           | Fetches multiple records from a list of primary keys                                                          |
+| `getOrThrow(pk)`         | Fetches a record by its primary key; throws `VSRepoRuntimeError` (code `"20727"`) if not found               |
+| `getList(pks)`           | Fetches multiple records from a list of primary keys                                                         |
 | `save(obj)`              | Creates or updates — if the object has a `pk` it performs an `upsert`, otherwise a `create`                  |
-| `saveList(objs)`         | Saves an array of objects in a single automatic transaction                                                   |
-| `patch(pk, obj)`         | Partially updates a record by its primary key                                                                 |
-| `patchList(tuples)`      | Partially updates multiple records via an array of `[pk, obj]` tuples in an automatic transaction             |
+| `saveList(objs)`         | Saves an array of objects in a single automatic transaction                                                  |
+| `patch(pk, obj)`         | Partially updates a record by its primary key                                                                |
+| `patchList(tuples)`      | Partially updates multiple records via an array of `[pk, obj]` tuples in an automatic transaction            |
 | `merge(pk, obj)`         | Fetches a record and deep merges it in memory — **does not persist**, returns the merged object              |
-| `remove(pk)`             | Removes a record by its primary key                                                                           |
-| `removeList(pks)`        | Removes several records by a list of primary keys — returns `{ count }`                                       |
-| `getAll()`               | Returns all records (accepts `pagination` and `order` in `options`)                                           |
-| `total()`                | Returns the total number of records                                                                           |
-| `has(pk)`                | Checks whether a record exists by its primary key — returns `boolean`                                         |
+| `remove(pk)`             | Removes a record by its primary key                                                                          |
+| `removeList(pks)`        | Removes several records by a list of primary keys — returns `{ count }`                                      |
+| `getAll()`               | Returns all records (accepts `pagination` and `order` in `options`)                                          |
+| `total()`                | Returns the total number of records                                                                          |
+| `has(pk)`                | Checks whether a record exists by its primary key — returns `boolean`                                        |
 
 All of them accept `options` as the last argument.
 
@@ -357,11 +357,11 @@ All of them accept `options` as the last argument.
 When `softRemovekName` is configured on the repository, the following additional methods become available:
 
 | Method                     | Description                                                                        |
-| -------------------------- | ------------------------------------------------------------------------------------|
+| -------------------------- | ---------------------------------------------------------------------------------- |
 | `softRemove(pk)`           | Marks a record as removed by filling `softRemovekName` with the current date       |
-| `softRemoveList(pks)`      | Marks multiple records as removed in batch — returns `{ count }`                    |
-| `restore(pk)`              | Restores a soft-deleted record, clearing the `softRemovekName` field                |
-| `restoreList(pks)`         | Restores multiple soft-deleted records in batch — returns `{ count }`               |
+| `softRemoveList(pks)`      | Marks multiple records as removed in batch — returns `{ count }`                   |
+| `restore(pk)`              | Restores a soft-deleted record, clearing the `softRemovekName` field               |
+| `restoreList(pks)`         | Restores multiple soft-deleted records in batch — returns `{ count }`              |
 
 ```ts
 const userRepository = setupVSRepo<User, "user">()(({
@@ -707,9 +707,9 @@ methods: {
 
 When `softRemovekName` is configured, every method accepts the `see` option to control the visibility of soft-deleted records:
 
-| Value       | Behavior                                                     |
+| Value       | Behavior                                                      |
 | ----------- | --------------------------------------------------------------|
-| `"active"`  | Returns only records that are **not** removed (default)      |
+| `"active"`  | Returns only records that are **not** removed (default)       |
 | `"removed"` | Returns only removed records                                  |
 | `"all"`     | Returns all records, regardless of status                     |
 
@@ -747,39 +747,39 @@ methods: {
 
 The method name's prefix determines which Prisma operation will be called and which arguments are expected.
 
-| Prefix                      | Prisma operation           | Return                  | Notes                                                                     |
-| ---------------------------- | -------------------------- | ------------------------ | ---------------------------------------------------------------------------|
-| `findOneBy`                 | `findFirst`                 | `T \| null`              | Single return.                                                             |
-| `findBy`                    | `findMany` / `findFirst`   | `T[]` or `T \| null`     | Default is list; use `fbMode: "one"` for a single return (**deprecated**, use `findOneBy`) |
-| `findUniqueBy`               | `findUnique`                | `T \| null`              |                                                                             |
-| `findUniqueOrThrowBy`        | `findUniqueOrThrow`         | `T`                       | Throws an error if not found                                               |
-| `findFirstBy`                | `findFirst`                 | `T \| null`              | Accepts fields as filter                                                   |
-| `findFirstOrThrowBy`         | `findFirstOrThrow`          | `T`                       | Accepts fields as filter; throws an error if not found                     |
-| `findFirst`                  | `findFirst`                 | `T \| null`              | No field filters; applies only `requiredWhere` and `pushWhere`             |
-| `findFirstOrThrow`           | `findFirstOrThrow`          | `T`                       | No field filters; applies only `requiredWhere` and `pushWhere`; throws an error if not found |
-| `findManyBy`                 | `findMany`                  | `T[]`                     | Accepts fields as filter                                                   |
-| `findMany`                   | `findMany`                  | `T[]`                     | No field filters; applies only `requiredWhere` and `pushWhere`             |
-| `findOneWhere`                | `findFirst`                 | `T \| null`              | Receives an explicit `where` object as argument                            |
-| `findListWhere`               | `findMany`                  | `T[]`                     | Receives an explicit `where` object as argument                            |
-| `existsBy`                    | `findFirst`                 | `boolean`                 | Returns `true` if found, `false` otherwise                                 |
-| `existsWhere`                 | `findFirst`                 | `boolean`                 | Receives an explicit `where` object and returns whether it exists          |
-| `countBy`                     | `count`                      | `number`                  | Accepts fields as filter                                                   |
-| `countWhere`                  | `count`                      | `number`                  | Receives an explicit `where` object as argument                            |
-| `count`                       | `count`                      | `number`                  | No field filters; applies only `requiredWhere` and `pushWhere`             |
-| `create`                      | `create`                     | `T`                        | Receives `data` as argument                                                |
-| `createMany`                  | `createMany`                 | `{ count: number }`       | Receives `data` as argument; supports `SkipDuplicates`                     |
-| `createManyAndReturn`         | `createManyAndReturn`        | `T[]`                      | Receives `data` as argument; supports `SkipDuplicates`                     |
-| `updateBy`                    | `update`                      | `T`                        | Receives `data` as argument                                                |
-| `updateManyBy`                | `updateMany`                  | `{ count: number }`       | Receives `data` as argument                                                |
-| `updateManyWhere`             | `updateMany`                  | `{ count: number }`       | Receives a `where` object and a `data` object as arguments                 |
-| `updateManyAndReturnBy`       | `updateManyAndReturn`         | `T[]`                      | Receives `data` as argument                                                |
-| `updateManyAndReturnWhere`    | `updateManyAndReturn`         | `T[]`                      | Receives a `where` object and a `data` object as arguments                 |
-| `upsertBy`                    | `upsert`                       | `T`                        | Receives `update` and `create` as arguments                                |
-| `deleteBy`                    | `delete`                       | `T`                        |                                                                             |
-| `deleteManyBy`                | `deleteMany`                   | `{ count: number }`       |                                                                             |
-| `deleteManyWhere`             | `deleteMany`                   | `{ count: number }`       | Receives an explicit `where` object as argument                            |
-| `aggregate`                   | `aggregate`                     | `Dynamic`                  | Name must be exact; receives native Prisma args; ignores `selectModels`, `pushWhere`, and `requiredWhere` |
-| `groupBy`                     | `groupBy`                       | `Dynamic[]`                | Name must be exact; receives native Prisma args; ignores `selectModels`, `pushWhere`, and `requiredWhere` |
+| Prefix                       | Prisma operation           | Return                   | Notes                                                                                                     |
+| ---------------------------- | -------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `findOneBy`                  | `findFirst`                | `T \| null`              | Single return.                                                                                            |
+| `findBy`                     | `findMany` / `findFirst`   | `T[]` or `T \| null`     | Default is list; use `fbMode: "one"` for a single return (**deprecated**, use `findOneBy`)                |
+| `findUniqueBy`               | `findUnique`               | `T \| null`              |                                                                                                           |
+| `findUniqueOrThrowBy`        | `findUniqueOrThrow`        | `T`                      | Throws an error if not found                                                                              |
+| `findFirstBy`                | `findFirst`                | `T \| null`              | Accepts fields as filter                                                                                  |
+| `findFirstOrThrowBy`         | `findFirstOrThrow`         | `T`                      | Accepts fields as filter; throws an error if not found                                                    |
+| `findFirst`                  | `findFirst`                | `T \| null`              | No field filters; applies only `requiredWhere` and `pushWhere`                                            |
+| `findFirstOrThrow`           | `findFirstOrThrow`         | `T`                      | No field filters; applies only `requiredWhere` and `pushWhere`; throws an error if not found              |
+| `findManyBy`                 | `findMany`                 | `T[]`                    | Accepts fields as filter                                                                                  |
+| `findMany`                   | `findMany`                 | `T[]`                    | No field filters; applies only `requiredWhere` and `pushWhere`                                            |
+| `findOneWhere`               | `findFirst`                | `T \| null`              | Receives an explicit `where` object as argument                                                           |
+| `findListWhere`              | `findMany`                 | `T[]`                    | Receives an explicit `where` object as argument                                                           |
+| `existsBy`                   | `findFirst`                | `boolean`                | Returns `true` if found, `false` otherwise                                                                |
+| `existsWhere`                | `findFirst`                | `boolean`                | Receives an explicit `where` object and returns whether it exists                                         |
+| `countBy`                    | `count`                    | `number`                 | Accepts fields as filter                                                                                  |
+| `countWhere`                 | `count`                    | `number`                 | Receives an explicit `where` object as argument                                                           |
+| `count`                      | `count`                    | `number`                 | No field filters; applies only `requiredWhere` and `pushWhere`                                            |
+| `create`                     | `create`                   | `T`                      | Receives `data` as argument                                                                               |
+| `createMany`                 | `createMany`               | `{ count: number }`      | Receives `data` as argument; supports `SkipDuplicates`                                                    |
+| `createManyAndReturn`        | `createManyAndReturn`      | `T[]`                    | Receives `data` as argument; supports `SkipDuplicates`                                                    |
+| `updateBy`                   | `update`                   | `T`                      | Receives `data` as argument                                                                               |
+| `updateManyBy`               | `updateMany`               | `{ count: number }`      | Receives `data` as argument                                                                               |
+| `updateManyWhere`            | `updateMany`               | `{ count: number }`      | Receives a `where` object and a `data` object as arguments                                                |
+| `updateManyAndReturnBy`      | `updateManyAndReturn`      | `T[]`                    | Receives `data` as argument                                                                               |
+| `updateManyAndReturnWhere`   | `updateManyAndReturn`      | `T[]`                    | Receives a `where` object and a `data` object as arguments                                                |
+| `upsertBy`                   | `upsert`                   | `T`                      | Receives `update` and `create` as arguments                                                               |
+| `deleteBy`                   | `delete`                   | `T`                      |                                                                                                           |
+| `deleteManyBy`               | `deleteMany`               | `{ count: number }`      |                                                                                                           |
+| `deleteManyWhere`            | `deleteMany`               | `{ count: number }`      | Receives an explicit `where` object as argument                                                           |
+| `aggregate`                  | `aggregate`                | `Dynamic`                | Name must be exact; receives native Prisma args; ignores `selectModels`, `pushWhere`, and `requiredWhere` |
+| `groupBy`                    | `groupBy`                  | `Dynamic[]`              | Name must be exact; receives native Prisma args; ignores `selectModels`, `pushWhere`, and `requiredWhere` |
 
 ---
 
@@ -787,29 +787,29 @@ The method name's prefix determines which Prisma operation will be called and wh
 
 Filters are suffixes applied to the field name inside the method. The field itself comes capitalized right after the prefix (or after `By`).
 
-| Suffix              | Prisma operator       | Argument required          |
+| Suffix               | Prisma operator        | Argument required          |
 | -------------------- | ---------------------- | ---------------------------|
-| *(no suffix)*        | equality (`=`)          | yes                        |
-| `Not`                | `not`                    | yes                        |
-| `In`                 | `in`                     | yes (array)                 |
-| `NotIn`              | `notIn`                  | yes (array)                 |
-| `Contains`           | `contains`               | yes                         |
-| `NotContains`        | `not.contains`           | yes                         |
-| `StartsWith`         | `startsWith`             | yes                         |
-| `NotStartsWith`      | `not.startsWith`         | yes                         |
-| `EndsWith`           | `endsWith`               | yes                         |
-| `NotEndsWith`        | `not.endsWith`           | yes                         |
-| `GreaterThan`        | `gt`                      | yes                         |
-| `GreaterThanEqual`   | `gte`                     | yes                         |
-| `LessThan`           | `lt`                      | yes                         |
-| `LessThanEqual`      | `lte`                     | yes                         |
-| `Between`            | `gte` + `lte`             | yes (tuple `[min, max]`)     |
-| `NotBetween`         | `not.gte` + `not.lte`     | yes (tuple `[min, max]`)     |
-| `IsNull`             | `null`                    | no                          |
-| `IsNotNull`          | `not: null`               | no                          |
-| `IsTrue`             | `true`                    | no                          |
-| `IsFalse`            | `false`                   | no                          |
-| `Insensitive`        | `mode: 'insensitive'`     | combinator                  |
+| *(no suffix)*        | equality (`=`)         | yes                        |
+| `Not`                | `not`                  | yes                        |
+| `In`                 | `in`                   | yes (array)                |
+| `NotIn`              | `notIn`                | yes (array)                |
+| `Contains`           | `contains`             | yes                        |
+| `NotContains`        | `not.contains`         | yes                        |
+| `StartsWith`         | `startsWith`           | yes                        |
+| `NotStartsWith`      | `not.startsWith`       | yes                        |
+| `EndsWith`           | `endsWith`             | yes                        |
+| `NotEndsWith`        | `not.endsWith`         | yes                        |
+| `GreaterThan`        | `gt`                   | yes                        |
+| `GreaterThanEqual`   | `gte`                  | yes                        |
+| `LessThan`           | `lt`                   | yes                        |
+| `LessThanEqual`      | `lte`                  | yes                        |
+| `Between`            | `gte` + `lte`          | yes (tuple `[min, max]`)   |
+| `NotBetween`         | `not.gte` + `not.lte`  | yes (tuple `[min, max]`)   |
+| `IsNull`             | `null`                 | no                         |
+| `IsNotNull`          | `not: null`            | no                         |
+| `IsTrue`             | `true`                 | no                         |
+| `IsFalse`            | `false`                | no                         |
+| `Insensitive`        | `mode: 'insensitive'`  | combinator                 |
 
 `Insensitive` is a combinator and can be used together with another text filter:
 
@@ -843,11 +843,11 @@ findByNameOptionalAndEmail // name is optional, email is required
 
 ### Logical operators
 
-| Operator  | Usage in the name             | Example                          |
-| --------- | ------------------------------ | -----------------------------------|
-| `And`     | between two fields              | `findOneByIdAndEmail`              |
-| `Or`      | between two fields              | `findByNameOrEmail`                |
-| `AND`     | separates a final `AND` block   | `findByEmailOrNameANDActiveStatus` |
+| Operator  | Usage in the name              | Example                            |
+| --------- | ------------------------------ | ---------------------------------- |
+| `And`     | between two fields             | `findOneByIdAndEmail`              |
+| `Or`      | between two fields             | `findByNameOrEmail`                |
+| `AND`     | separates a final `AND` block  | `findByEmailOrNameANDActiveStatus` |
 
 `AND` (in caps) has a specific rule:
 
@@ -927,22 +927,23 @@ Generates (`findByEmailOrNameANDActiveStatusAndAgeGreaterThan`):
 Allow filtering by fields of related models.
 
 > [!IMPORTANT]
+>
 > - **Relation typing**: For TypeScript to recognize the types of relation fields in dynamic methods, the generic entity type passed to `setupVSRepo` must include the structured relations (e.g. using Prisma's `UserGetPayload<{ include: { profile: true, posts: true } }>`).
 > - **Suffix compatibility**:
 >   - The `Some`, `Every`, and `None` suffixes only work for **to-many** relations (`many-to-many` and `one-to-many`).
 >   - The `With` and `Without` suffixes only work for **to-one** relations (`one-to-one` and `many-to-one`).
 
-| Relation suffix         | Prisma operator  | Note                                                  |
-| ------------------------ | ----------------- | -------------------------------------------------------|
-| `Some`                    | `some: {}`         | Relation has *some* record                             |
-| `SomeField`               | `some.field`       | Filters within the relation's records                  |
-| `EveryField`              | `every.field`      | Filters within the relation's records                  |
-| `None`                    | `none: {}`         | Relation has *no* records                               |
-| `NoneField`               | `none.field`       | Filters within the relation's records                  |
-| `With`                    | `is: {}`           | Relation exists (not null)                              |
-| `WithField`               | `is.field`         | Filters a field within the relation                     |
-| `Without`                 | `isNot: {}`        | Relation doesn't exist (is null)                        |
-| `WithoutField`            | `isNot.field`      | Filters a field within the relation with negation       |
+| Relation suffix       | Prisma operator   | Note                                                  |
+| --------------------- | ----------------- | ----------------------------------------------------- |
+| `Some`                | `some: {}`        | Relation has *some* record                            |
+| `SomeField`           | `some.field`      | Filters within the relation's records                 |
+| `EveryField`          | `every.field`     | Filters within the relation's records                 |
+| `None`                | `none: {}`        | Relation has *no* records                             |
+| `NoneField`           | `none.field`      | Filters within the relation's records                 |
+| `With`                | `is: {}`          | Relation exists (not null)                            |
+| `WithField`           | `is.field`        | Filters a field within the relation                   |
+| `Without`             | `isNot: {}`       | Relation doesn't exist (is null)                      |
+| `WithoutField`        | `isNot.field`     | Filters a field within the relation with negation     |
 
 Considering `user` with a to-one relation `profile` and a to-many relation `posts`:
 
@@ -1022,18 +1023,18 @@ Generates (`findByProfileWithout`):
 
 Applied at the **end** of the method name, they automatically inject the pagination and ordering arguments.
 
-| Suffix                 | Additional arguments           |
+| Suffix                   | Additional arguments           |
 | ------------------------ | -------------------------------|
-| `Paginated`               | `(pagination)`                  |
-| `Ordered`                 | `(order)`                       |
-| `OrderedAndPaginated`     | `(order, pagination)`           |
-| `PaginatedAndOrdered`     | `(pagination, order)`           |
+| `Paginated`              | `(pagination)`                 |
+| `Ordered`                | `(order)`                      |
+| `OrderedAndPaginated`    | `(order, pagination)`          |
+| `PaginatedAndOrdered`    | `(pagination, order)`          |
 
 For `createMany` and `createManyAndReturn`, the `SkipDuplicates` suffix is available:
 
 | Suffix              | Effect                                     |
-| --------------------- | ---------------------------------------------|
-| `SkipDuplicates`       | Skips duplicate records during insertion      |
+| ------------------- | ------------------------------------------ |
+| `SkipDuplicates`    | Skips duplicate records during insertion   |
 
 ---
 
@@ -1077,17 +1078,17 @@ await userRepository.findManyByNameDistinctRole("John");
 
 Each entry in `methods` accepts the following options:
 
-| Option               | Type                             | Default       | Description                                                                                                     |
-| --------------------- | --------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------|
-| `map`                 | `boolean`                          | —              | **Required.** Defines whether the method will be exposed on the repository.                                       |
-| `whereType`           | `'extending'` \| `'overwrite'`    | `extending`    | `extending` combines with `requiredWhere`. `overwrite` ignores `requiredWhere`.                                    |
-| `selectModel`         | `keyof SelectModels \| false`     | —              | Overrides `defaultSelectModel` for this method.                                                                    |
-| `fbMode`              | `'one'` \| `'list'`                | `'list'`       | (**Deprecated. Use `findOneBy`**) Only for `findBy`. `'one'` returns `T \| null`; `'list'` returns `T[]`.          |
-| `proxyTo`             | `Valid method pattern`             | —              | Delegates the logic to another valid method pattern.                                                               |
-| `pushWhere`           | `WhereModel<M>`                    | —              | Extra `where` added to the query in addition to `requiredWhere`.                                                   |
-| `injectOrdenation`    | `OrdenationModel<M>`               | —              | Fixed ordering automatically injected into the query.                                                              |
-| `injectPagination`    | `PaginationModel<M>`               | —              | Fixed pagination automatically injected into the query.                                                            |
-| `query`               | `{ value: string; modifying?: boolean }` | —        | Turns the method into a **Query Method** (raw SQL). Ignores every other option above — see [Query Methods](#query-methods). |
+| Option                | Type                                     | Default        | Description                                                                                                                 |
+| --------------------- | ---------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `map`                 | `boolean`                                | —              | **Required.** Defines whether the method will be exposed on the repository.                                                 |
+| `whereType`           | `'extending'` \| `'overwrite'`           | `extending`    | `extending` combines with `requiredWhere`. `overwrite` ignores `requiredWhere`.                                             |
+| `selectModel`         | `keyof SelectModels \| false`            | —              | Overrides `defaultSelectModel` for this method.                                                                             |
+| `fbMode`              | `'one'` \| `'list'`                      | `'list'`       | (**Deprecated. Use `findOneBy`**) Only for `findBy`. `'one'` returns `T \| null`; `'list'` returns `T[]`.                   |
+| `proxyTo`             | `Valid method pattern`                   | —              | Delegates the logic to another valid method pattern.                                                                        |
+| `pushWhere`           | `WhereModel<M>`                          | —              | Extra `where` added to the query in addition to `requiredWhere`.                                                            |
+| `injectOrdenation`    | `OrdenationModel<M>`                     | —              | Fixed ordering automatically injected into the query.                                                                       |
+| `injectPagination`    | `PaginationModel<M>`                     | —              | Fixed pagination automatically injected into the query.                                                                     |
+| `query`               | `{ value: string; modifying?: boolean }` | —              | Turns the method into a **Query Method** (raw SQL). Ignores every other option above — see [Query Methods](#query-methods). |
 
 ---
 
@@ -1169,9 +1170,9 @@ await userRepository.prisma.$transaction(async (tx) => {
 });
 ```
 
-| Option        | Type      | Default | Description                                                                                                                 |
-| ------------- | --------- | ------- | -------------------------------------------------------------------------------------------------------------------------------|
-| `value`       | `string`  | —       | **Required.** Raw SQL to execute. Use `$1`, `$2`, ... for the placeholders of the values in `args`.                            |
+| Option        | Type      | Default | Description                                                                                                                                                                                                                               |
+| ------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `value`       | `string`  | —       | **Required.** Raw SQL to execute. Use `$1`, `$2`, ... for the placeholders of the values in `args`.                                                                                                                                       |
 | `modifying`   | `boolean` | `false` | When `true`, executes via `$executeRawUnsafe` and the method always resolves to `number`. When `false`, executes via `$queryRawUnsafe` and the method resolves to `TReturn` (`any` by default, inferable via a generic at the call site). |
 
 > [!NOTE]
@@ -1213,7 +1214,7 @@ const userRepository = setupVSRepo<User, "user">()(({
 
 **Relation modes:**
 
-| Mode  | Relation      |
+| Mode  | Relation       |
 | ----- | -------------- |
 | `oto` | one-to-one     |
 | `otm` | one-to-many    |
@@ -1222,22 +1223,22 @@ const userRepository = setupVSRepo<User, "user">()(({
 
 **Restrictions:**
 
-| Restriction | Behavior on update                                             |
-| ------------ | ----------------------------------------------------------------|
-| `set`         | Fully replaces (removes the ones that weren't sent)             |
-| `add`         | Adds/updates without removing existing ones                      |
+| Restriction  | Behavior on update                                     |
+| ------------ | ------------------------------------------------------ |
+| `set`        | Fully replaces (removes the ones that weren't sent)    |
+| `add`        | Adds/updates without removing existing ones            |
 
 > [!WARNING]
 > **`set` means different things depending on the relation's `mode` — and this can cause data loss if you're not careful.**
 >
 > In relations where the related record **belongs** to the parent record (`oto` and `otm`), "removing the ones that weren't sent" means **deleting the record from the database** (`delete`/`deleteMany`). In relations where the related record is **independent** (`mto` and `mtm`), "removing" just means **unlinking** (`disconnect`/`set: []`) — the related record continues to exist in the database, it just stops pointing to the parent (or being in the join table).
 >
-> | Mode  | `restriction: "set"` when an item is omitted | Does the item continue to exist in the database? |
-> | ----- | ------------------------------------------------ | -----------------------------------------------------|
+> | Mode | `restriction: "set"` when an item is omitted | Does the item continue to exist in the database? |
+> | ----- | ------------------------------------------------ | ----------------------------------------------------- |
 > | `oto` | Passing `null` in the field → **deletes** the related record (`delete: true`) | No |
-> | `otm` | Items outside the sent list → **deleted** (`deleteMany` with `notIn`)          | No |
+> | `otm` | Items outside the sent list → **deleted** (`deleteMany` with `notIn`) | No |
 > | `mto` | Passing `null` in the field (with `nullable: true`) → **unlinks** (`disconnect: true`) | Yes |
-> | `mtm` | Items outside the sent list → **unlinked** from the join table (`set: []`)     | Yes |
+> | `mtm` | Items outside the sent list → **unlinked** from the join table (`set: []`) | Yes |
 >
 > Practical example: if `posts` is `otm` with `restriction: "set"`, a `save`/`patch` that sends the user with only 2 of the 5 existing posts will **delete the other 3 posts from the database**, not just unlink them from the user. If the expected behavior is just to unlink without deleting, use `restriction: "add"` (which never removes anything) and handle removal manually.
 
@@ -1338,12 +1339,12 @@ try {
 
 **Available subclasses:**
 
-| Class                 | When it's thrown                                                    |
-| ---------------------- | ------------------------------------------------------------------------|
-| `VSRepoConfigError`     | Invalid configuration in `setupVSRepo`                                   |
-| `VSRepoBuildError`      | Invalid method name, field type, or configuration in `build`             |
-| `VSRepoExtendError`     | Invalid argument in `extend`                                             |
-| `VSRepoRuntimeError`    | Runtime error during an operation                                        |
+| Class                  | When it's thrown                                              |
+| ---------------------- | ------------------------------------------------------------- |
+| `VSRepoConfigError`    | Invalid configuration in `setupVSRepo`                        |
+| `VSRepoBuildError`     | Invalid method name, field type, or configuration in `build`  |
+| `VSRepoExtendError`    | Invalid argument in `extend`                                  |
+| `VSRepoRuntimeError`   | Runtime error during an operation                             |
 
 `VSRepoRuntimeError` has a `code` property for programmatic identification. Code `"20727"` is thrown by `getOrThrow` when the record is not found, for example.
 
@@ -1512,7 +1513,7 @@ repo.extend((repo) => ({
 
 Besides this README, the repository has an **[`examples/`](https://github.com/jaobrabo123/VSRepository/tree/main/examples)** folder with practical, commented, ready-to-run examples — it's the best place to see VSRepository being used in real scenarios.
 
-```
+```text
 examples/
 ├── prisma.ts             # PrismaClient instance used by the examples
 ├── repositories.ts       # Repository configuration (User, Address, Product) with setupVSRepo

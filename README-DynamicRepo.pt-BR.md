@@ -101,11 +101,11 @@ class UserRepository extends DynamicRepository<
 
 **Parâmetros genéricos:**
 
-| Parâmetro | Descrição |
-|-----------|-------------|
-| `TEntity` | O tipo completo da entidade, incluindo as relações que você quer disponíveis |
-| `UName` | O nome do modelo no Prisma como string literal (capitalizado, ex.: `"User"`) |
-| `VPKType` | O tipo da chave primária (`string`, `number`, etc.) |
+| Parâmetro                 | Descrição                                                                                                                                                                              |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TEntity`                 | O tipo completo da entidade, incluindo as relações que você quer disponíveis                                                                                                           |
+| `UName`                   | O nome do modelo no Prisma como string literal (capitalizado, ex.: `"User"`)                                                                                                           |
+| `VPKType`                 | O tipo da chave primária (`string`, `number`, etc.)                                                                                                                                    |
 | `WRelations` *(opcional)* | Um objeto de flags indicando quais campos são relações (ex.: `{ address: true }`). Só é necessário se você for configurar as relações do repository — caso contrário, pode ser omitido |
 
 ---
@@ -150,14 +150,14 @@ O decorator `@DynamicMethod<M>()` aceita um objeto de configuração opcional:
 })
 ```
 
-| Opção | Tipo | Descrição |
-|--------|------|-------------|
-| `proxyTo` | `string` | Delega para outro padrão de método válido (ex.: `"findOneByEmail"`) |
-| `whereType` | `"extending" \| "overwrite"` | `extending` combina com `requiredWhere`; `overwrite` o ignora |
-| `pushWhere` | `WhereModel<M>` | Cláusula `where` extra adicionada além do `requiredWhere` |
-| `injectOrdenation` | `OrdenationModel<M>` | Ordenação fixa injetada na query |
-| `injectPagination` | `PaginationModel<M>` | Paginação fixa injetada na query |
-| `fbMode` | `"one" \| "list"` | **Deprecated.** Relevante apenas para métodos com prefixo `findBy`. Use `findOneBy` em vez disso se quiser um resultado único. |
+| Opção              | Tipo                         | Descrição                                                                                                                      |
+| ------------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `proxyTo`          | `string`                     | Delega para outro padrão de método válido (ex.: `"findOneByEmail"`)                                                            |
+| `whereType`        | `"extending" \| "overwrite"` | `extending` combina com `requiredWhere`; `overwrite` o ignora                                                                  |
+| `pushWhere`        | `WhereModel<M>`              | Cláusula `where` extra adicionada além do `requiredWhere`                                                                      |
+| `injectOrdenation` | `OrdenationModel<M>`         | Ordenação fixa injetada na query                                                                                               |
+| `injectPagination` | `PaginationModel<M>`         | Paginação fixa injetada na query                                                                                               |
+| `fbMode`           | `"one" \| "list"`            | **Deprecated.** Relevante apenas para métodos com prefixo `findBy`. Use `findOneBy` em vez disso se quiser um resultado único. |
 
 ---
 
@@ -189,10 +189,10 @@ const afetados = await userRepository.activateUser({ args: ["1"] });
 
 Como `@QueryMethod` pula o parsing de nome, não há inferência automática de tipos para o campo: os tipos de parâmetro e retorno do método vêm inteiramente de como você declara o campo com `declare`. Use `QueryMethodArg<T>` para tipar o único argumento `{ args, db? }` recebido pelo método.
 
-| Opção | Tipo | Padrão | Descrição |
-|--------|------|---------|-------------|
-| `value` (1º argumento) | `string` | — | **Obrigatório.** SQL bruto a ser executado. Use `$1`, `$2`, ... para os placeholders de `args`. |
-| `options.modifying` | `boolean` | `false` | Quando `true`, executa via `$executeRawUnsafe`; o campo deve ser declarado retornando `Promise<number>`. Quando `false`, executa via `$queryRawUnsafe`. |
+| Opção                  | Tipo      | Padrão  | Descrição                                                                                                                                               |
+| ---------------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `value` (1º argumento) | `string`  | —       | **Obrigatório.** SQL bruto a ser executado. Use `$1`, `$2`, ... para os placeholders de `args`.                                                         |
+| `options.modifying`    | `boolean` | `false` | Quando `true`, executa via `$executeRawUnsafe`; o campo deve ser declarado retornando `Promise<number>`. Quando `false`, executa via `$queryRawUnsafe`. |
 
 > [!NOTE]
 > `@QueryMethod` ignora todos os outros conceitos de método dinâmico — `requiredWhere`, `pushWhere`, `whereType`, `selectModels`/`includeModels`, `injectOrdenation`, `injectPagination`. Nada disso se aplica aqui.
@@ -203,25 +203,25 @@ Como `@QueryMethod` pula o parsing de nome, não há inferência automática de 
 
 Todas as instâncias de `DynamicRepository` incluem automaticamente estes métodos:
 
-| Método | Descrição |
-|--------|-------------|
-| `get(pk)` | Busca um registro pela chave primária |
-| `getOrThrow(pk)` | Busca pela PK, lança erro se não encontrado |
-| `getList(pks)` | Busca múltiplos registros pelas PKs |
-| `save(obj)` | Cria ou faz upsert de um registro |
-| `saveList(objs)` | Salva em lote em uma transação automática |
-| `patch(pk, obj)` | Atualização parcial pela PK |
-| `patchList(tuples)` | Atualização parcial em lote via tuplas `[pk, obj]` |
-| `merge(pk, obj)` | Busca e faz deep-merge em memória (não persiste) |
-| `remove(pk)` | Apaga um registro pela PK |
-| `removeList(pks)` | Apaga em lote pelas PKs |
-| `getAll()` | Busca todos os registros (respeita `requiredWhere`). Aceita `pagination` e `order` em `options` — veja abaixo |
-| `total()` | Conta todos os registros |
-| `has(pk)` | Verifica se um registro existe |
-| `softRemove(pk)` | Soft-delete (requer configuração de `softRemovekName`) |
-| `softRemoveList(pks)` | Soft-delete em lote |
-| `restore(pk)` | Restaura registro com soft-delete |
-| `restoreList(pks)` | Restauração em lote |
+| Método                | Descrição                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `get(pk)`             | Busca um registro pela chave primária                                                                         |
+| `getOrThrow(pk)`      | Busca pela PK, lança erro se não encontrado                                                                   |
+| `getList(pks)`        | Busca múltiplos registros pelas PKs                                                                           |
+| `save(obj)`           | Cria ou faz upsert de um registro                                                                             |
+| `saveList(objs)`      | Salva em lote em uma transação automática                                                                     |
+| `patch(pk, obj)`      | Atualização parcial pela PK                                                                                   |
+| `patchList(tuples)`   | Atualização parcial em lote via tuplas `[pk, obj]`                                                            |
+| `merge(pk, obj)`      | Busca e faz deep-merge em memória (não persiste)                                                              |
+| `remove(pk)`          | Apaga um registro pela PK                                                                                     |
+| `removeList(pks)`     | Apaga em lote pelas PKs                                                                                       |
+| `getAll()`            | Busca todos os registros (respeita `requiredWhere`). Aceita `pagination` e `order` em `options` — veja abaixo |
+| `total()`             | Conta todos os registros                                                                                      |
+| `has(pk)`             | Verifica se um registro existe                                                                                |
+| `softRemove(pk)`      | Soft-delete (requer configuração de `softRemovekName`)                                                        |
+| `softRemoveList(pks)` | Soft-delete em lote                                                                                           |
+| `restore(pk)`         | Restaura registro com soft-delete                                                                             |
+| `restoreList(pks)`    | Restauração em lote                                                                                           |
 
 Todos os métodos aceitam um argumento opcional `options` baseado em `DynamicMethodOptions` (`db`, `see`, `include`, `select`), mas alguns métodos restringem esse tipo:
 
@@ -367,11 +367,11 @@ await userRepository.prisma.$transaction(async (tx) => {
 
 Se `softRemovekName` estiver configurado, o campo `see` controla quais registros ficam visíveis:
 
-| Valor | Comportamento |
-|-------|----------|
-| `"active"` (padrão) | Apenas registros não removidos |
-| `"removed"` | Apenas registros com soft-delete |
-| `"all"` | Registros ativos e removidos |
+| Valor               | Comportamento                    |
+| ------------------- | -------------------------------- |
+| `"active"` (padrão) | Apenas registros não removidos   |
+| `"removed"`         | Apenas registros com soft-delete |
+| `"all"`             | Registros ativos e removidos     |
 
 ```typescript
 // Busca apenas usuários com soft-delete
@@ -553,24 +553,24 @@ constructor(prisma: DbClient, config: DynamicRepositoryConstructorConfig<TEntity
 
 ### DynamicRepositoryConstructorConfig
 
-| Propriedade | Tipo | Descrição |
-|----------|------|-------------|
-| `tableName` | `Uncapitalize<UName>` | Nome da tabela no Prisma |
-| `pkName` | `keyof TEntity` | Campo da chave primária |
-| `softRemovekName?` | `keyof TEntity` | Campo DateTime para soft-delete |
-| `requiredWhere?` | `WhereModel<UName>` | Filtros globais |
-| `defaultOrdenation?` | `OrdenationModel<UName>` | Ordenação padrão |
-| `relations?` | `RepositoryRelations<TEntity>` | Configuração de relações |
-| `build?` | `DynamicRepositoryBuildConfig` | Opções de build |
+| Propriedade          | Tipo                           | Descrição                       |
+| -------------------- | ------------------------------ | ------------------------------- |
+| `tableName`          | `Uncapitalize<UName>`          | Nome da tabela no Prisma        |
+| `pkName`             | `keyof TEntity`                | Campo da chave primária         |
+| `softRemovekName?`   | `keyof TEntity`                | Campo DateTime para soft-delete |
+| `requiredWhere?`     | `WhereModel<UName>`            | Filtros globais                 |
+| `defaultOrdenation?` | `OrdenationModel<UName>`       | Ordenação padrão                |
+| `relations?`         | `RepositoryRelations<TEntity>` | Configuração de relações        |
+| `build?`             | `DynamicRepositoryBuildConfig` | Opções de build                 |
 
 ### DynamicRepositoryBuildConfig
 
-| Propriedade | Tipo | Descrição |
-|----------|------|-------------|
-| `showWorking?` | `boolean` | Exibe logs internos (padrão: `false`) |
-| `baseMethods?` | `Record<string, { ignoreRequiredWhere?: boolean }>` | Configuração por método |
+| Propriedade    | Tipo                                                | Descrição                             |
+| -------------- | --------------------------------------------------- | ------------------------------------- |
+| `showWorking?` | `boolean`                                           | Exibe logs internos (padrão: `false`) |
+| `baseMethods?` | `Record<string, { ignoreRequiredWhere?: boolean }>` | Configuração por método               |
 
-### @DynamicMethod<M>(config?)
+### @DynamicMethod\<M>(config?)
 
 ```typescript
 function DynamicMethod<M extends PrismaModelName>(
@@ -578,14 +578,14 @@ function DynamicMethod<M extends PrismaModelName>(
 ): PropertyDecorator;
 ```
 
-### DynamicMethodOptions<TName>
+### DynamicMethodOptions\<TName>
 
-| Propriedade | Tipo | Descrição |
-|----------|------|-------------|
-| `db?` | `ClientOrTransaction` | Client ou transação do banco de dados |
-| `see?` | `"active" \| "removed" \| "all"` | Visibilidade do soft-delete |
-| `include?` | `IncludeModel<TName>` | Include bruto do Prisma |
-| `select?` | `SelectModel<TName>` | Select bruto do Prisma |
+| Propriedade | Tipo                             | Descrição                             |
+| ----------- | -------------------------------- | ------------------------------------- |
+| `db?`       | `ClientOrTransaction`            | Client ou transação do banco de dados |
+| `see?`      | `"active" \| "removed" \| "all"` | Visibilidade do soft-delete           |
+| `include?`  | `IncludeModel<TName>`            | Include bruto do Prisma               |
+| `select?`   | `SelectModel<TName>`             | Select bruto do Prisma                |
 
 ### @QueryMethod(value, options?)
 
@@ -593,33 +593,33 @@ function DynamicMethod<M extends PrismaModelName>(
 function QueryMethod(value: string, options?: QueryMethodOptions): PropertyDecorator;
 ```
 
-### QueryMethodArg<T>
+### QueryMethodArg\<T>
 
-| Propriedade | Tipo | Descrição |
-|----------|------|-------------|
-| `args` | `T` (tupla) | Parâmetros posicionais injetados nos placeholders da SQL (`$1`, `$2`, ...) |
-| `db?` | `ClientOrTransaction` | Client de transação para executar essa query |
+| Propriedade | Tipo                  | Descrição                                                                  |
+| ----------- | --------------------- | -------------------------------------------------------------------------- |
+| `args`      | `T` (tupla)           | Parâmetros posicionais injetados nos placeholders da SQL (`$1`, `$2`, ...) |
+| `db?`       | `ClientOrTransaction` | Client de transação para executar essa query                               |
 
 ### QueryMethodOptions
 
-| Propriedade | Tipo | Padrão | Descrição |
-|----------|------|---------|-------------|
+| Propriedade  | Tipo      | Padrão  | Descrição                                                                                                               |
+|------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `modifying?` | `boolean` | `false` | `true` executa via `$executeRawUnsafe` (o campo deve retornar `Promise<number>`); `false` executa via `$queryRawUnsafe` |
 
 ---
 
 ## Diferenças em relação ao setupVSRepo
 
-| Aspecto | `setupVSRepo` | `DynamicRepository` |
-|--------|---------------|---------------------|
-| **Estilo** | Funcional / curried | OOP / baseado em classes |
-| **Métodos definidos via** | Objeto de configuração `methods` | Decorators `@DynamicMethod()` |
-| **selectModels** | Suportado | Não suportado |
-| **includeModels** | Suportado | Não suportado |
-| **Select padrão** | Configuração `defaultSelectModel` | Não disponível |
-| **Etapa de build** | `.build(prisma)` explícito | Automático no construtor |
-| **Toggles de método base** | `active`, `defaultSelect` por método | Sempre ativo, sem defaultSelect |
-| **Instância do Prisma** | Passada no `.build()` | Passada para `super()` no construtor |
-| **Extensibilidade** | Método `.extend()` | Herança de classe |
-| **Includes brutos** | Via `options.include` | Via `DynamicMethodOptions.include` |
-| **Selects brutos** | Via `options.select` (com estreitamento de tipo) | Via `DynamicMethodOptions.select` (sem estreitamento de tipo) |
+| Aspecto                    | `setupVSRepo`                                    | `DynamicRepository`                                           |
+| -------------------------- | ------------------------------------------------ | ------------------------------------------------------------- |
+| **Estilo**                 | Funcional / curried                              | OOP / baseado em classes                                      |
+| **Métodos definidos via**  | Objeto de configuração `methods`                 | Decorators `@DynamicMethod()`                                 |
+| **selectModels**           | Suportado                                        | Não suportado                                                 |
+| **includeModels**          | Suportado                                        | Não suportado                                                 |
+| **Select padrão**          | Configuração `defaultSelectModel`                | Não disponível                                                |
+| **Etapa de build**         | `.build(prisma)` explícito                       | Automático no construtor                                      |
+| **Toggles de método base** | `active`, `defaultSelect` por método             | Sempre ativo, sem defaultSelect                               |
+| **Instância do Prisma**    | Passada no `.build()`                            | Passada para `super()` no construtor                          |
+| **Extensibilidade**        | Método `.extend()`                               | Herança de classe                                             |
+| **Includes brutos**        | Via `options.include`                            | Via `DynamicMethodOptions.include`                            |
+| **Selects brutos**         | Via `options.select` (com estreitamento de tipo) | Via `DynamicMethodOptions.select` (sem estreitamento de tipo) |
