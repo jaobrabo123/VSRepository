@@ -45,7 +45,11 @@
   "scripts": {
     "vsrepo": "node ./scripts/configure-prisma-import.mjs",
     "build": "tsc -p tsconfig.build.json && node ./scripts/copy-types.mjs",
-    "prepack": "pnpm build"
+    "prepack": "pnpm build",
+    "test": "npm run test:typing && npm run test:implementation",
+    "test:implementation": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:implementation:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:typing": "tsc --noEmit -p test/typing/tsconfig.json"
   },
   "keywords": [
     "prisma",
@@ -62,11 +66,16 @@
     "@prisma/client": "^7.8.0"
   },
   "devDependencies": {
+    "@jest/globals": "^30.4.1",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^25.6.0",
+    "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
+    "jest": "^30.4.2",
     "prisma": "^7.8.0",
+    "ts-jest": "^29.4.12",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3"
   },

@@ -1,5 +1,9 @@
-import { UserType } from "./generated/prisma/enums";
-import { ProductGetPayload, UserCreateInput, UserGetPayload } from "./generated/prisma/models";
+// Testes de implementação (comportamento em runtime) da API baseada em classes (DynamicRepository).
+// Requer uma instância Postgres acessível via DATABASE_URL. Rode com `npm test` ou `npm run test:implementation`.
+
+import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
+import { UserType } from "../../generated/prisma/enums";
+import { ProductGetPayload, UserCreateInput, UserGetPayload } from "../../generated/prisma/models";
 import {
     DynamicRepository,
     DynamicMethod,
@@ -7,8 +11,8 @@ import {
     PaginationModel,
     QueryMethod,
     QueryMethodArg,
-} from "./generated/vsrepo";
-import prisma from "./examples/prisma";
+} from "../../generated/vsrepo";
+import prisma from "../../examples/prisma";
 
 type User = UserGetPayload<{ include: { address: true; products: true } }>;
 type Product = ProductGetPayload<{ include: { tags: true; user: true } }>;
@@ -335,71 +339,52 @@ async function createTestProduct(userId: string, overrides: Record<string, unkno
 }
 
 async function testUserBaseMethods() {
-    console.log("\n=== USER -- BASE METHODS (DynamicRepository) ===");
-
     const created = await createTestUser({ email: "base-save@example.com" });
-    console.assert(!!created.id, "save (create): must return user with id");
-    console.log("save (create):", created.id);
+    expect(!!created.id).toBe(true); // save (create): must return user with id
 
     const found = await userRepository.get(created.id);
-    console.assert(found?.id === created.id, "get: must find user by id");
-    console.log("get:", found?.id);
+    expect(found?.id === created.id).toBe(true); // get: must find user by id
 
     const foundOrThrow = await userRepository.getOrThrow(created.id);
-    console.assert(foundOrThrow.id === created.id, "getOrThrow: must return without error");
-    console.log("getOrThrow:", foundOrThrow.id);
+    expect(foundOrThrow.id === created.id).toBe(true); // getOrThrow: must return without error
 
     created.name = "Updated Name";
     const updated = await userRepository.save(created);
-    console.assert(updated.name === "Updated Name", "save (update): must update name");
-    console.log("save (update):", updated.name);
+    expect(updated.name === "Updated Name").toBe(true); // save (update): must update name
 
     const patched = await userRepository.patch(created.id, { name: "Patched Name" });
-    console.assert(patched.name === "Patched Name", "patch: must apply partial update");
-    console.log("patch:", patched.name);
+    expect(patched.name === "Patched Name").toBe(true); // patch: must apply partial update
 
     const exists = await userRepository.has(created.id);
-    console.assert(exists === true, "has: must return true for existing id");
-    console.log("has (true):", exists);
+    expect(exists === true).toBe(true); // has: must return true for existing id
 
     const notExists = await userRepository.has(crypto.randomUUID());
-    console.assert(notExists === false, "has: must return false for non-existing id");
-    console.log("has (false):", notExists);
+    expect(notExists === false).toBe(true); // has: must return false for non-existing id
 
     const count = await userRepository.total();
-    console.assert(typeof count === "number" && count >= 1, "total: must return number >= 1");
-    console.log("total:", count);
+    expect(typeof count === "number" && count >= 1).toBe(true); // total: must return number >= 1
 
     const all = await userRepository.getAll();
-    console.assert(
-        Array.isArray(all) && all.length >= 1,
-        "getAll: must return array with >= 1 item",
-    );
-    console.log("getAll:", all.length, "users");
+    expect(Array.isArray(all) && all.length >= 1).toBe(true); // getAll: must return array with >= 1 item
 
     const paginated = await userRepository.getAll({ pagination: { skip: 0, take: 1 } });
-    console.assert(paginated.length === 1, "getAll (paginated): must return exactly 1 item");
-    console.log("getAll (paginated):", paginated.length);
+    expect(paginated.length === 1).toBe(true); // getAll (paginated): must return exactly 1 item
 
     const toRemove = await createTestUser({ email: "remove@example.com" });
     const removed = await userRepository.remove(toRemove.id);
-    console.assert(removed.id === toRemove.id, "remove: must return removed user");
+    expect(removed.id === toRemove.id).toBe(true); // remove: must return removed user
     const afterRemove = await userRepository.get(toRemove.id);
-    console.assert(afterRemove === null, "remove: user should no longer exist");
-    console.log("remove:", removed.id);
+    expect(afterRemove === null).toBe(true); // remove: user should no longer exist
 
     const u1 = await createTestUser({ email: "removelist1@example.com" });
     const u2 = await createTestUser({ email: "removelist2@example.com" });
     const { count: removedCount } = await userRepository.removeList([u1.id, u2.id]);
-    console.assert(removedCount === 2, "removeList: must remove 2 users");
-    console.log("removeList count:", removedCount);
+    expect(removedCount === 2).toBe(true); // removeList: must remove 2 users
 
     return created;
 }
 
 async function testUserDynamicMethods() {
-    console.log("\n=== USER -- DYNAMIC METHODS (DynamicRepository) ===");
-
     const email = "dynamic@example.com";
     const adminEmail = "admin@corp.com";
 
@@ -411,196 +396,101 @@ async function testUserDynamicMethods() {
     });
 
     const byType = await userRepository.findByUserType(UserType.COMMON);
-    console.assert(Array.isArray(byType) && byType.length >= 1, "findByUserType: must return list");
-    console.log("findByUserType:", byType.length);
+    expect(Array.isArray(byType) && byType.length >= 1).toBe(true); // findByUserType: must return list
 
     const byEmailAndType = await userRepository.findOneByEmailAndUserType(email, UserType.COMMON);
-    console.assert(
-        byEmailAndType?.id === user.id,
-        "findOneByEmailAndUserType: must find correct user",
-    );
-    console.log("findOneByEmailAndUserType:", byEmailAndType?.id);
+    expect(byEmailAndType?.id === user.id).toBe(true); // findOneByEmailAndUserType: must find correct user
 
     const byTypeOrEmail = await userRepository.findByUserTypeOrEmailEndsWith(
         UserType.ADMIN,
         "@corp.com",
     );
-    console.assert(
-        byTypeOrEmail.some(u => u.id === admin.id),
-        "findByUserTypeOrEmailEndsWith: must contain admin",
-    );
-    console.log("findByUserTypeOrEmailEndsWith:", byTypeOrEmail.length);
+    expect(byTypeOrEmail.some(u => u.id === admin.id)).toBe(true); // findByUserTypeOrEmailEndsWith: must contain admin
 
     const likers = await userRepository.findByLikesVSRepoIsTruePaginated({ skip: 0, take: 10 });
-    console.assert(Array.isArray(likers), "findByLikesVSRepoIsTruePaginated: must return array");
-    console.assert(
-        likers.every(u => u.likesVSRepo === true),
-        "findByLikesVSRepoIsTruePaginated: all must have likesVSRepo=true",
-    );
-    console.log("findByLikesVSRepoIsTruePaginated:", likers.length);
+    expect(Array.isArray(likers)).toBe(true); // findByLikesVSRepoIsTruePaginated: must return array
+    expect(likers.every(u => u.likesVSRepo === true)).toBe(true); // findByLikesVSRepoIsTruePaginated: all must have likesVSRepo=true
 
     const distinctTypeAndLikes = await userRepository.findManyDistinctUserTypeAndLikesVSRepo();
-    console.assert(
-        Array.isArray(distinctTypeAndLikes),
-        "findManyDistinctUserTypeAndLikesVSRepo: must return array",
-    );
+    expect(Array.isArray(distinctTypeAndLikes)).toBe(true); // findManyDistinctUserTypeAndLikesVSRepo: must return array
     const uniqueCombos = new Set(distinctTypeAndLikes.map(u => `${u.userType}-${u.likesVSRepo}`));
-    console.assert(
-        uniqueCombos.size === distinctTypeAndLikes.length,
-        "findManyDistinctUserTypeAndLikesVSRepo: no duplicate combos",
-    );
-    console.assert(
+    expect(uniqueCombos.size === distinctTypeAndLikes.length).toBe(true); // findManyDistinctUserTypeAndLikesVSRepo: no duplicate combos
+    expect(
         distinctTypeAndLikes.some(u => u.userType === UserType.COMMON && u.likesVSRepo === true) &&
             distinctTypeAndLikes.some(
                 u => u.userType === UserType.ADMIN && u.likesVSRepo === false,
             ),
-        "findManyDistinctUserTypeAndLikesVSRepo: must contain (COMMON,true) and (ADMIN,false)",
-    );
-    console.log(
-        "findManyDistinctUserTypeAndLikesVSRepo:",
-        distinctTypeAndLikes.map(u => u.userType).join(", "),
-    );
+    ).toBe(true); // findManyDistinctUserTypeAndLikesVSRepo: must contain (COMMON,true) and (ADMIN,false)
 
     const distinctTypePaginated = await userRepository.findManyDistinctUserTypePaginated({
         skip: 0,
         take: 10,
     });
-    console.assert(
-        Array.isArray(distinctTypePaginated),
-        "findManyDistinctUserTypePaginated: must return array",
-    );
+    expect(Array.isArray(distinctTypePaginated)).toBe(true); // findManyDistinctUserTypePaginated: must return array
     const uniqueTypes = new Set(distinctTypePaginated.map(u => u.userType));
-    console.assert(
-        uniqueTypes.size === distinctTypePaginated.length,
-        "findManyDistinctUserTypePaginated: no duplicate userType",
-    );
-    console.assert(
-        uniqueTypes.has(UserType.COMMON) && uniqueTypes.has(UserType.ADMIN),
-        "findManyDistinctUserTypePaginated: must contain COMMON and ADMIN",
-    );
-    console.log(
-        "findManyDistinctUserTypePaginated:",
-        distinctTypePaginated.map(u => u.userType).join(", "),
-    );
+    expect(uniqueTypes.size === distinctTypePaginated.length).toBe(true); // findManyDistinctUserTypePaginated: no duplicate userType
+    expect(uniqueTypes.has(UserType.COMMON) && uniqueTypes.has(UserType.ADMIN)).toBe(true); // findManyDistinctUserTypePaginated: must contain COMMON and ADMIN
 
     const distinctByLikes = await userRepository.findManyByLikesVSRepoDistinctUserType(true);
-    console.assert(
-        Array.isArray(distinctByLikes),
-        "findManyByLikesVSRepoDistinctUserType: must return array",
-    );
-    console.assert(
-        distinctByLikes.every(u => u.likesVSRepo === true),
-        "findManyByLikesVSRepoDistinctUserType: all must have likesVSRepo=true",
-    );
+    expect(Array.isArray(distinctByLikes)).toBe(true); // findManyByLikesVSRepoDistinctUserType: must return array
+    expect(distinctByLikes.every(u => u.likesVSRepo === true)).toBe(true); // findManyByLikesVSRepoDistinctUserType: all must have likesVSRepo=true
     const uniqueTypesFiltered = new Set(distinctByLikes.map(u => u.userType));
-    console.assert(
-        uniqueTypesFiltered.size === distinctByLikes.length,
-        "findManyByLikesVSRepoDistinctUserType: no duplicate userType",
-    );
-    console.log(
-        "findManyByLikesVSRepoDistinctUserType:",
-        distinctByLikes.map(u => u.userType).join(", "),
-    );
+    expect(uniqueTypesFiltered.size === distinctByLikes.length).toBe(true); // findManyByLikesVSRepoDistinctUserType: no duplicate userType
 
     const paias = await userRepository.buscarUsuariosPaias();
-    console.assert(Array.isArray(paias), "buscarUsuariosPaias: must return array");
-    console.assert(
-        paias.every(u => u.likesVSRepo === false),
-        "buscarUsuariosPaias: all must have likesVSRepo=false",
-    );
-    console.log("buscarUsuariosPaias:", paias.length);
+    expect(Array.isArray(paias)).toBe(true); // buscarUsuariosPaias: must return array
+    expect(paias.every(u => u.likesVSRepo === false)).toBe(true); // buscarUsuariosPaias: all must have likesVSRepo=false
 
     const internal = await userRepository.findInternalByEmail(email);
-    console.assert(internal?.id === user.id, "findInternalByEmail: must return correct user");
-    console.log("findInternalByEmail:", internal?.id);
+    expect(internal?.id === user.id).toBe(true); // findInternalByEmail: must return correct user
 
     const emailExists = await userRepository.existsByEmail(email);
-    console.assert(emailExists === true, "existsByEmail: must return true for existing email");
+    expect(emailExists === true).toBe(true); // existsByEmail: must return true for existing email
     const emailNotExists = await userRepository.existsByEmail("naoexiste@nada.com");
-    console.assert(
-        emailNotExists === false,
-        "existsByEmail: must return false for non-existing email",
-    );
-    console.log("existsByEmail (true/false):", emailExists, emailNotExists);
+    expect(emailNotExists === false).toBe(true); // existsByEmail: must return false for non-existing email
 
     const admins = await userRepository.findAdmins();
-    console.assert(
-        admins.every(u => u.userType === UserType.ADMIN),
-        "findAdmins: all must be ADMIN",
-    );
-    console.log("findAdmins:", admins.length);
+    expect(admins.every(u => u.userType === UserType.ADMIN)).toBe(true); // findAdmins: all must be ADMIN
 
     const withCountry = await userRepository.findByAddressWithCountry("BR");
-    console.assert(Array.isArray(withCountry), "findByAddressWithCountry: must return array");
-    console.log("findByAddressWithCountry:", withCountry.length);
+    expect(Array.isArray(withCountry)).toBe(true); // findByAddressWithCountry: must return array
 
     const withoutAddress = await userRepository.findByAddressWithout();
-    console.assert(Array.isArray(withoutAddress), "findByAddressWithout: must return array");
-    console.log("findByAddressWithout:", withoutAddress.length);
+    expect(Array.isArray(withoutAddress)).toBe(true); // findByAddressWithout: must return array
 
     const withProducts = await userRepository.findByProductsSome();
-    console.assert(Array.isArray(withProducts), "findByProductsSome: must return array");
-    console.log("findByProductsSome:", withProducts.length);
+    expect(Array.isArray(withProducts)).toBe(true); // findByProductsSome: must return array
 
     const withoutProducts = await userRepository.findByProductsNone();
-    console.assert(Array.isArray(withoutProducts), "findByProductsNone: must return array");
-    console.assert(
-        withoutProducts.some(u => u.id === user.id),
-        "findByProductsNone: user without product should appear",
-    );
-    console.log("findByProductsNone:", withoutProducts.length);
+    expect(Array.isArray(withoutProducts)).toBe(true); // findByProductsNone: must return array
+    expect(withoutProducts.some(u => u.id === user.id)).toBe(true); // findByProductsNone: user without product should appear
 
     const byName = await userRepository.findByNameContainsInsensitiveOrderedAndPaginated(
         "test",
         { name: "asc" },
         { skip: 0, take: 5 },
     );
-    console.assert(
-        Array.isArray(byName),
-        "findByNameContainsInsensitiveOrderedAndPaginated: must return array",
-    );
-    console.log("findByNameContainsInsensitiveOrderedAndPaginated:", byName.length);
+    expect(Array.isArray(byName)).toBe(true); // findByNameContainsInsensitiveOrderedAndPaginated: must return array
 
     const uniqueEmail = await userRepository.findUniqueByEmail(email);
-    console.assert(uniqueEmail?.id === user.id, "findUniqueByEmail: must return correct user");
-    console.log("findUniqueByEmail:", uniqueEmail?.id);
+    expect(uniqueEmail?.id === user.id).toBe(true); // findUniqueByEmail: must return correct user
 
     const uniqueOrThrow = await userRepository.findUniqueOrThrowById(user.id);
-    console.assert(
-        uniqueOrThrow.id === user.id,
-        "findUniqueOrThrowById: must return without error",
-    );
-    console.log("findUniqueOrThrowById:", uniqueOrThrow.id);
+    expect(uniqueOrThrow.id === user.id).toBe(true); // findUniqueOrThrowById: must return without error
 
     const firstByName = await userRepository.findFirstByNameStartsWith("Test");
-    console.assert(firstByName !== null, "findFirstByNameStartsWith: must find at least 1 user");
-    console.log("findFirstByNameStartsWith:", firstByName?.id);
+    expect(firstByName !== null).toBe(true); // findFirstByNameStartsWith: must find at least 1 user
 
     const firstOrThrow = await userRepository.findFirstOrThrowByIdOrEmail(user.id, email);
-    console.assert(
-        firstOrThrow.id === user.id,
-        "findFirstOrThrowByIdOrEmail: must return correct user",
-    );
-    console.log("findFirstOrThrowByIdOrEmail:", firstOrThrow.id);
+    expect(firstOrThrow.id === user.id).toBe(true); // findFirstOrThrowByIdOrEmail: must return correct user
 
     const countUsers = await userRepository.countByUserType(UserType.COMMON);
-    console.assert(
-        typeof countUsers === "number" && countUsers >= 1,
-        "countByUserType: must return number >= 1",
-    );
-    console.log("countByUserType:", countUsers);
+    expect(typeof countUsers === "number" && countUsers >= 1).toBe(true); // countByUserType: must return number >= 1
 
     const withName = await userRepository.findManyByNameOptional("Test User");
     const withoutName = await userRepository.findManyByNameOptional(undefined);
-    console.assert(
-        Array.isArray(withName),
-        "findManyByNameOptional (with name): must return array",
-    );
-    console.assert(
-        Array.isArray(withoutName),
-        "findManyByNameOptional (without name): must return array",
-    );
-    console.log("findManyByNameOptional (with/without name):", withName.length, withoutName.length);
+    expect(Array.isArray(withName)).toBe(true); // findManyByNameOptional (with name): must return array
+    expect(Array.isArray(withoutName)).toBe(true); // findManyByNameOptional (without name): must return array
 
     const emailMock = "123@email.com";
     const manyCreated = await userRepository.createManyAndReturn([
@@ -621,11 +511,7 @@ async function testUserDynamicMethods() {
             active: true,
         },
     ]);
-    console.assert(
-        Array.isArray(manyCreated) && manyCreated.length === 2,
-        "createManyAndReturn: must return 2 users",
-    );
-    console.log("createManyAndReturn:", manyCreated.length);
+    expect(Array.isArray(manyCreated) && manyCreated.length === 2).toBe(true); // createManyAndReturn: must return 2 users
 
     const skipResult = await userRepository.createManySkipDuplicates([
         {
@@ -645,11 +531,7 @@ async function testUserDynamicMethods() {
             active: true,
         },
     ]);
-    console.assert(
-        typeof skipResult.count === "number",
-        "createManySkipDuplicates: must return { count }",
-    );
-    console.log("createManySkipDuplicates count:", skipResult.count);
+    expect(typeof skipResult.count === "number").toBe(true); // createManySkipDuplicates: must return { count }
 
     const directCreated = await userRepository.create({
         name: "Direct Create",
@@ -659,25 +541,21 @@ async function testUserDynamicMethods() {
         likesVSRepo: true,
         active: true,
     });
-    console.assert(!!directCreated.id, "create: must return user with id");
-    console.log("create:", directCreated.id);
+    expect(!!directCreated.id).toBe(true); // create: must return user with id
 
     const updatedMany = await userRepository.updateManyAndReturnByUserType(UserType.COMMON, {
         likesVSRepo: true,
     });
-    console.assert(Array.isArray(updatedMany), "updateManyAndReturnByUserType: must return array");
-    console.log("updateManyAndReturnByUserType:", updatedMany.length);
+    expect(Array.isArray(updatedMany)).toBe(true); // updateManyAndReturnByUserType: must return array
 
     const updateWhere = await userRepository.updateManyWhere(
         { userType: UserType.COMMON },
         { likesVSRepo: true },
     );
-    console.assert(typeof updateWhere.count === "number", "updateManyWhere: must return { count }");
-    console.log("updateManyWhere count:", updateWhere.count);
+    expect(typeof updateWhere.count === "number").toBe(true); // updateManyWhere: must return { count }
 
     const updatedById = await userRepository.updateById(user.id, { name: "Updated By Id" });
-    console.assert(updatedById.name === "Updated By Id", "updateById: must update name");
-    console.log("updateById:", updatedById.name);
+    expect(updatedById.name === "Updated By Id").toBe(true); // updateById: must update name
 
     const upserted = await userRepository.upsertByEmail(
         email,
@@ -691,96 +569,69 @@ async function testUserDynamicMethods() {
             active: true,
         },
     );
-    console.assert(upserted.id === user.id, "upsertByEmail: must upsert existing user");
-    console.log("upsertByEmail:", upserted.id);
+    expect(upserted.id === user.id).toBe(true); // upsertByEmail: must upsert existing user
 
     const toDelete = await createTestUser({ email: "del@ex.com" });
     const deleteResult = await userRepository.deleteManyByIdIn([toDelete.id]);
-    console.assert(
-        typeof deleteResult.count === "number",
-        "deleteManyByIdIn: must return { count }",
-    );
-    console.log("deleteManyByIdIn count:", deleteResult.count);
+    expect(typeof deleteResult.count === "number").toBe(true); // deleteManyByIdIn: must return { count }
 
     const toDeleteOne = await createTestUser({ email: "delone@ex.com" });
     const deletedOne = await userRepository.deleteById(toDeleteOne.id);
-    console.assert(deletedOne.id === toDeleteOne.id, "deleteById: must return removed id");
-    console.log("deleteById:", deletedOne.id);
+    expect(deletedOne.id === toDeleteOne.id).toBe(true); // deleteById: must return removed id
 
     const aggregated = await userRepository.aggregate({
         _count: { _all: true },
         _min: { createdAt: true },
     });
-    console.assert(
-        typeof aggregated._count._all === "number",
-        "aggregate: must return _count._all as number",
-    );
-    console.log("aggregate _count._all:", aggregated._count._all);
+    expect(typeof aggregated._count._all === "number").toBe(true); // aggregate: must return _count._all as number
 
     const grouped: any[] = await userRepository.groupBy({
         by: ["userType"],
         _count: { userType: true },
     });
-    console.assert(Array.isArray(grouped), "groupBy: must return array");
-    console.assert(
-        grouped.every(g => g._count.userType >= 0),
-        "groupBy: each group must have _count.userType",
-    );
-    console.log("groupBy:", grouped.map(g => g.userType).join(", "));
+    expect(Array.isArray(grouped)).toBe(true); // groupBy: must return array
+    expect(grouped.every(g => g._count.userType >= 0)).toBe(true); // groupBy: each group must have _count.userType
 
     return { user, admin };
 }
 
 async function testProductBaseMethods(userId: string) {
-    console.log("\n=== PRODUCT -- BASE METHODS (DynamicRepository) ===");
-
     const product = await createTestProduct(userId, { name: "Base Product", price: 50 });
-    console.assert(!!product.id, "save (create): must create product with id");
-    console.log("save (create):", product.id);
+    expect(!!product.id).toBe(true); // save (create): must create product with id
 
     const found = await productRepository.get(product.id);
-    console.assert(found?.id === product.id, "get: must find product");
-    console.log("get:", found?.id);
+    expect(found?.id === product.id).toBe(true); // get: must find product
 
     const foundOrThrow = await productRepository.getOrThrow(product.id);
-    console.assert(foundOrThrow.id === product.id, "getOrThrow: must return without error");
-    console.log("getOrThrow:", foundOrThrow.id);
+    expect(foundOrThrow.id === product.id).toBe(true); // getOrThrow: must return without error
 
     product.name = "Base Product Updated";
     const { user, ...prod } = product;
     const prodResolved = { ...prod, userId: user.id };
     const updated = await productRepository.save(prodResolved);
-    console.assert(updated.name === "Base Product Updated", "save (update): must update name");
-    console.log("save (update):", updated.name);
+    expect(updated.name === "Base Product Updated").toBe(true); // save (update): must update name
 
     const patched = await productRepository.patch(product.id, { price: 200 });
-    console.assert(patched.price.toNumber() === 200, "patch: must update price");
-    console.log("patch price:", patched.price);
+    expect(patched.price.toNumber() === 200).toBe(true); // patch: must update price
 
     const has = await productRepository.has(product.id);
-    console.assert(has === true, "has: must return true");
-    console.log("has:", has);
+    expect(has === true).toBe(true); // has: must return true
 
     const total = await productRepository.total();
-    console.assert(total >= 1, "total: must be >= 1");
-    console.log("total:", total);
+    expect(total >= 1).toBe(true); // total: must be >= 1
 
     const all = await productRepository.getAll();
-    console.assert(all.length >= 1, "getAll: must have at least 1 product");
-    console.log("getAll:", all.length);
+    expect(all.length >= 1).toBe(true); // getAll: must have at least 1 product
 
     const p1 = await createTestProduct(userId, { name: "RL1", price: 10 });
     const p2 = await createTestProduct(userId, { name: "RL2", price: 20 });
     const { count } = await productRepository.removeList([p1.id, p2.id]);
-    console.assert(count === 2, "removeList: must return count=2");
-    console.log("removeList count:", count);
+    expect(count === 2).toBe(true); // removeList: must return count=2
 
     return product;
 }
 
 async function testProductDynamicMethods(userId: string) {
-    console.log("\n=== PRODUCT -- DYNAMIC METHODS (DynamicRepository) ===");
-
     const product = await createTestProduct(userId, {
         name: "Dynamic Widget",
         description: "A cool widget",
@@ -794,63 +645,32 @@ async function testProductDynamicMethods(userId: string) {
     });
 
     const byName = await productRepository.findByNameStartsWithInsensitive("dynamic");
-    console.assert(
-        byName.some(p => p.id === product.id),
-        "findByNameStartsWithInsensitive: must find Dynamic Widget",
-    );
-    console.log("findByNameStartsWithInsensitive:", byName.length);
+    expect(byName.some(p => p.id === product.id)).toBe(true); // findByNameStartsWithInsensitive: must find Dynamic Widget
 
     const cheap = await productRepository.findByPriceLessThan(50);
-    console.assert(
-        cheap.some(p => p.id === cheapProduct.id),
-        "findByPriceLessThan: must contain cheap product",
-    );
-    console.log("findByPriceLessThan:", cheap.length);
+    expect(cheap.some(p => p.id === cheapProduct.id)).toBe(true); // findByPriceLessThan: must contain cheap product
 
     const inRange = await productRepository.findByPriceBetween([100, 200]);
-    console.assert(
-        inRange.some(p => p.id === product.id),
-        "findByPriceBetween: must contain Dynamic Widget",
-    );
-    console.log("findByPriceBetween:", inRange.length);
+    expect(inRange.some(p => p.id === product.id)).toBe(true); // findByPriceBetween: must contain Dynamic Widget
 
     const noDescription = await productRepository.findByDescriptionIsNull();
-    console.assert(
-        noDescription.some(p => p.id === cheapProduct.id),
-        "findByDescriptionIsNull: must contain product without description",
-    );
-    console.log("findByDescriptionIsNull:", noDescription.length);
+    expect(noDescription.some(p => p.id === cheapProduct.id)).toBe(true); // findByDescriptionIsNull: must contain product without description
 
     const byTag = await productRepository.findByTagsSomeName("electronics");
-    console.assert(
-        byTag.some(p => p.id === product.id),
-        "findByTagsSomeName: must find product with tag electronics",
-    );
-    console.log("findByTagsSomeName:", byTag.length);
+    expect(byTag.some(p => p.id === product.id)).toBe(true); // findByTagsSomeName: must find product with tag electronics
 
     const userEntity = await userRepository.getOrThrow(userId);
     const byUserEmail = await productRepository.findByUserWithEmail(userEntity.email);
-    console.assert(
-        byUserEmail.some(p => p.id === product.id),
-        "findByUserWithEmail: must find product of user",
-    );
-    console.log("findByUserWithEmail:", byUserEmail.length);
+    expect(byUserEmail.some(p => p.id === product.id)).toBe(true); // findByUserWithEmail: must find product of user
 
     const byUserId = await productRepository.findByUserId(userId);
-    console.assert(
-        byUserId.some(p => p.id === product.id),
-        "findByUserId: must find products of user",
-    );
-    console.log("findByUserId:", byUserId.length);
+    expect(byUserId.some(p => p.id === product.id)).toBe(true); // findByUserId: must find products of user
 
     const byIds = await productRepository.findByIdIn([product.id, cheapProduct.id]);
-    console.assert(byIds.length === 2, "findByIdIn: must return exactly 2 products");
-    console.log("findByIdIn:", byIds.length);
+    expect(byIds.length === 2).toBe(true); // findByIdIn: must return exactly 2 products
 }
 
 async function testRelations() {
-    console.log("\n=== RELATIONS (DynamicRepository) ===");
-
     const userWithAddress = await userRepository.save({
         name: "User With Address",
         email: "addr-@ex.com",
@@ -863,8 +683,7 @@ async function testRelations() {
     const loaded = await userRepository.getOrThrow(userWithAddress.id, {
         include: { address: true },
     });
-    console.assert(loaded.address !== undefined, "save with address (oto): must save address");
-    console.log("save with address:", loaded.address?.city);
+    expect(loaded.address !== undefined).toBe(true); // save with address (oto): must save address
 
     const userWithProducts = await userRepository.save({
         name: "User With Products",
@@ -878,11 +697,7 @@ async function testRelations() {
     const loadedWithProds = await userRepository.getOrThrow(userWithProducts.id, {
         include: { products: true },
     });
-    console.assert(
-        Array.isArray(loadedWithProds.products),
-        "save with products (otm): must have products list",
-    );
-    console.log("save with products:", loadedWithProds.products.length);
+    expect(Array.isArray(loadedWithProds.products)).toBe(true); // save with products (otm): must have products list
 
     const relUser = await createTestUser({ email: "reluser@ex.com" });
     const productWithUser = await productRepository.save({
@@ -894,24 +709,11 @@ async function testRelations() {
     const loadedProduct = await productRepository.getOrThrow(productWithUser.id, {
         include: { tags: true, user: true },
     });
-    console.assert(
-        loadedProduct.user?.id === relUser.id,
-        "save product with user (mto): must link user",
-    );
-    console.assert(
-        Array.isArray(loadedProduct.tags) && loadedProduct.tags.length === 2,
-        "save product with tags (mtm): must save 2 tags",
-    );
-    console.log(
-        "save product with user + tags:",
-        loadedProduct.user?.id,
-        loadedProduct.tags.length,
-    );
+    expect(loadedProduct.user?.id === relUser.id).toBe(true); // save product with user (mto): must link user
+    expect(Array.isArray(loadedProduct.tags) && loadedProduct.tags.length === 2).toBe(true); // save product with tags (mtm): must save 2 tags
 }
 
 async function testRawInclude() {
-    console.log("\n=== RAW INCLUDE (DynamicMethodOptions) ===");
-
     const user = await userRepository.save({
         name: "Raw Include User",
         email: "rawinclude@ex.com",
@@ -929,46 +731,59 @@ async function testRawInclude() {
     const userWithAddress = await userRepository.getOrThrow(user.id, {
         include: { address: true },
     });
-    console.assert(
-        userWithAddress.address?.city === "Rio de Janeiro",
-        "include literal (address): must return address",
-    );
-    console.assert(
-        userWithAddress.products === undefined,
-        "include literal (address): must not return products",
-    );
-    console.log("getOrThrow with include literal (address):", userWithAddress.address?.city);
+    expect(userWithAddress.address?.city === "Rio de Janeiro").toBe(true); // include literal (address): must return address
+    expect(userWithAddress.products === undefined).toBe(true); // include literal (address): must not return products
 
     const userFull = await userRepository.getOrThrow(user.id, {
         include: { address: true, products: { include: { tags: true } } },
     });
-    console.assert(userFull.address !== undefined, "include literal (full): must return address");
-    console.assert(
-        Array.isArray(userFull.products) && userFull.products.length === 2,
-        "include literal (full): must return 2 products",
-    );
-    console.assert(
-        userFull.products.every(p => Array.isArray((p as any).tags)),
-        "include literal (full): each product must have tags (array)",
-    );
-    console.log(
-        "getOrThrow with include literal (full): address found &",
-        userFull.products.length,
-        "products",
-    );
+    expect(userFull.address !== undefined).toBe(true); // include literal (full): must return address
+    expect(Array.isArray(userFull.products) && userFull.products.length === 2).toBe(true); // include literal (full): must return 2 products
+    expect(userFull.products.every(p => Array.isArray((p as any).tags))).toBe(true); // include literal (full): each product must have tags (array)
 
     const allWithProducts = await userRepository.getAll({ include: { products: true } });
     const foundInAll = allWithProducts.find(u => u.id === user.id);
-    console.assert(
-        Array.isArray(foundInAll?.products),
-        "include literal in getAll: must return products for all items",
-    );
-    console.log("getAll with include literal (products): OK");
+    expect(Array.isArray(foundInAll?.products)).toBe(true); // include literal in getAll: must return products for all items
+}
+
+async function testRawSelect() {
+
+    const user = await userRepository.save({
+        name: "Raw Select User",
+        email: `rawselect-${Date.now()}@ex.com`,
+        password: "x",
+        userType: UserType.COMMON,
+        likesVSRepo: true,
+        active: true,
+        address: { city: "Rio de Janeiro", state: "RJ", country: "BR" },
+        products: [{ name: "Raw Selected Product 1", price: 150 }],
+    });
+
+    const userIdAndName = await userRepository.getOrThrow(user.id, {
+        select: { id: true, name: true },
+    });
+    expect(userIdAndName.id === user.id).toBe(true); // select cru (id, name): must return id
+    expect(userIdAndName.name === "Raw Select User").toBe(true); // select cru (id, name): must return name
+    // Diferente do setupVSRepo, o DynamicRepository não estreita o tipo de retorno a
+    // partir de `select`, mas em runtime o Prisma respeita o select — só os campos
+    // pedidos vêm preenchidos.
+    expect((userIdAndName as any).email === undefined).toBe(true); // select cru (id, name): must not return email
+
+    const userWithAddressSelected = await userRepository.getOrThrow(user.id, {
+        select: { id: true, address: { select: { city: true } } },
+    });
+    expect(userWithAddressSelected.address?.city === "Rio de Janeiro").toBe(true); // select cru com relação: must return only the requested relation field
+    expect((userWithAddressSelected.address as any)?.state === undefined).toBe(true); // select cru com relação: must not return unrequested relation fields
+
+    const allSelected = await userRepository.getAll({
+        select: { id: true, email: true },
+    });
+    const foundInAll = allSelected.find(u => u.id === user.id);
+    expect((foundInAll as any)?.email === user.email).toBe(true); // select cru em getAll: must apply select to every item
+    expect((foundInAll as any)?.name === undefined).toBe(true); // select cru em getAll: must not return fields outside the select
 }
 
 async function testTransactions() {
-    console.log("\n=== TRANSACTIONS (DynamicRepository) ===");
-
     let transactionUserId: string | null = null;
     try {
         await userRepository.prisma.$transaction(async tx => {
@@ -992,11 +807,7 @@ async function testTransactions() {
 
     if (transactionUserId) {
         const shouldNotExist = await userRepository.get(transactionUserId);
-        console.assert(
-            shouldNotExist === null,
-            "transaction (rollback): user must not persist after rollback",
-        );
-        console.log("transaction rollback: user does not persist");
+        expect(shouldNotExist === null).toBe(true); // transaction (rollback): user must not persist after rollback
     }
 
     let txUserId: string | null = null;
@@ -1016,13 +827,10 @@ async function testTransactions() {
     });
 
     const txUser = txUserId ? await userRepository.get(txUserId) : null;
-    console.assert(txUser?.id === txUserId, "transaction (commit): user must persist after commit");
-    console.log("transaction commit:", txUser?.id);
+    expect(txUser?.id === txUserId).toBe(true); // transaction (commit): user must persist after commit
 }
 
 async function testQueryMethods() {
-    console.log("\n=== QUERY METHODS (DynamicRepository) ===");
-
     // findByEmail — raw SELECT com parâmetro posicional
     const user = await userRepository.save({
         name: "Query Test User",
@@ -1036,22 +844,14 @@ async function testQueryMethods() {
     const foundByEmail = await userRepository.findByEmail({
         args: ["querytest@ex.com"],
     });
-    console.assert(Array.isArray(foundByEmail), "findByEmail: must return array");
-    console.assert(
-        foundByEmail.some(u => u.id === user.id),
-        "findByEmail: must contain the user with matching email",
-    );
-    console.log("findByEmail:", foundByEmail.length);
+    expect(Array.isArray(foundByEmail)).toBe(true); // findByEmail: must return array
+    expect(foundByEmail.some(u => u.id === user.id)).toBe(true); // findByEmail: must contain the user with matching email
 
     // findByEmail com email inexistente
     const noEmail = await userRepository.findByEmail({
         args: ["nonexistent@ex.com"],
     });
-    console.assert(
-        Array.isArray(noEmail) && noEmail.length === 0,
-        "findByEmail (nonexistent): must return empty array",
-    );
-    console.log("findByEmail (nonexistent):", noEmail.length);
+    expect(Array.isArray(noEmail) && noEmail.length === 0).toBe(true); // findByEmail (nonexistent): must return empty array
 
     // activateUser — raw UPDATE (modifying query)
     // Primeiro desativar o usuário
@@ -1060,24 +860,18 @@ async function testQueryMethods() {
     const activateCount = await userRepository.activateUser({
         args: [user.id],
     });
-    console.assert(
-        typeof activateCount === "number",
-        "activateUser: must return number (affected rows)",
-    );
-    console.assert(activateCount === 1, "activateUser: must affect 1 row");
-    console.log("activateUser (modifying):", activateCount);
+    expect(typeof activateCount === "number").toBe(true); // activateUser: must return number (affected rows)
+    expect(activateCount === 1).toBe(true); // activateUser: must affect 1 row
 
     // Verificar que o usuário foi reativado
     const reactivated = await userRepository.findInternalByEmail("querytest@ex.com");
-    console.assert(reactivated !== null, "activateUser: user must be findable after reactivation");
-    console.log("activateUser: verification OK");
+    expect(reactivated !== null).toBe(true); // activateUser: user must be findable after reactivation
 
     // activateUser com id inexistente
     const zeroActivate = await userRepository.activateUser({
         args: [crypto.randomUUID()],
     });
-    console.assert(zeroActivate === 0, "activateUser (fake id): must affect 0 rows");
-    console.log("activateUser (fake id):", zeroActivate);
+    expect(zeroActivate === 0).toBe(true); // activateUser (fake id): must affect 0 rows
 
     // Query method com db (transaction) — rollback
     await userRepository.prisma
@@ -1086,46 +880,63 @@ async function testQueryMethods() {
                 args: ["querytest@ex.com"],
                 db: tx,
             });
-            console.assert(
-                Array.isArray(txFound),
-                "findByEmail (tx): must return array inside transaction",
-            );
-            console.log("findByEmail (transaction):", txFound.length);
+            expect(Array.isArray(txFound)).toBe(true); // findByEmail (tx): must return array inside transaction
 
             const txActivate = await userRepository.activateUser({
                 args: [user.id],
                 db: tx,
             });
-            console.assert(
-                typeof txActivate === "number",
-                "activateUser (tx): must return number inside transaction",
-            );
-            console.log("activateUser (transaction):", txActivate);
+            expect(typeof txActivate === "number").toBe(true); // activateUser (tx): must return number inside transaction
 
             throw new Error("forced rollback for query method test");
         })
         .catch(() => {});
-
-    console.log("query method (transaction): rollback executed OK");
 }
 
-async function runAllTests() {
-    console.log("Starting DynamicRepository tests...\n");
-    try {
+describe("VSRepository — API baseada em classes (DynamicRepository)", () => {
+    let baseUser: Awaited<ReturnType<typeof testUserBaseMethods>>;
+
+    beforeAll(async () => {
         await cleanDatabase();
-        const baseUser = await testUserBaseMethods();
-        await testUserDynamicMethods();
-        await testProductBaseMethods(baseUser.id);
-        await testProductDynamicMethods(baseUser.id);
-        await testRelations();
-        await testRawInclude();
-        await testTransactions();
-        await testQueryMethods();
-        console.log("\nAll DynamicRepository tests passed!\n");
-    } catch (err) {
-        console.error("\nError during tests:", err);
-        process.exit(1);
-    }
-}
+    });
 
-runAllTests();
+    afterAll(async () => {
+        await prisma.$disconnect();
+    });
+
+    it("user — métodos base", async () => {
+        baseUser = await testUserBaseMethods();
+    });
+
+    it("user — métodos dinâmicos", async () => {
+        await testUserDynamicMethods();
+    });
+
+    it("product — métodos base", async () => {
+        await testProductBaseMethods(baseUser.id);
+    });
+
+    it("product — métodos dinâmicos", async () => {
+        await testProductDynamicMethods(baseUser.id);
+    });
+
+    it("relations", async () => {
+        await testRelations();
+    });
+
+    it("raw include (options.include)", async () => {
+        await testRawInclude();
+    });
+
+    it("raw select (options.select)", async () => {
+        await testRawSelect();
+    });
+
+    it("transactions", async () => {
+        await testTransactions();
+    });
+
+    it("query methods", async () => {
+        await testQueryMethods();
+    });
+});
