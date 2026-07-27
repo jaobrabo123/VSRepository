@@ -10,9 +10,9 @@ import { Relation } from "./internal/validation/types/relation.type";
 import { VSRepoBuildError, VSRepoRuntimeError } from "./internal/errors/vs-repo.error";
 import { resolveBaseMethods } from "./internal/resolvers/base-methods.resolve";
 import { logger, performanceLoggerEnd, performanceLoggerStart } from "./internal/utils/logger.util";
-import { resolveDinamicMethodInfo } from "./internal/resolvers/dinamic-method-info.resolve";
-import { resolveDinamicMethodCustomization } from "./internal/resolvers/dinamic-method-customization.resolve";
-import { DinamicMethodWhereOps } from "./internal/resolvers/types/dinamic-method-where-ops.type";
+import { resolveDynamicMethodInfo } from "./internal/resolvers/dynamic-method-info.resolve";
+import { resolveDynamicMethodCustomization } from "./internal/resolvers/dynamic-method-customization.resolve";
+import { DynamicMethodWhereOps } from "./internal/resolvers/types/dynamic-method-where-ops.type";
 import { resolvePrettyWheres } from "./internal/resolvers/pretty-wheres.resolve";
 import { PrismaArgs } from "./internal/resolvers/types/prisma-args.type";
 import { ResolveDbAndPrismaArgsData } from "./internal/resolvers/types/resolve-db-and-prisma-args-data.type";
@@ -132,31 +132,31 @@ export class VSRepository {
 
                 methodToMap = methods[originalKey]?.proxyTo ?? methodToMap;
 
-                const dinamicMethodInfo = resolveDinamicMethodInfo(
+                const dynamicMethodInfo = resolveDynamicMethodInfo(
                     buildInstance,
                     methodToMap,
                     originalKey,
                 );
 
-                const dinamicMethodCustomization = resolveDinamicMethodCustomization(
+                const dynamicMethodCustomization = resolveDynamicMethodCustomization(
                     buildInstance,
-                    dinamicMethodInfo,
+                    dynamicMethodInfo,
                     originalKey,
                 );
 
-                const dinamicMethodWhereOps: DinamicMethodWhereOps = {
+                const dynamicMethodWhereOps: DynamicMethodWhereOps = {
                     uglyWheres: [],
                     prettyWheres: [],
                     whereType: methods[originalKey]?.whereType ?? "extending",
                     pushWhere: methods[originalKey]?.pushWhere,
                 };
 
-                if (!dinamicMethodInfo.ignoreWhere) {
-                    resolvePrettyWheres(dinamicMethodInfo, dinamicMethodWhereOps);
+                if (!dynamicMethodInfo.ignoreWhere) {
+                    resolvePrettyWheres(dynamicMethodInfo, dynamicMethodWhereOps);
                     // if (showWorking) {
                     //     const argsSimulation: any[] = [];
 
-                    //     for (let x = 0; x < dinamicMethodInfo.argsCount; x++) {
+                    //     for (let x = 0; x < dynamicMethodInfo.argsCount; x++) {
                     //         argsSimulation[x] = "00";
                     //     }
 
@@ -166,7 +166,7 @@ export class VSRepository {
                     //         buildInstance.tableName,
                     //         resolveSpecificWhere(
                     //             argsSimulation,
-                    //             dinamicMethodWhereOps.prettyWheres,
+                    //             dynamicMethodWhereOps.prettyWheres,
                     //         ),
                     //     );
 
@@ -174,21 +174,21 @@ export class VSRepository {
                     //     //     `Where object resolved to ${methodToMap}:`,
                     //     //     "build",
                     //     //     buildInstance.tableName,
-                    //     //     dinamicMethodWhereOps.prettyWheres,
+                    //     //     dynamicMethodWhereOps.prettyWheres,
                     //     // );
                     // }
                 }
 
                 let select: object | undefined = undefined;
-                if (dinamicMethodInfo.existsMode) {
+                if (dynamicMethodInfo.existsMode) {
                     select = { [buildInstance.pkName]: true };
                 }
 
                 buildInstance.vsrepocache.set(
                     originalKey,
                     (args: any[], methodOptions?: MethodOptions) => {
-                        if (dinamicMethodInfo.prismaArgsIndex !== undefined)
-                            return args.at(dinamicMethodInfo.prismaArgsIndex);
+                        if (dynamicMethodInfo.prismaArgsIndex !== undefined)
+                            return args.at(dynamicMethodInfo.prismaArgsIndex);
 
                         const resolveDbAndPrismaArgsData: ResolveDbAndPrismaArgsData = {
                             instance: buildInstance,
@@ -198,48 +198,48 @@ export class VSRepository {
                                 active: true,
                                 defaultSelect: methods[originalKey]?.selectModel,
                                 ignoreRequiredWhere:
-                                    dinamicMethodWhereOps.whereType === "overwrite",
+                                    dynamicMethodWhereOps.whereType === "overwrite",
                             },
                             withoutWhere:
-                                dinamicMethodInfo.ignoreWhere && !dinamicMethodInfo.onlyBaseWheres,
+                                dynamicMethodInfo.ignoreWhere && !dynamicMethodInfo.onlyBaseWheres,
                             specificSelect: select,
-                            pushWhere: dinamicMethodWhereOps.pushWhere,
-                            withoutSelect: dinamicMethodInfo.ignoreSelect,
-                            skipDuplicates: dinamicMethodCustomization.skipDuplicates,
+                            pushWhere: dynamicMethodWhereOps.pushWhere,
+                            withoutSelect: dynamicMethodInfo.ignoreSelect,
+                            skipDuplicates: dynamicMethodCustomization.skipDuplicates,
                             ordenation:
-                                dinamicMethodCustomization.orderPosition !== undefined
-                                    ? args.at(dinamicMethodCustomization.orderPosition)
-                                    : dinamicMethodCustomization.injectOrdenation,
+                                dynamicMethodCustomization.orderPosition !== undefined
+                                    ? args.at(dynamicMethodCustomization.orderPosition)
+                                    : dynamicMethodCustomization.injectOrdenation,
                             pagination:
-                                dinamicMethodCustomization.paginationPosition !== undefined
-                                    ? args.at(dinamicMethodCustomization.paginationPosition)
-                                    : dinamicMethodCustomization.injectPagination,
+                                dynamicMethodCustomization.paginationPosition !== undefined
+                                    ? args.at(dynamicMethodCustomization.paginationPosition)
+                                    : dynamicMethodCustomization.injectPagination,
                             dataPayload:
-                                dinamicMethodInfo.dataIndex !== undefined
-                                    ? args.at(dinamicMethodInfo.dataIndex)
+                                dynamicMethodInfo.dataIndex !== undefined
+                                    ? args.at(dynamicMethodInfo.dataIndex)
                                     : undefined,
                             createPayload:
-                                dinamicMethodInfo.createIndex !== undefined
-                                    ? args.at(dinamicMethodInfo.createIndex)
+                                dynamicMethodInfo.createIndex !== undefined
+                                    ? args.at(dynamicMethodInfo.createIndex)
                                     : undefined,
                             updatePayload:
-                                dinamicMethodInfo.updateIndex !== undefined
-                                    ? args.at(dinamicMethodInfo.updateIndex)
+                                dynamicMethodInfo.updateIndex !== undefined
+                                    ? args.at(dynamicMethodInfo.updateIndex)
                                     : undefined,
                             withOrdenationAndPagination:
-                                !dinamicMethodInfo.ignoreOrderByAndPagination,
-                            distinctKeys: dinamicMethodCustomization.distinctKeys,
+                                !dynamicMethodInfo.ignoreOrderByAndPagination,
+                            distinctKeys: dynamicMethodCustomization.distinctKeys,
                         };
 
-                        if (!dinamicMethodInfo.ignoreWhere) {
+                        if (!dynamicMethodInfo.ignoreWhere) {
                             resolveDbAndPrismaArgsData.specificWhere = resolveSpecificWhere(
                                 args,
-                                dinamicMethodWhereOps.prettyWheres,
+                                dynamicMethodWhereOps.prettyWheres,
                             );
-                        } else if (dinamicMethodInfo.onlyBaseWheres) {
+                        } else if (dynamicMethodInfo.onlyBaseWheres) {
                             resolveDbAndPrismaArgsData.specificWhere =
-                                dinamicMethodInfo.whereIndex !== undefined
-                                    ? args.at(dinamicMethodInfo.whereIndex)
+                                dynamicMethodInfo.whereIndex !== undefined
+                                    ? args.at(dynamicMethodInfo.whereIndex)
                                     : {};
                         }
 
@@ -250,7 +250,7 @@ export class VSRepository {
                 );
 
                 if (showWorking) {
-                    const argsSimulation = new Array<string>(dinamicMethodInfo.argsCount).fill(
+                    const argsSimulation = new Array<string>(dynamicMethodInfo.argsCount).fill(
                         "00",
                     );
 
@@ -268,16 +268,16 @@ export class VSRepository {
                     let db = buildInstance.prisma;
                     let methodOptions: MethodOptions | undefined = undefined;
 
-                    if (args.length < dinamicMethodInfo.argsCount) {
-                        const missingParams = dinamicMethodInfo.whereParams
-                            .concat(dinamicMethodInfo.otherParams)
+                    if (args.length < dynamicMethodInfo.argsCount) {
+                        const missingParams = dynamicMethodInfo.whereParams
+                            .concat(dynamicMethodInfo.otherParams)
                             .slice(args.length);
 
                         throw new VSRepoRuntimeError(
                             `[VSRepository] (${buildInstance.tableName}: runtime) Missing parameters: ${missingParams.join(", ")}`,
                             "48670",
                         );
-                    } else if (args.length > dinamicMethodInfo.argsCount) {
+                    } else if (args.length > dynamicMethodInfo.argsCount) {
                         const optionsArg = args[args.length - 1];
                         methodOptions = validateMethodOptions(optionsArg, buildInstance);
                         db = methodOptions.db ?? db;
@@ -293,29 +293,29 @@ export class VSRepository {
                     const start = showWorking
                         ? performanceLoggerStart(
                               buildInstance.tableName,
-                              dinamicMethodInfo.method,
+                              dynamicMethodInfo.method,
                               prismaArgs,
                           )
                         : undefined;
 
                     try {
                         const result =
-                            await db[buildInstance.tableName][dinamicMethodInfo.method](prismaArgs);
+                            await db[buildInstance.tableName][dynamicMethodInfo.method](prismaArgs);
 
                         if (showWorking)
                             performanceLoggerEnd(
                                 buildInstance.tableName,
-                                dinamicMethodInfo.method,
+                                dynamicMethodInfo.method,
                                 start!,
                             );
 
-                        if (dinamicMethodInfo.existsMode) {
+                        if (dynamicMethodInfo.existsMode) {
                             return !!result;
                         }
                         return result;
                     } catch (err) {
                         // logger(
-                        //     `Fatal error when executing ${dinamicMethodInfo.method}:`,
+                        //     `Fatal error when executing ${dynamicMethodInfo.method}:`,
                         //     "runtime",
                         //     buildInstance.tableName,
                         //     { prismaArgs },

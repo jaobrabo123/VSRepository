@@ -1,4 +1,4 @@
-export interface DinamicMethodInfo {
+export interface DynamicMethodInfo {
     onlyBaseWheres: boolean;
     ignoreWhere: boolean;
     ignoreOrderByAndPagination: boolean;

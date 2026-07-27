@@ -1,6 +1,6 @@
 import { Pagination } from "../../validation/types/pagination.type";
 
-export interface DinamicMethodCustomization {
+export interface DynamicMethodCustomization {
     skipDuplicates?: boolean;
     orderPosition?: number;
     paginationPosition?: number;

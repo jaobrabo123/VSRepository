@@ -1,4 +1,4 @@
-import { DINAMIC_METHODS_KEY } from "../constants/dinamic-methods-key.constant";
+import { DYNAMIC_METHODS_KEY } from "../constants/dynamic-methods-key.constant";
 import { DynamicMethodMetadata } from "../entities/dynamic-method-metadata.entity";
 import { validateDynamicMethodConfig } from "../validation/dynamic-method-config.validate";
 
@@ -6,7 +6,7 @@ export function DynamicMethod(config?: unknown): PropertyDecorator {
     const validatedConfig = config ? validateDynamicMethodConfig(config) : undefined;
 
     return (target: Object, propertyKey: string | symbol) => {
-        const methods: DynamicMethodMetadata[] = Reflect.getMetadata(DINAMIC_METHODS_KEY, target) ?? [];
+        const methods: DynamicMethodMetadata[] = Reflect.getMetadata(DYNAMIC_METHODS_KEY, target) ?? [];
 
         methods.push(
             new DynamicMethodMetadata(
@@ -21,6 +21,6 @@ export function DynamicMethod(config?: unknown): PropertyDecorator {
             ),
         );
 
-        Reflect.defineMetadata(DINAMIC_METHODS_KEY, methods, target);
+        Reflect.defineMetadata(DYNAMIC_METHODS_KEY, methods, target);
     };
 }

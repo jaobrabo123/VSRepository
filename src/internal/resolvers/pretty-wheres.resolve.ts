@@ -1,14 +1,14 @@
-import { DinamicMethodInfo } from "./types/dinamic-method-info.type";
-import { DinamicMethodWhereOps } from "./types/dinamic-method-where-ops.type";
+import { DynamicMethodInfo } from "./types/dynamic-method-info.type";
+import { DynamicMethodWhereOps } from "./types/dynamic-method-where-ops.type";
 import { PrettyWhere } from "./types/pretty-where.type";
 import { resolveUglyWhere } from "./ugly-where.resolve";
 
 export function resolvePrettyWheres(
-    dinamicMethodInfo: DinamicMethodInfo,
-    dinamicMethodWhereOps: DinamicMethodWhereOps,
+    dynamicMethodInfo: DynamicMethodInfo,
+    dynamicMethodWhereOps: DynamicMethodWhereOps,
 ) {
     let ANDMode = false;
-    let keysSplitedAND = dinamicMethodInfo.keyToMapReplaced.split("AND");
+    let keysSplitedAND = dynamicMethodInfo.keyToMapReplaced.split("AND");
     if (keysSplitedAND.length > 1) {
         ANDMode = true;
     }
@@ -34,18 +34,18 @@ export function resolvePrettyWheres(
                     if (idx === 1 && ANDMode) {
                         uglyWhere.name = `AND.${i}idx.${uglyWhere.name}`;
                     }
-                    dinamicMethodWhereOps.uglyWheres.push(uglyWhere);
+                    dynamicMethodWhereOps.uglyWheres.push(uglyWhere);
                 } else {
                     uglyWhere.name = `OR.${i}idx.${uglyWhere.name}`;
-                    dinamicMethodWhereOps.uglyWheres.push(uglyWhere);
+                    dynamicMethodWhereOps.uglyWheres.push(uglyWhere);
                 }
 
-                if (uglyWhere.autoInjectVal === undefined) dinamicMethodInfo.argsCount++;
+                if (uglyWhere.autoInjectVal === undefined) dynamicMethodInfo.argsCount++;
             }
         }
     });
 
-    const prettyWheres: PrettyWhere[] = dinamicMethodWhereOps.uglyWheres.map(arg => {
+    const prettyWheres: PrettyWhere[] = dynamicMethodWhereOps.uglyWheres.map(arg => {
         let context: (string | number)[] = [];
         let otherProps: { mode?: string } | undefined = undefined;
 
@@ -86,7 +86,7 @@ export function resolvePrettyWheres(
             }
         }
 
-        dinamicMethodInfo.whereParams.push(argName);
+        dynamicMethodInfo.whereParams.push(argName);
         return {
             context,
             otherProps,
@@ -96,5 +96,5 @@ export function resolvePrettyWheres(
         };
     });
 
-    dinamicMethodWhereOps.prettyWheres = prettyWheres;
+    dynamicMethodWhereOps.prettyWheres = prettyWheres;
 }

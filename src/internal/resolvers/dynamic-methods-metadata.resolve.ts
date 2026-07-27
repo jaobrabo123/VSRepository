@@ -1,10 +1,10 @@
-import { DINAMIC_METHODS_KEY } from "../constants/dinamic-methods-key.constant";
+import { DYNAMIC_METHODS_KEY } from "../constants/dynamic-methods-key.constant";
 import { DynamicMethodConfig } from "../decorators/types/dynamic-method-config.type";
 import { DynamicMethodMetadata } from "../entities/dynamic-method-metadata.entity";
 
 export function resolveDynamicMethodsMetadata(prototype: any): Record<string | symbol, DynamicMethodConfig> {
     const methods: DynamicMethodMetadata[] | undefined = Reflect.getMetadata(
-        DINAMIC_METHODS_KEY,
+        DYNAMIC_METHODS_KEY,
         prototype,
     );
 

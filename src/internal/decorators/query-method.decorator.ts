@@ -1,4 +1,4 @@
-import { DINAMIC_METHODS_KEY } from "../constants/dinamic-methods-key.constant";
+import { DYNAMIC_METHODS_KEY } from "../constants/dynamic-methods-key.constant";
 import { DynamicMethodMetadata } from "../entities/dynamic-method-metadata.entity";
 import { VSRepoDecoratorError } from "../errors/vs-repo.error";
 import { validateQueryMethodOptions } from "../validation/query-method-options.validate";
@@ -17,7 +17,7 @@ export function QueryMethod(value: unknown, options?: unknown): PropertyDecorato
 
     return (target: Object, propertyKey: string | symbol) => {
         const methods: DynamicMethodMetadata[] =
-            Reflect.getMetadata(DINAMIC_METHODS_KEY, target) ?? [];
+            Reflect.getMetadata(DYNAMIC_METHODS_KEY, target) ?? [];
 
         methods.push(
             new DynamicMethodMetadata(
@@ -33,6 +33,6 @@ export function QueryMethod(value: unknown, options?: unknown): PropertyDecorato
             ),
         );
 
-        Reflect.defineMetadata(DINAMIC_METHODS_KEY, methods, target);
+        Reflect.defineMetadata(DYNAMIC_METHODS_KEY, methods, target);
     };
 }
