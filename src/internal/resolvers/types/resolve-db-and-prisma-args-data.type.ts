@@ -18,9 +18,9 @@ export interface ResolveDbAndPrismaArgsData {
     updatePayload?: object;
     pushWhere?: object;
     pagination?: Pagination;
-    ordenation?: object | object[];
+    ordering?: object | object[];
     skipDuplicates?: boolean;
     forceSeeMode?: SeeMode;
-    withOrdenationAndPagination?: boolean;
+    withOrderingAndPagination?: boolean;
     distinctKeys?: string[];
 }

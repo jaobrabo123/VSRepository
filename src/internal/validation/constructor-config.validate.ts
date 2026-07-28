@@ -25,13 +25,9 @@ export function validateConstructorConfig(config: unknown): ConstructorConfig {
                     }),
                 )
                 .optional(),
-            methods: z
-                .record(
-                    stringSchema,
-                    methodSchema,
-                )
-                .optional(),
+            methods: z.record(stringSchema, methodSchema).optional(),
             defaultOrdenation: objectSchema.or(z.array(objectSchema)).optional(),
+            defaultOrdering: objectSchema.or(z.array(objectSchema)).optional(),
         })
         .superRefine((config, ctx) => {
             if (config.defaultSelectModel && !config.selectModels?.[config.defaultSelectModel]) {
@@ -53,7 +49,11 @@ export function validateConstructorConfig(config: unknown): ConstructorConfig {
                     }
                 }
             }
-        });
+        })
+        .transform(({ defaultOrdenation, defaultOrdering, ...value }) => ({
+            ...value,
+            defaultOrdering: defaultOrdering ?? defaultOrdenation,
+        }));
 
     const configParsed = configSchema.safeParse(config);
 

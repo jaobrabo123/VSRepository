@@ -4,7 +4,7 @@ export interface DynamicMethodConfig {
     whereType?: "overwrite" | "extending";
     pushWhere?: object;
     fbMode?: "one" | "list";
-    injectOrdenation?: object;
+    injectOrdering?: object;
     injectPagination?: object;
     query?: {
         value: string;

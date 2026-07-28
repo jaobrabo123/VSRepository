@@ -7,7 +7,7 @@ export interface Method {
     proxyTo?: string;
     pushWhere?: object;
     fbMode?: "one" | "list";
-    injectOrdenation?: object | object[];
+    injectOrdering?: object | object[];
     injectPagination?: Pagination;
     query?: {
         value: string;

@@ -6,7 +6,7 @@ export class DynamicMethodMetadata {
         public readonly whereType?: "overwrite" | "extending",
         public readonly pushWhere?: object,
         public readonly fbMode?: "one" | "list",
-        public readonly injectOrdenation?: object,
+        public readonly injectOrdering?: object,
         public readonly injectPagination?: object,
         public readonly query?: { value: string; modifying: boolean },
     ) {}

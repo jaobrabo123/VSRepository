@@ -16,7 +16,7 @@ export function DynamicMethod(config?: unknown): PropertyDecorator {
                 validatedConfig?.whereType,
                 validatedConfig?.pushWhere,
                 validatedConfig?.fbMode,
-                validatedConfig?.injectOrdenation,
+                validatedConfig?.injectOrdering,
                 validatedConfig?.injectPagination,
             ),
         );
