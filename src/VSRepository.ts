@@ -33,7 +33,7 @@ export class VSRepository {
     requiredWhere?: object;
     relations?: Record<string, Relation>;
     methods?: Record<string | symbol, Method>;
-    defaultOrdenation?: object | object[];
+    defaultOrdering?: object | object[];
 
     constructor(config: unknown) {
         const validatedConfig = validateConstructorConfig(config);
@@ -48,7 +48,7 @@ export class VSRepository {
         this.relations = validatedConfig.relations;
         this.requiredWhere = validatedConfig.requiredWhere;
         this.methods = validatedConfig.methods;
-        this.defaultOrdenation = validatedConfig.defaultOrdenation;
+        this.defaultOrdering = validatedConfig.defaultOrdering;
     }
 
     extend(extensionFunc: unknown) {
@@ -206,10 +206,10 @@ export class VSRepository {
                             pushWhere: dynamicMethodWhereOps.pushWhere,
                             withoutSelect: dynamicMethodInfo.ignoreSelect,
                             skipDuplicates: dynamicMethodCustomization.skipDuplicates,
-                            ordenation:
+                            ordering:
                                 dynamicMethodCustomization.orderPosition !== undefined
                                     ? args.at(dynamicMethodCustomization.orderPosition)
-                                    : dynamicMethodCustomization.injectOrdenation,
+                                    : dynamicMethodCustomization.injectOrdering,
                             pagination:
                                 dynamicMethodCustomization.paginationPosition !== undefined
                                     ? args.at(dynamicMethodCustomization.paginationPosition)
@@ -226,7 +226,7 @@ export class VSRepository {
                                 dynamicMethodInfo.updateIndex !== undefined
                                     ? args.at(dynamicMethodInfo.updateIndex)
                                     : undefined,
-                            withOrdenationAndPagination:
+                            withOrderingAndPagination:
                                 !dynamicMethodInfo.ignoreOrderByAndPagination,
                             distinctKeys: dynamicMethodCustomization.distinctKeys,
                         };

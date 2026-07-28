@@ -122,8 +122,8 @@ export function resolveBaseMethods(instance: RepositoryBuildInstance, config: Bu
                 baseConfig: baseMethods.getAll,
                 options: restOptions,
                 pagination,
-                ordenation: order,
-                withOrdenationAndPagination: true,
+                ordering: order,
+                withOrderingAndPagination: true,
             });
 
             const start = showWorking

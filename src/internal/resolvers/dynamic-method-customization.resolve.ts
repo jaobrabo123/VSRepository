@@ -21,8 +21,8 @@ export function resolveDynamicMethodCustomization(
     }
 
     if (!dynamicMethodInfo.ignoreOrderByAndPagination) {
-        dynamicMethodCustomization.injectOrdenation =
-            instance.methods?.[originalKey]?.injectOrdenation;
+        dynamicMethodCustomization.injectOrdering =
+            instance.methods?.[originalKey]?.injectOrdering;
         dynamicMethodCustomization.injectPagination =
             instance.methods?.[originalKey]?.injectPagination;
 

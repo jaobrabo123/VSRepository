@@ -9,14 +9,20 @@ export const queryOptionsSchema = z.strictObject({
     modifying: booleanSchema.default(false),
 });
 
-export const methodSchema = z.strictObject({
-    map: booleanSchema,
-    selectModel: stringSchema.or(z.literal(false)).optional(),
-    whereType: z.enum(["overwrite", "extending"]).optional(),
-    proxyTo: stringSchema.optional(),
-    pushWhere: objectSchema.optional(),
-    fbMode: z.enum(["one", "list"]).optional(),
-    injectOrdenation: objectSchema.or(z.array(objectSchema)).optional(),
-    injectPagination: objectSchema.optional(),
-    query: queryOptionsSchema.optional(),
-});
+export const methodSchema = z
+    .strictObject({
+        map: booleanSchema,
+        selectModel: stringSchema.or(z.literal(false)).optional(),
+        whereType: z.enum(["overwrite", "extending"]).optional(),
+        proxyTo: stringSchema.optional(),
+        pushWhere: objectSchema.optional(),
+        fbMode: z.enum(["one", "list"]).optional(),
+        injectOrdenation: objectSchema.or(z.array(objectSchema)).optional(),
+        injectOrdering: objectSchema.or(z.array(objectSchema)).optional(),
+        injectPagination: objectSchema.optional(),
+        query: queryOptionsSchema.optional(),
+    })
+    .transform(({ injectOrdenation, injectOrdering, ...value }) => ({
+        ...value,
+        injectOrdering: injectOrdering ?? injectOrdenation,
+    }));

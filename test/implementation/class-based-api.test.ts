@@ -28,7 +28,7 @@ class UserRepository extends DynamicRepository<
             tableName: "user",
             pkName: "id",
             requiredWhere: { active: true },
-            defaultOrdenation: [{ createdAt: "desc" }],
+            defaultOrdering: [{ createdAt: "desc" }],
             relations: {
                 address: { mode: "oto", pk: "id", restriction: "set" },
                 products: { mode: "otm", pk: "id", restriction: "add" },
@@ -103,7 +103,7 @@ class UserRepository extends DynamicRepository<
     declare findAdmins: (options?: DynamicMethodOptions<"User">) => Promise<User[]>;
 
     @DynamicMethod<"User">({
-        injectOrdenation: [{ address: { state: "asc" } }, { address: { city: "asc" } }],
+        injectOrdering: [{ address: { state: "asc" } }, { address: { city: "asc" } }],
     })
     declare findByAddressWithCountry: (
         country: string,

@@ -409,7 +409,7 @@ type ExtractIncludeModels<Config> = Config extends { includeModels: infer IM } ?
 type ExtractDefaultSelect<Config> = Config extends { defaultSelectModel: infer D } ? D : never;
 type ExtractRelations<Config> = Config extends { relations: infer R } ? (R extends object ? R : {}) : {};
 type ExtractSoftRemovekName<Config> = Config extends { softRemovekName: infer S } ? S : never;
-type ExtractDefaultOrdenation<Config> = Config extends { defaultOrdenation: infer O } ? O : never;
+type ExtractDefaultOrdering<Config> = Config extends { defaultOrdering: infer O } ? O : Config extends { defaultOrdenation: infer O } ? O : never;
 
 type AggregateMethod<M extends PrismaModelName> = <A extends Prisma.TypeMap['model'][M]['operations']['aggregate']['args']>(
     prismaArgs: A, 
@@ -529,7 +529,13 @@ export type CursorModel<M extends PrismaModelName> = PrismaModelInputs<M>['curso
 /**
  * Type of the `orderBy` object of a Prisma model.
  */
-export type OrdenationModel<M extends PrismaModelName> = PrismaModelInputs<M>['orderByInput'];
+export type OrderingModel<M extends PrismaModelName> = PrismaModelInputs<M>['orderByInput'];
+
+/**
+ * Type of the `orderBy` object of a Prisma model.
+ * @deprecated Use `OrderingModel` instead.
+ */
+export type OrdenationModel<M extends PrismaModelName> = OrderingModel<M>;
 
 /**
  * Pagination options with typed cursor for a Prisma model.
@@ -563,7 +569,12 @@ export type MethodConfig<M extends PrismaModelName, SelectModels = any> = {
      */
     readonly fbMode?: 'one' | 'list';
     /** Injects a fixed ordering automatically into the query. */
-    readonly injectOrdenation?: OrdenationModel<M>;
+    readonly injectOrdering?: OrderingModel<M>;
+    /**
+     * Injects a fixed ordering automatically into the query.
+     * @deprecated Use `injectOrdering` instead.
+     */
+    readonly injectOrdenation?: OrderingModel<M>;
     /** Injects a fixed pagination automatically into the query. */
     readonly injectPagination?: PaginationModel<M>;
     /**
@@ -814,7 +825,7 @@ type _Inc<Config> = ExtractIncludeModels<Config>;
 type _Def<Config> = ExtractDefaultSelect<Config>;
 type _Rel<Config> = ExtractRelations<Config>;
 type _Soft<Config> = ExtractSoftRemovekName<Config>;
-type _DOrd<Config> = ExtractDefaultOrdenation<Config>;
+type _DOrd<Config> = ExtractDefaultOrdering<Config>;
 
 // ─── refactored mapped type — optimized for the TS compiler ──────────────────
 
@@ -829,7 +840,7 @@ type AllBaseMethods<
     TRelations = _Rel<Config>,
     TSoftKey  = _Soft<Config>,
     I         = PrismaModelInputs<M>,
-    TDefaultOrdenation = _DOrd<Config>,
+    TDefaultOrdering = _DOrd<Config>,
     TIncludes = _Inc<Config>
 > = {
     /** Fetches a record by its primary key (PK). */
@@ -886,7 +897,7 @@ type AllBaseMethods<
             pagination?: PaginationOptions<I extends { cursorInput: infer Curs } ? Curs : unknown>;
             /**
              * Ordering to apply to the query.
-             * When omitted and `defaultOrdenation` is configured on the repository,
+             * When omitted and `defaultOrdering` is configured on the repository,
              * the default ordering is applied automatically.
              */
             order?: I extends { orderByInput: infer OB } ? OB : OrderOptions;
@@ -927,10 +938,10 @@ type InjectedBaseMethods<
     TRelations = _Rel<Config>,
     TSoftKey  = _Soft<Config>,
     I         = PrismaModelInputs<M>,
-    TDefaultOrdenation = _DOrd<Config>,
+    TDefaultOrdering = _DOrd<Config>,
     TIncludes = _Inc<Config>
 > = Pick<
-    AllBaseMethods<T, M, Config, C, TSelects, TDefault, TPk, TRelations, TSoftKey, I, TDefaultOrdenation, TIncludes>,
+    AllBaseMethods<T, M, Config, C, TSelects, TDefault, TPk, TRelations, TSoftKey, I, TDefaultOrdering, TIncludes>,
     | (C extends { baseMethods: { get:          { active: false } } } ? never : 'get')
     | (C extends { baseMethods: { getOrThrow:   { active: false } } } ? never : 'getOrThrow')
     | (C extends { baseMethods: { getList:      { active: false } } } ? never : 'getList')
@@ -1034,7 +1045,9 @@ export type RepoConfig<T, M extends PrismaModelName, SM extends Record<string, A
     defaultSelectModel?: Extract<keyof SM, string>;
     includeModels?: IncludeModels<M>;
     requiredWhere?: WhereModel<M>;
-    defaultOrdenation?: OrdenationModel<M>;
+    defaultOrdering?: OrderingModel<M>;
+    /** @deprecated Use `defaultOrdering` instead. */
+    defaultOrdenation?: OrderingModel<M>;
     relations?: RepositoryRelations<T>;
     methods?: Record<string, MethodConfig<M, SM>>;
 };
@@ -1132,12 +1145,23 @@ export type ValidateRepoConfig<T extends object, M extends PrismaModelName, Conf
 
     /**
      * Default ordering automatically injected into all queries that accept `orderBy`,
-     * unless the method already has `injectOrdenation` configured or uses the `Ordered` suffix.
+     * unless the method already has `injectOrdering` configured or uses the `Ordered` suffix.
      *
      * Useful for ensuring a consistent sort order across the repository without repeating
      * the `order` argument on every call.
      */
-    defaultOrdenation?: OrdenationModel<M>;
+    defaultOrdering?: OrderingModel<M>;
+
+    /**
+     * Default ordering automatically injected into all queries that accept `orderBy`,
+     * unless the method already has `injectOrdering` configured or uses the `Ordered` suffix.
+     *
+     * Useful for ensuring a consistent sort order across the repository without repeating
+     * the `order` argument on every call.
+     *
+     * @deprecated Use `defaultOrdering` instead.
+     */
+    defaultOrdenation?: OrderingModel<M>;
 
     /**
      * Configures automatic relation management.

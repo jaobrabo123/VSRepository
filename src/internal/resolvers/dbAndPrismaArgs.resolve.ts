@@ -20,11 +20,11 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
         alreadyValidatedOptions,
         specificWhere,
         pushWhere,
-        ordenation,
+        ordering,
         pagination,
         skipDuplicates,
         forceSeeMode,
-        withOrdenationAndPagination,
+        withOrderingAndPagination,
         distinctKeys,
     } = data;
 
@@ -79,9 +79,9 @@ export function resolveDbAndPrismaArgs(data: ResolveDbAndPrismaArgsData) {
         prismaArgs.update = updatePayload;
     }
 
-    if (withOrdenationAndPagination) {
-        if (instance.defaultOrdenation || ordenation) {
-            prismaArgs.orderBy = ordenation ?? instance.defaultOrdenation;
+    if (withOrderingAndPagination) {
+        if (instance.defaultOrdering || ordering) {
+            prismaArgs.orderBy = ordering ?? instance.defaultOrdering;
         }
 
         if (pagination) {

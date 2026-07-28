@@ -159,7 +159,7 @@ const userVSRepo = setupVSRepo<User, "User">()({
         findByAddressWithCountry: {
             map: true,
             // * Here we inject a fixed ordering for this method, results will be automatically ordered by state and by city
-            injectOrdenation: [{ address: { state: "asc" } }, { address: { city: "asc" } }],
+            injectOrdering: [{ address: { state: "asc" } }, { address: { city: "asc" } }],
         },
 
         // * We can also search for users without an address

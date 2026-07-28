@@ -86,7 +86,7 @@ const userVSRepo = setupVSRepo<User, "User">()({
         },
     },
 
-    defaultOrdenation: [{ createdAt: "desc" }],
+    defaultOrdering: [{ createdAt: "desc" }],
 
     methods: {
         findByUserType: { map: true },
@@ -124,7 +124,7 @@ const userVSRepo = setupVSRepo<User, "User">()({
         findByAddressWithCountry: {
             map: true,
 
-            injectOrdenation: [{ address: { state: "asc" } }, { address: { city: "asc" } }],
+            injectOrdering: [{ address: { state: "asc" } }, { address: { city: "asc" } }],
         },
 
         findByAddressWithout: { map: true },

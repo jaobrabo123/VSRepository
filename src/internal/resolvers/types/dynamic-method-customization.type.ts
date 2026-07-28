@@ -4,7 +4,7 @@ export interface DynamicMethodCustomization {
     skipDuplicates?: boolean;
     orderPosition?: number;
     paginationPosition?: number;
-    injectOrdenation?: object | object[];
+    injectOrdering?: object | object[];
     injectPagination?: Pagination;
     distinctKeys?: string[];
 }
