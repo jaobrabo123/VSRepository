@@ -2,7 +2,7 @@
 
 Este projeto tem dois tipos de teste, em duas pastas separadas:
 
-```
+```text
 test/
   implementation/   # Testes de implementação (comportamento em runtime), rodados com Jest
   typing/           # Testes de tipagem (compile-time), checados com tsc --noEmit
@@ -17,6 +17,10 @@ comportamento em runtime da biblioteca — os mesmos cenários que antes viviam 
 
 - `functional-api.test.ts` — API funcional (`setupVSRepo`)
 - `class-based-api.test.ts` — API baseada em classes (`DynamicRepository` + `@DynamicMethod`)
+- `error-handling.test.ts` — os caminhos de erro (`VSRepoConfigError`, `VSRepoBuildError`,
+  `VSRepoExtendError`, `VSRepoRuntimeError`, `VSRepoDecoratorError`). **Não precisa de banco
+  real** — todas as validações cobertas aqui acontecem antes de qualquer query ser enviada ao
+  Postgres, então esse arquivo roda (e passa) mesmo sem `DATABASE_URL` configurada.
 
 Cada `describe` reproduz o fluxo original (`runAllTests`), com um `it` por área testada
 (métodos base, métodos dinâmicos, relations, includes, transações, etc). `beforeAll` limpa o
@@ -71,3 +75,10 @@ npm test
 
 Roda `test:typing` e depois `test:implementation`, nessa ordem — assim, uma regressão de
 tipagem falha rápido, antes de tentar abrir conexão com o banco.
+
+## CI
+
+O workflow `.github/workflows/ci.yml` roda `pnpm test` (tipagem + implementação) a cada push
+e pull request pra `main`, usando um serviço Postgres efêmero. Antes de rodar os testes, o CI
+aplica as migrations (`prisma migrate deploy`), builda (`pnpm build`) e regenera
+`generated/vsrepo` (`pnpm vsrepo`) — os mesmos passos descritos acima para rodar localmente.

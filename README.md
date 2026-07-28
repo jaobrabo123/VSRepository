@@ -1339,14 +1339,23 @@ try {
 
 **Available subclasses:**
 
-| Class                  | When it's thrown                                              |
-| ---------------------- | ------------------------------------------------------------- |
-| `VSRepoConfigError`    | Invalid configuration in `setupVSRepo`                        |
-| `VSRepoBuildError`     | Invalid method name, field type, or configuration in `build`  |
-| `VSRepoExtendError`    | Invalid argument in `extend`                                  |
-| `VSRepoRuntimeError`   | Runtime error during an operation                             |
+| Class                   | When it's thrown                                                         |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `VSRepoConfigError`     | Invalid configuration in `setupVSRepo`                                   |
+| `VSRepoBuildError`      | Invalid method name, field type, or configuration in `build`             |
+| `VSRepoExtendError`     | Invalid argument in `extend`                                             |
+| `VSRepoDecoratorError`  | Invalid argument passed to `@DynamicMethod` or `@QueryMethod`            |
+| `VSRepoRuntimeError`    | Runtime error during an operation                                        |
 
-`VSRepoRuntimeError` has a `code` property for programmatic identification. Code `"20727"` is thrown by `getOrThrow` when the record is not found, for example.
+`VSRepoRuntimeError` has a `code: VSRepoRuntimeErrorCode` property for programmatic identification, instead of having to parse the (human-readable, and possibly localized) message:
+
+| Code | Meaning |
+| ---- | ------- |
+| `"65706"` | A required argument is missing or has an invalid shape — e.g. a missing `pk`, a `pks`/`objs`/`tuples` that isn't an array, or an `options`/`obj` that isn't a valid object. |
+| `"20727"` | No record was found for the provided primary key (`getOrThrow` when fetching the base record). |
+| `"67542"` | Validation (zod) of a method's `options`, or of a `@QueryMethod` argument, failed. |
+| `"91868"` | A relation passed to `save`/`patch`/`merge` has an invalid shape for the configured `mode`/`restriction` (e.g. `null` on a `mtm`/`otm` relation, or an array on a `oto`/`mto` relation). |
+| `"48670"` | A dynamic method (`config.methods`) was called with fewer positional arguments than its `where` fields require. |
 
 ---
 

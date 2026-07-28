@@ -1,4 +1,5 @@
 import { VSRepoErrorType } from "./types/vs-repo-error-type.type";
+import { VSRepoRuntimeErrorCode } from "./types/vs-repo-runtime-error-code.type";
 
 export abstract class VSRepoError extends Error {
     abstract readonly type: VSRepoErrorType;
@@ -22,9 +23,9 @@ export class VSRepoDecoratorError extends VSRepoError {
 
 export class VSRepoRuntimeError extends VSRepoError {
     override readonly type = "VSREPO_RUNTIME";
-    code: string;
+    readonly code: VSRepoRuntimeErrorCode;
 
-    constructor(message: string, code: string) {
+    constructor(message: string, code: VSRepoRuntimeErrorCode) {
         super(message);
         this.code = code;
     }

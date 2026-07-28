@@ -30,7 +30,7 @@ export type DbTransaction = Prisma.TransactionClient;
  */
 export type ClientOrTransaction = DbClient | DbTransaction;
 
-export * from './VSRepoError';
+export type * from './VSRepoError';
 
 type OrderPattern = {
     [key: string]: 'asc' | 'desc' | { _count: 'asc' | 'desc' } | OrderPattern;

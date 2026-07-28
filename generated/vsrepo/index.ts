@@ -11,7 +11,8 @@ export {
   VSRepoConfigError,
   VSRepoBuildError,
   VSRepoExtendError,
-  VSRepoRuntimeError
+  VSRepoRuntimeError,
+  VSRepoDecoratorError
 } from './VSRepoError.js';
 
 export {

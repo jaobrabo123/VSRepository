@@ -206,7 +206,8 @@ export type * from './DynamicRepository.types';
   VSRepoConfigError,
   VSRepoBuildError,
   VSRepoExtendError,
-  VSRepoRuntimeError
+  VSRepoRuntimeError,
+  VSRepoDecoratorError
 } from './VSRepoError.js';
 
 export {

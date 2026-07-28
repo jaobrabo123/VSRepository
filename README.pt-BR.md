@@ -1339,14 +1339,23 @@ try {
 
 **Subclasses disponíveis:**
 
-| Classe                  | Quando é lançada                                                     |
-| ----------------------- | -------------------------------------------------------------------- |
-| `VSRepoConfigError`     | Configuração inválida em `setupVSRepo`                               |
-| `VSRepoBuildError`      | Nome de método, tipo de campo ou configuração inválida em `build`    |
-| `VSRepoExtendError`     | Argumento inválido em `extend`                                       |
-| `VSRepoRuntimeError`    | Erro em tempo de execução durante uma operação                       |
+| Classe                    | Quando é lançada                                                     |
+| ------------------------- | -------------------------------------------------------------------- |
+| `VSRepoConfigError`       | Configuração inválida em `setupVSRepo`                               |
+| `VSRepoBuildError`        | Nome de método, tipo de campo ou configuração inválida em `build`    |
+| `VSRepoExtendError`       | Argumento inválido em `extend`                                       |
+| `VSRepoDecoratorError`    | Argumento inválido passado para `@DynamicMethod` ou `@QueryMethod`   |
+| `VSRepoRuntimeError`      | Erro em tempo de execução durante uma operação                       |
 
-`VSRepoRuntimeError` tem uma propriedade `code` para identificação programática. O código `"20727"`, por exemplo, é lançado por `getOrThrow` quando o registro não é encontrado.
+`VSRepoRuntimeError` tem uma propriedade `code: VSRepoRuntimeErrorCode` para identificação programática, sem precisar fazer parsing da mensagem (legível por humanos, e possivelmente localizada):
+
+| Código | Significado |
+| ------ | ----------- |
+| `"65706"` | Um argumento obrigatório está ausente ou tem formato inválido — ex.: `pk` ausente, `pks`/`objs`/`tuples` que não são um array, ou `options`/`obj` que não são um objeto válido. |
+| `"20727"` | Nenhum registro foi encontrado para a primary key informada (`getOrThrow` ao buscar o registro base). |
+| `"67542"` | A validação (zod) de `options` de um método, ou de um argumento de `@QueryMethod`, falhou. |
+| `"91868"` | Uma relação passada em `save`/`patch`/`merge` tem formato inválido para o `mode`/`restriction` configurados (ex.: `null` numa relação `mtm`/`otm`, ou um array numa relação `oto`/`mto`). |
+| `"48670"` | Um método dinâmico (`config.methods`) foi chamado com menos argumentos posicionais do que os campos do `where` exigem. |
 
 ---
 
