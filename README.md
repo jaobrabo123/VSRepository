@@ -39,7 +39,7 @@ VSRepository lets you create strongly-typed repositories with:
 - [Include Models](#include-models)
   - [Raw include (options.include)](#raw-include-optionsinclude)
 - [Required Where](#required-where)
-- [Default Ordenation](#default-ordenation)
+- [Default Ordering](#default-ordering)
 - [`see` option](#see-option)
 - [Dynamic methods](#dynamic-methods)
   - [Available prefixes](#available-prefixes)
@@ -661,15 +661,15 @@ Useful for manual soft-deletes, multi-tenancy, and global filters of any kind.
 
 ---
 
-## Default Ordenation
+## Default Ordering
 
-`defaultOrdenation` defines a default ordering that's automatically applied to every query that accepts `orderBy`, without needing to repeat the `order` argument on every call.
+`defaultOrdering` defines a default ordering that's automatically applied to every query that accepts `orderBy`, without needing to repeat the `order` argument on every call.
 
 ```ts
 const userRepository = setupVSRepo<User, "user">()(({
   tableName: "user",
   pkName: "id",
-  defaultOrdenation: { createdAt: "desc" },
+  defaultOrdering: { createdAt: "desc" },
 }).build(prisma);
 ```
 
@@ -683,23 +683,23 @@ const users = await userRepository.getAll();
 const paginated = await userRepository.getAll({ pagination: { take: 10 } });
 ```
 
-**`defaultOrdenation` is ignored when:**
+**`defaultOrdering` is ignored when:**
 
 - The method uses the `Ordered`, `OrderedAndPaginated`, or `PaginatedAndOrdered` suffix — in these cases the `order` argument passed in the call takes priority.
-- The dynamic method has `injectOrdenation` configured — the method's fixed ordering takes precedence.
+- The dynamic method has `injectOrdering` configured — the method's fixed ordering takes precedence.
 
 ```ts
 methods: {
-  findManyPaginatedAndOrdered: { map: true },         // order comes from the argument → defaultOrdenation ignored
-  findManyByActive:            { map: true },         // no Ordered → defaultOrdenation applied
+  findManyPaginatedAndOrdered: { map: true },         // order comes from the argument → defaultOrdering ignored
+  findManyByActive:            { map: true },         // no Ordered → defaultOrdering applied
   findManyByStatus: {
     map: true,
-    injectOrdenation: { name: "asc" },                // injectOrdenation → defaultOrdenation ignored
+    injectOrdering: { name: "asc" },                  // injectOrdering → defaultOrdering ignored
   },
 }
 ```
 
-> `defaultOrdenation` accepts the same type as Prisma's native `orderBy` for the model — including arrays of chained orderings.
+> `defaultOrdering` accepts the same type as Prisma's native `orderBy` for the model — including arrays of chained orderings.
 
 ---
 
@@ -1086,7 +1086,7 @@ Each entry in `methods` accepts the following options:
 | `fbMode`              | `'one'` \| `'list'`                      | `'list'`       | (**Deprecated. Use `findOneBy`**) Only for `findBy`. `'one'` returns `T \| null`; `'list'` returns `T[]`.                   |
 | `proxyTo`             | `Valid method pattern`                   | —              | Delegates the logic to another valid method pattern.                                                                        |
 | `pushWhere`           | `WhereModel<M>`                          | —              | Extra `where` added to the query in addition to `requiredWhere`.                                                            |
-| `injectOrdenation`    | `OrdenationModel<M>`                     | —              | Fixed ordering automatically injected into the query.                                                                       |
+| `injectOrdering`      | `OrderingModel<M>`                       | —              | Fixed ordering automatically injected into the query.                                                                       |
 | `injectPagination`    | `PaginationModel<M>`                     | —              | Fixed pagination automatically injected into the query.                                                                     |
 | `query`               | `{ value: string; modifying?: boolean }` | —              | Turns the method into a **Query Method** (raw SQL). Ignores every other option above — see [Query Methods](#query-methods). |
 
@@ -1176,7 +1176,7 @@ await userRepository.prisma.$transaction(async (tx) => {
 | `modifying`   | `boolean` | `false` | When `true`, executes via `$executeRawUnsafe` and the method always resolves to `number`. When `false`, executes via `$queryRawUnsafe` and the method resolves to `TReturn` (`any` by default, inferable via a generic at the call site). |
 
 > [!NOTE]
-> Unlike the other dynamic methods, Query Methods **completely ignore** `selectModels`, `requiredWhere`, `pushWhere`, `whereType`, `injectOrdenation`, `injectPagination`, and `proxyTo` — none of that applies, since there's no name parsing or `where`/`select` assembly by VSRepository. Free-form method names (outside the `findBy`, `updateBy`, etc. patterns) also **don't** require `proxyTo`.
+> Unlike the other dynamic methods, Query Methods **completely ignore** `selectModels`, `requiredWhere`, `pushWhere`, `whereType`, `injectOrdering`, `injectPagination`, and `proxyTo` — none of that applies, since there's no name parsing or `where`/`select` assembly by VSRepository. Free-form method names (outside the `findBy`, `updateBy`, etc. patterns) also **don't** require `proxyTo`.
 
 The same functionality is available in the class-based approach via the `@QueryMethod` decorator — see [README-DynamicRepo.md](./README-DynamicRepo.md#the-querymethod-decorator).
 
@@ -1388,7 +1388,7 @@ import type {
   IncludeModel,
   IncludeModels,
   WhereModel,
-  OrdenationModel,
+  OrderingModel,
   PaginationModel,
   ModelUpsertInput,
   PrismaModelInputs,
@@ -1471,7 +1471,7 @@ setupVSRepo<TPayload, TTableName>()({
   defaultSelectModel?: keyof SM;                  // Select applied by default
   includeModels?: IncludeModels<M>;               // Named data projections (include) — no default, only in the call
   requiredWhere?: WhereModel<M>;                  // Always-applied filters
-  defaultOrdenation?: OrdenationModel<M>;         // Default ordering for queries without Ordered/injectOrdenation
+  defaultOrdering?: OrderingModel<M>;             // Default ordering for queries without Ordered/injectOrdering
   relations?: RepositoryRelations<T>;             // Relation configuration
   methods?: Record<string, MethodConfig<M, SM>>;  // Dynamic methods
 });
@@ -1593,7 +1593,7 @@ Recommended `tsconfig.json`:
 
 **`softRemovekName` throws an error at build** — The provided field must be of type `DateTime` in the Prisma schema. Types like `Boolean` or `String` are not accepted.
 
-**`defaultOrdenation` isn't being applied** — Check whether the method uses the `Ordered`, `OrderedAndPaginated`, or `PaginatedAndOrdered` suffix, and whether it has `injectOrdenation` configured. Both take priority over the default ordering.
+**`defaultOrdering` isn't being applied** — Check whether the method uses the `Ordered`, `OrderedAndPaginated`, or `PaginatedAndOrdered` suffix, and whether it has `injectOrdering` configured. Both take priority over the default ordering.
 
 **`Distinct` suffix not recognized** — `Distinct` is only resolved on read prefixes (`findMany`, `findFirst`, `findBy`, `existsBy`, etc). In methods like `count`, `createMany`, `updateMany`, or `deleteMany` the suffix is ignored.
 

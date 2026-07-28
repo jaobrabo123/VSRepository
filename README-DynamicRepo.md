@@ -142,10 +142,10 @@ The `@DynamicMethod<M>()` decorator accepts an optional config object:
 
 ```typescript
 @DynamicMethod<"User">({
-    proxyTo: "findByEmail",           // Delegate to another method pattern
-    whereType: "overwrite",           // "extending" (default) or "overwrite"
-    pushWhere: { active: false },      // Extra where clause
-    injectOrdenation: [{ name: "asc" }],  // Fixed ordering
+    proxyTo: "findByEmail",                   // Delegate to another method pattern
+    whereType: "overwrite",                   // "extending" (default) or "overwrite"
+    pushWhere: { active: false },             // Extra where clause
+    injectOrdering: [{ name: "asc" }],        // Fixed ordering
     injectPagination: { skip: 0, take: 10 },  // Fixed pagination
 })
 ```
@@ -155,7 +155,7 @@ The `@DynamicMethod<M>()` decorator accepts an optional config object:
 | `proxyTo`          | `string`                     | Delegates to another valid method pattern (e.g. `"findOneByEmail"`)                                               |
 | `whereType`        | `"extending" \| "overwrite"` | `extending` combines with `requiredWhere`; `overwrite` ignores it                                                 |
 | `pushWhere`        | `WhereModel<M>`              | Extra `where` clause added on top of `requiredWhere`                                                              |
-| `injectOrdenation` | `OrdenationModel<M>`         | Fixed ordering injected into the query                                                                            |
+| `injectOrdering`   | `OrderingModel<M>`           | Fixed ordering injected into the query                                                                            |
 | `injectPagination` | `PaginationModel<M>`         | Fixed pagination injected into the query                                                                          |
 | `fbMode`           | `"one" \| "list"`            | **Deprecated.** Only relevant for `findBy`-prefixed methods. Use `findOneBy` instead if you want a single result. |
 
@@ -195,7 +195,7 @@ Since `@QueryMethod` skips name parsing, there's no automatic type inference for
 | `options.modifying`    | `boolean` | `false` | When `true`, runs via `$executeRawUnsafe`; the field must be declared to return `Promise<number>`. When `false`, runs via `$queryRawUnsafe`. |
 
 > [!NOTE]
-> `@QueryMethod` ignores every other dynamic-method concept — `requiredWhere`, `pushWhere`, `whereType`, `selectModels`/`includeModels`, `injectOrdenation`, `injectPagination`. None of it applies here.
+> `@QueryMethod` ignores every other dynamic-method concept — `requiredWhere`, `pushWhere`, `whereType`, `selectModels`/`includeModels`, `injectOrdering`, `injectPagination`. None of it applies here.
 
 ---
 
@@ -225,7 +225,7 @@ All `DynamicRepository` instances automatically include these methods:
 
 All methods accept an optional `options` argument based on `DynamicMethodOptions` (`db`, `see`, `include`, `select`), but a few methods narrow it further:
 
-- **`getAll`** additionally accepts `pagination?: PaginationOptions` and `order?: OrdenationModel<UName>` (falls back to `defaultOrdenation` when omitted).
+- **`getAll`** additionally accepts `pagination?: PaginationOptions` and `order?: OrderingModel<UName>` (falls back to `defaultOrdering` when omitted).
 - **`saveList` / `patchList`** omit `include` and `select`, and `db` only accepts a `DbTransaction` (the return of `prisma.$transaction`) — not the plain Prisma client.
 - **`removeList`, `total`, `has`** omit `include` and `select`.
 - **`softRemove`, `restore`** omit `see` (soft-delete visibility doesn't apply to the record being changed).
@@ -559,7 +559,7 @@ constructor(prisma: DbClient, config: DynamicRepositoryConstructorConfig<TEntity
 | `pkName`             | `keyof TEntity`                | Primary key field              |
 | `softRemovekName?`   | `keyof TEntity`                | DateTime field for soft-delete |
 | `requiredWhere?`     | `WhereModel<UName>`            | Global filters                 |
-| `defaultOrdenation?` | `OrdenationModel<UName>`       | Default ordering               |
+| `defaultOrdering?`   | `OrderingModel<UName>`         | Default ordering               |
 | `relations?`         | `RepositoryRelations<TEntity>` | Relation configuration         |
 | `build?`             | `DynamicRepositoryBuildConfig` | Build-time options             |
 

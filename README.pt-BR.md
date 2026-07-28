@@ -39,7 +39,7 @@ O VSRepository permite criar repositórios fortemente tipados com:
 - [Include Models](#include-models)
   - [Include bruto (options.include)](#include-bruto-optionsinclude)
 - [Required Where](#required-where)
-- [Ordenação padrão (Default Ordenation)](#ordenação-padrão-default-ordenation)
+- [Ordenação padrão (Default Ordering)](#ordenação-padrão-default-ordering)
 - [Opção `see`](#opção-see)
 - [Métodos dinâmicos](#métodos-dinâmicos)
   - [Prefixos disponíveis](#prefixos-disponíveis)
@@ -661,15 +661,15 @@ const user = await userRepository.findByEmail("john@email.com");
 
 ---
 
-## Ordenação padrão (Default Ordenation)
+## Ordenação padrão (Default Ordering)
 
-`defaultOrdenation` define uma ordenação padrão que é aplicada automaticamente em toda query que aceita `orderBy`, sem precisar repetir o argumento `order` em cada chamada.
+`defaultOrdering` define uma ordenação padrão que é aplicada automaticamente em toda query que aceita `orderBy`, sem precisar repetir o argumento `order` em cada chamada.
 
 ```ts
 const userRepository = setupVSRepo<User, "user">()(({
   tableName: "user",
   pkName: "id",
-  defaultOrdenation: { createdAt: "desc" },
+  defaultOrdering: { createdAt: "desc" },
 }).build(prisma);
 ```
 
@@ -683,23 +683,23 @@ const users = await userRepository.getAll();
 const paginated = await userRepository.getAll({ pagination: { take: 10 } });
 ```
 
-**`defaultOrdenation` é ignorado quando:**
+**`defaultOrdering` é ignorado quando:**
 
 - O método usa o sufixo `Ordered`, `OrderedAndPaginated` ou `PaginatedAndOrdered` — nesses casos, o argumento `order` passado na chamada tem prioridade.
-- O método dinâmico tem `injectOrdenation` configurado — a ordenação fixa do método tem precedência.
+- O método dinâmico tem `injectOrdering` configurado — a ordenação fixa do método tem precedência.
 
 ```ts
 methods: {
-  findManyPaginatedAndOrdered: { map: true },         // order vem do argumento → defaultOrdenation ignorado
-  findManyByActive:            { map: true },         // sem Ordered → defaultOrdenation aplicado
+  findManyPaginatedAndOrdered: { map: true },         // order vem do argumento → defaultOrdering ignorado
+  findManyByActive:            { map: true },         // sem Ordered → defaultOrdering aplicado
   findManyByStatus: {
     map: true,
-    injectOrdenation: { name: "asc" },                // injectOrdenation → defaultOrdenation ignorado
+    injectOrdering: { name: "asc" },                  // injectOrdering → defaultOrdering ignorado
   },
 }
 ```
 
-> `defaultOrdenation` aceita o mesmo tipo do `orderBy` nativo do Prisma para o modelo — incluindo arrays de ordenações encadeadas.
+> `defaultOrdering` aceita o mesmo tipo do `orderBy` nativo do Prisma para o modelo — incluindo arrays de ordenações encadeadas.
 
 ---
 
@@ -1086,7 +1086,7 @@ Cada entrada em `methods` aceita as seguintes opções:
 | `fbMode`              | `'one'` \| `'list'`                      | `'list'`       | (**Deprecated. Use `findOneBy`**) Apenas para `findBy`. `'one'` retorna `T \| null`; `'list'` retorna `T[]`.                        |
 | `proxyTo`             | `Padrão de método válido`                | —              | Delega a lógica para outro padrão de método válido.                                                                                 |
 | `pushWhere`           | `WhereModel<M>`                          | —              | `where` extra adicionado à query além do `requiredWhere`.                                                                           |
-| `injectOrdenation`    | `OrdenationModel<M>`                     | —              | Ordenação fixa injetada automaticamente na query.                                                                                   |
+| `injectOrdering`      | `OrderingModel<M>`                       | —              | Ordenação fixa injetada automaticamente na query.                                                                                   |
 | `injectPagination`    | `PaginationModel<M>`                     | —              | Paginação fixa injetada automaticamente na query.                                                                                   |
 | `query`               | `{ value: string; modifying?: boolean }` | —              | Transforma o método em um **Query Method** (SQL bruto). Ignora todas as outras opções acima — veja [Query Methods](#query-methods). |
 
@@ -1176,7 +1176,7 @@ await userRepository.prisma.$transaction(async (tx) => {
 | `modifying`   | `boolean` | `false` | Quando `true`, executa via `$executeRawUnsafe` e o método sempre resolve para `number`. Quando `false`, executa via `$queryRawUnsafe` e o método resolve para `TReturn` (`any` por padrão, inferível via generic na chamada). |
 
 > [!NOTE]
-> Diferente dos demais métodos dinâmicos, Query Methods **ignoram completamente** `selectModels`, `requiredWhere`, `pushWhere`, `whereType`, `injectOrdenation`, `injectPagination` e `proxyTo` — nada disso se aplica, já que não há parsing de nome nem montagem de `where`/`select` pelo VSRepository. Nomes de métodos livres (fora dos padrões de `findBy`, `updateBy`, etc.) também **não** exigem `proxyTo`.
+> Diferente dos demais métodos dinâmicos, Query Methods **ignoram completamente** `selectModels`, `requiredWhere`, `pushWhere`, `whereType`, `injectOrdering`, `injectPagination` e `proxyTo` — nada disso se aplica, já que não há parsing de nome nem montagem de `where`/`select` pelo VSRepository. Nomes de métodos livres (fora dos padrões de `findBy`, `updateBy`, etc.) também **não** exigem `proxyTo`.
 
 A mesma funcionalidade está disponível na abordagem baseada em classes através do decorator `@QueryMethod` — veja o [README-DynamicRepo.pt-BR.md](./README-DynamicRepo.pt-BR.md#o-decorator-querymethod).
 
@@ -1388,7 +1388,7 @@ import type {
   IncludeModel,
   IncludeModels,
   WhereModel,
-  OrdenationModel,
+  OrderingModel,
   PaginationModel,
   ModelUpsertInput,
   PrismaModelInputs,
@@ -1471,7 +1471,7 @@ setupVSRepo<TPayload, TTableName>()({
   defaultSelectModel?: keyof SM;                  // Select aplicado por padrão
   includeModels?: IncludeModels<M>;               // Projeções de dados nomeadas (include) — sem padrão, apenas na chamada
   requiredWhere?: WhereModel<M>;                  // Filtros sempre aplicados
-  defaultOrdenation?: OrdenationModel<M>;         // Ordenação padrão para queries sem Ordered/injectOrdenation
+  defaultOrdering?: OrderingModel<M>;             // Ordenação padrão para queries sem Ordered/injectOrdering
   relations?: RepositoryRelations<T>;             // Configuração de relações
   methods?: Record<string, MethodConfig<M, SM>>;  // Métodos dinâmicos
 });
@@ -1593,7 +1593,7 @@ Para reportar problemas ou sugerir novas funcionalidades, abra uma **Issue**.
 
 **`softRemovekName` lança um erro no build** — O campo informado deve ser do tipo `DateTime` no schema do Prisma. Tipos como `Boolean` ou `String` não são aceitos.
 
-**`defaultOrdenation` não está sendo aplicado** — Verifique se o método usa o sufixo `Ordered`, `OrderedAndPaginated` ou `PaginatedAndOrdered`, e se tem `injectOrdenation` configurado. Ambos têm prioridade sobre a ordenação padrão.
+**`defaultOrdering` não está sendo aplicado** — Verifique se o método usa o sufixo `Ordered`, `OrderedAndPaginated` ou `PaginatedAndOrdered`, e se tem `injectOrdering` configurado. Ambos têm prioridade sobre a ordenação padrão.
 
 **Sufixo `Distinct` não é reconhecido** — `Distinct` só é resolvido em prefixos de leitura (`findMany`, `findFirst`, `findBy`, `existsBy`, etc). Em métodos como `count`, `createMany`, `updateMany` ou `deleteMany` o sufixo é ignorado.
 

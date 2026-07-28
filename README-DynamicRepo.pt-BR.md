@@ -142,10 +142,10 @@ O decorator `@DynamicMethod<M>()` aceita um objeto de configuração opcional:
 
 ```typescript
 @DynamicMethod<"User">({
-    proxyTo: "findByEmail",           // Delega para outro padrão de método
-    whereType: "overwrite",           // "extending" (padrão) ou "overwrite"
-    pushWhere: { active: false },      // Cláusula where extra
-    injectOrdenation: [{ name: "asc" }],  // Ordenação fixa
+    proxyTo: "findByEmail",                   // Delega para outro padrão de método
+    whereType: "overwrite",                   // "extending" (padrão) ou "overwrite"
+    pushWhere: { active: false },             // Cláusula where extra
+    injectOrdering: [{ name: "asc" }],        // Ordenação fixa
     injectPagination: { skip: 0, take: 10 },  // Paginação fixa
 })
 ```
@@ -155,7 +155,7 @@ O decorator `@DynamicMethod<M>()` aceita um objeto de configuração opcional:
 | `proxyTo`          | `string`                     | Delega para outro padrão de método válido (ex.: `"findOneByEmail"`)                                                            |
 | `whereType`        | `"extending" \| "overwrite"` | `extending` combina com `requiredWhere`; `overwrite` o ignora                                                                  |
 | `pushWhere`        | `WhereModel<M>`              | Cláusula `where` extra adicionada além do `requiredWhere`                                                                      |
-| `injectOrdenation` | `OrdenationModel<M>`         | Ordenação fixa injetada na query                                                                                               |
+| `injectOrdering`   | `OrderingModel<M>`           | Ordenação fixa injetada na query                                                                                               |
 | `injectPagination` | `PaginationModel<M>`         | Paginação fixa injetada na query                                                                                               |
 | `fbMode`           | `"one" \| "list"`            | **Deprecated.** Relevante apenas para métodos com prefixo `findBy`. Use `findOneBy` em vez disso se quiser um resultado único. |
 
@@ -195,7 +195,7 @@ Como `@QueryMethod` pula o parsing de nome, não há inferência automática de 
 | `options.modifying`    | `boolean` | `false` | Quando `true`, executa via `$executeRawUnsafe`; o campo deve ser declarado retornando `Promise<number>`. Quando `false`, executa via `$queryRawUnsafe`. |
 
 > [!NOTE]
-> `@QueryMethod` ignora todos os outros conceitos de método dinâmico — `requiredWhere`, `pushWhere`, `whereType`, `selectModels`/`includeModels`, `injectOrdenation`, `injectPagination`. Nada disso se aplica aqui.
+> `@QueryMethod` ignora todos os outros conceitos de método dinâmico — `requiredWhere`, `pushWhere`, `whereType`, `selectModels`/`includeModels`, `injectOrdering`, `injectPagination`. Nada disso se aplica aqui.
 
 ---
 
@@ -225,7 +225,7 @@ Todas as instâncias de `DynamicRepository` incluem automaticamente estes métod
 
 Todos os métodos aceitam um argumento opcional `options` baseado em `DynamicMethodOptions` (`db`, `see`, `include`, `select`), mas alguns métodos restringem esse tipo:
 
-- **`getAll`** aceita adicionalmente `pagination?: PaginationOptions` e `order?: OrdenationModel<UName>` (usa `defaultOrdenation` quando omitido).
+- **`getAll`** aceita adicionalmente `pagination?: PaginationOptions` e `order?: OrderingModel<UName>` (usa `defaultOrdering` quando omitido).
 - **`saveList` / `patchList`** omitem `include` e `select`, e `db` só aceita uma `DbTransaction` (o retorno de `prisma.$transaction`) — não o client Prisma comum.
 - **`removeList`, `total`, `has`** omitem `include` e `select`.
 - **`softRemove`, `restore`** omitem `see` (a visibilidade de soft-delete não se aplica ao registro sendo alterado).
@@ -559,7 +559,7 @@ constructor(prisma: DbClient, config: DynamicRepositoryConstructorConfig<TEntity
 | `pkName`             | `keyof TEntity`                | Campo da chave primária         |
 | `softRemovekName?`   | `keyof TEntity`                | Campo DateTime para soft-delete |
 | `requiredWhere?`     | `WhereModel<UName>`            | Filtros globais                 |
-| `defaultOrdenation?` | `OrdenationModel<UName>`       | Ordenação padrão                |
+| `defaultOrdering?`   | `OrderingModel<UName>`         | Ordenação padrão                |
 | `relations?`         | `RepositoryRelations<TEntity>` | Configuração de relações        |
 | `build?`             | `DynamicRepositoryBuildConfig` | Opções de build                 |
 
