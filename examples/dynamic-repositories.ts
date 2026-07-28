@@ -17,7 +17,7 @@ import {
     DynamicRepository,
     DynamicMethod,
     DynamicMethodOptions,
-    OrdenationModel,
+    OrderingModel,
     PaginationModel,
     QueryMethod,
     QueryMethodArg,
@@ -157,10 +157,10 @@ class UserRepository extends DynamicRepository<
     @DynamicMethod<"User">({ proxyTo: "findBy", pushWhere: { userType: UserType.ADMIN } })
     declare findAdmins: (options?: DynamicMethodOptions<"User">) => Promise<User[]>;
 
-    // * "injectOrdenation" injects a fixed ordering automatically, without needing an "Ordered" suffix or an
+    // * "injectOrdering" injects a fixed ordering automatically, without needing an "Ordered" suffix or an
     // * extra "order" parameter — here every call is automatically ordered by the address's state and city
     @DynamicMethod<"User">({
-        injectOrdenation: [{ address: { state: "asc" } }, { address: { city: "asc" } }],
+        injectOrdering: [{ address: { state: "asc" } }, { address: { city: "asc" } }],
     })
     declare findByAddressWithCountry: (
         country: string,
@@ -172,7 +172,7 @@ class UserRepository extends DynamicRepository<
     @DynamicMethod()
     declare findByNameContainsInsensitiveOrderedAndPaginated: (
         name: string,
-        order: OrdenationModel<"User">,
+        order: OrderingModel<"User">,
         pagination: PaginationModel<"User">,
         options?: DynamicMethodOptions<"User">,
     ) => Promise<User[]>;
