@@ -16,7 +16,7 @@ import {
     ExtractNestedUpdateInput,
     IncludeModel,
     ModelUpsertInput,
-    OrdenationModel,
+    OrderingModel,
     PaginationModel,
     PaginationOptions,
     PrismaModelInputs,
@@ -232,12 +232,23 @@ export interface DynamicRepositoryConstructorConfig<T, U extends PrismaModelName
 
     /**
      * Default ordering automatically injected into all queries that accept `orderBy`,
-     * unless the method already has `injectOrdenation` configured or uses the `Ordered` suffix.
+     * unless the method already has `injectOrdering` configured or uses the `Ordered` suffix.
      *
      * Useful for ensuring a consistent sort order across the repository without repeating
      * the `order` argument on every call.
      */
-    defaultOrdenation?: OrdenationModel<U>;
+    defaultOrdering?: OrderingModel<U>;
+
+    /**
+     * Default ordering automatically injected into all queries that accept `orderBy`,
+     * unless the method already has `injectOrdering` configured or uses the `Ordered` suffix.
+     *
+     * Useful for ensuring a consistent sort order across the repository without repeating
+     * the `order` argument on every call.
+     *
+     * @deprecated Use `defaultOrdering` instead.
+     */
+    defaultOrdenation?: OrderingModel<U>;
 
     /**
      * Configures automatic relation management.
@@ -344,10 +355,10 @@ export declare abstract class DynamicRepository<
             pagination?: PaginationOptions;
             /**
              * Ordering to apply to the query.
-             * When omitted and `defaultOrdenation` is configured on the repository,
+             * When omitted and `defaultOrdering` is configured on the repository,
              * the default ordering is applied automatically.
              */
-            order?: OrdenationModel<UName>;
+            order?: OrderingModel<UName>;
         },
     ): Promise<TEntity[]>;
 
@@ -393,7 +404,13 @@ export type DynamicMethodConfig<M extends PrismaModelName = PrismaModelName> = {
     fbMode?: "one" | "list";
 
     /** Injects a fixed ordering automatically into the query. */
-    injectOrdenation?: OrdenationModel<M>;
+    injectOrdering?: OrderingModel<M>;
+
+    /**
+     * Injects a fixed ordering automatically into the query.
+     * @deprecated Use `injectOrdering` instead.
+     */
+    injectOrdenation?: OrderingModel<M>;
 
     /** Injects a fixed pagination automatically into the query. */
     injectPagination?: PaginationModel<M>;
@@ -414,7 +431,7 @@ export type DynamicMethodConfig<M extends PrismaModelName = PrismaModelName> = {
  *     `@DynamicMethod()`
  *     declare findOneByEmail: (email: string) => Promise<User | null>;
  *
- *     @DynamicMethod<"User">({ injectOrdenation: { createdAt: "desc" } })
+ *     @DynamicMethod<"User">({ injectOrdering: { createdAt: "desc" } })
  *     declare findByAge: (email: number) => Promise<User[]>;
  * }
  * ```
