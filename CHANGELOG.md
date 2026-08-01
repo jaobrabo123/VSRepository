@@ -6,6 +6,44 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.3.6] - 2026-08-01
+
+### Added
+- `ordering` support in method options, replacing `ordenation` as the preferred name while keeping full backward compatibility — `ordenation` is now marked as deprecated
+- GitHub Actions CI workflow (`.github/workflows/ci.yml`) to lint, typecheck and test the project on every push and pull request
+- Error handling tests (`test/implementation/error-handling.test.ts`) covering the `VSRepoRuntimeError` error codes
+- Documentation of all `VSRepoRuntimeError` error codes in README.md and README.pt-BR.md
+
+### Fixed
+- Generated `index.ts` now exports the `VSRepoDecoratorError` class (previously missing from the generated output, preventing consumers from importing it)
+- Fixed internal typo `dinamic` → `dynamic` in file names, constants and types (e.g. `dynamic-method-info`, `dynamic-method-customization`, `dynamic-methods-key`)
+
+### Changed
+- Tests, examples and documentation updated to use `ordering` instead of `ordenation`
+- `ordenation` marked as deprecated in favor of `ordering` (still fully supported)
+- Reformatted Markdown documentation files for better consistency and readability
+
+---
+
+## [1.3.6] - 2026-08-01 (Português)
+
+### Adicionado
+- Suporte a `ordering` nas options dos métodos, substituindo `ordenation` como nome preferido mantendo compatibilidade total com versões anteriores — `ordenation` agora está marcado como deprecated
+- Workflow de CI do GitHub Actions (`.github/workflows/ci.yml`) para executar lint, typecheck e testes a cada push e pull request
+- Testes de error handling (`test/implementation/error-handling.test.ts`) cobrindo os códigos de erro do `VSRepoRuntimeError`
+- Documentação de todos os códigos de erro do `VSRepoRuntimeError` no README.md e README.pt-BR.md
+
+### Corrigido
+- O `index.ts` gerado agora exporta a classe `VSRepoDecoratorError` (antes ausente na saída gerada, impedindo que consumidores conseguissem importá-la)
+- Corrigido typo interno `dinamic` → `dynamic` em nomes de arquivos, constantes e tipos (ex.: `dynamic-method-info`, `dynamic-method-customization`, `dynamic-methods-key`)
+
+### Alterado
+- Testes, exemplos e documentação atualizados para usar `ordering` no lugar de `ordenation`
+- `ordenation` marcado como deprecated em favor de `ordering` (ainda totalmente suportado)
+- Reformatados os arquivos de documentação Markdown para melhor consistência e legibilidade
+
+---
+
 ## [1.3.5] - 2026-07-27
 
 ### Added
