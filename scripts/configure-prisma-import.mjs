@@ -236,7 +236,8 @@ for (const file of tsFiles) {
   console.log(`Gerado: ${path.relative(workspaceRoot, targetFile)}`);
 }
 
-// Copia os READMEs da raiz do projeto para a pasta 'docs' do diretório de output
+// Copia os READMEs da raiz do PACOTE vsrepo (nao do projeto do consumidor)
+// para a pasta 'docs' do diretório de output.
 const readmeFiles = [
   'README.md',
   'README.pt-BR.md',
@@ -248,14 +249,14 @@ const readmeOutputDir = path.join(outputDir, 'docs');
 fs.mkdirSync(readmeOutputDir, { recursive: true });
 
 for (const fileName of readmeFiles) {
-  const readmeSource = path.join(workspaceRoot, fileName);
+  const readmeSource = path.join(packageRoot, fileName);
   const readmeTarget = path.join(readmeOutputDir, fileName);
 
   if (fs.existsSync(readmeSource)) {
     fs.copyFileSync(readmeSource, readmeTarget);
     console.log(`Gerado: ${path.relative(workspaceRoot, readmeTarget)}`);
   } else {
-    console.warn(`README nao encontrado em: ${path.relative(workspaceRoot, readmeSource)}. Ignorando a copia.`);
+    console.warn(`README nao encontrado no pacote em: ${readmeSource}. Ignorando a copia.`);
   }
 }
 
