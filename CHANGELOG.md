@@ -6,6 +6,26 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.3.8] - 2026-08-03
+
+### Fixed
+- `vsrepo generate` now copies the README files from the `vsrepo` package root (`node_modules/vsrepo` or the repository itself) instead of the consumer project's root — previously it copied the consumer's own `README.md` and failed to find the other READMEs (`README.pt-BR.md`, `README-DynamicRepo.md`, `README-DynamicRepo.pt-BR.md`) when they didn't exist in the consumer project
+
+### Changed
+- The `files` field in `package.json` now explicitly includes the README files (`README.md`, `README.pt-BR.md`, `README-DynamicRepo.md`, `README-DynamicRepo.pt-BR.md`) so they are shipped inside the published npm package — previously only `README.md` and `README.pt-BR.md` were included automatically by npm, leaving the `README-DynamicRepo*` files missing from the installed package
+
+---
+
+## [1.3.8] - 2026-08-03 (Português)
+
+### Corrigido
+- `vsrepo generate` agora copia os READMEs da raiz do pacote `vsrepo` (`node_modules/vsrepo` ou o próprio repositório) em vez da raiz do projeto do consumidor — antes ele copiava o `README.md` do próprio consumidor e falhava ao não encontrar os demais READMEs (`README.pt-BR.md`, `README-DynamicRepo.md`, `README-DynamicRepo.pt-BR.md`) quando eles não existiam no projeto do consumidor
+
+### Alterado
+- O campo `files` no `package.json` agora inclui explicitamente os arquivos README (`README.md`, `README.pt-BR.md`, `README-DynamicRepo.md`, `README-DynamicRepo.pt-BR.md`) para que sejam empacotados no pacote npm publicado — antes apenas `README.md` e `README.pt-BR.md` eram incluídos automaticamente pelo npm, deixando os arquivos `README-DynamicRepo*` ausentes do pacote instalado
+
+---
+
 ## [1.3.7] - 2026-08-03
 
 ### Added
