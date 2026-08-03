@@ -34,7 +34,11 @@
   "type": "commonjs",
   "files": [
     "dist",
-    "scripts"
+    "scripts",
+    "README.md",
+    "README.pt-BR.md",
+    "README-DynamicRepo.md",
+    "README-DynamicRepo.pt-BR.md"
   ],
   "bin": {
     "vsrepo": "scripts/configure-prisma-import.mjs"
