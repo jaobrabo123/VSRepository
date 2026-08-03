@@ -6,6 +6,26 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.3.7] - 2026-08-03
+
+### Added
+- `vsrepo generate` now copies the project READMEs (`README.md`, `README.pt-BR.md`, `README-DynamicRepo.md`, `README-DynamicRepo.pt-BR.md`) to a `docs/` folder inside the generated output directory
+
+### Changed
+- The generated output now includes a `docs/` directory containing the project documentation
+
+---
+
+## [1.3.7] - 2026-08-03 (Português)
+
+### Adicionado
+- `vsrepo generate` agora copia os READMEs do projeto (`README.md`, `README.pt-BR.md`, `README-DynamicRepo.md`, `README-DynamicRepo.pt-BR.md`) para uma pasta `docs/` dentro do diretório de saída gerado
+
+### Alterado
+- A saída gerada agora inclui um diretório `docs/` contendo a documentação do projeto
+
+---
+
 ## [1.3.6] - 2026-08-01
 
 ### Added
