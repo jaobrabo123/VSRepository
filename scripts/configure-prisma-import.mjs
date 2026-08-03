@@ -236,16 +236,28 @@ for (const file of tsFiles) {
   console.log(`Gerado: ${path.relative(workspaceRoot, targetFile)}`);
 }
 
-// Copia o README.md do pacote VSRepository para o diretório de output, se existir
-// const readmeSource = path.join(packageRoot, 'README.md');
-// const readmeTarget = path.join(outputDir, 'README.md');
+// Copia os READMEs da raiz do projeto para a pasta 'docs' do diretório de output
+const readmeFiles = [
+  'README.md',
+  'README.pt-BR.md',
+  'README-DynamicRepo.md',
+  'README-DynamicRepo.pt-BR.md',
+];
 
-// if (fs.existsSync(readmeSource)) {
-//   fs.copyFileSync(readmeSource, readmeTarget);
-//   console.log(`Gerado: ${path.relative(workspaceRoot, readmeTarget)}`);
-// } else {
-//   console.warn(`README.md do VSRepository nao encontrado em: ${path.relative(workspaceRoot, readmeSource)}. Ignorando a copia.`);
-// }
+const readmeOutputDir = path.join(outputDir, 'docs');
+fs.mkdirSync(readmeOutputDir, { recursive: true });
+
+for (const fileName of readmeFiles) {
+  const readmeSource = path.join(workspaceRoot, fileName);
+  const readmeTarget = path.join(readmeOutputDir, fileName);
+
+  if (fs.existsSync(readmeSource)) {
+    fs.copyFileSync(readmeSource, readmeTarget);
+    console.log(`Gerado: ${path.relative(workspaceRoot, readmeTarget)}`);
+  } else {
+    console.warn(`README nao encontrado em: ${path.relative(workspaceRoot, readmeSource)}. Ignorando a copia.`);
+  }
+}
 
 console.log('\nVSRepository gerado com tipagem do Prisma.');
 console.log(`Output: ${path.relative(workspaceRoot, outputDir)}`);
