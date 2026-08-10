@@ -1,8 +1,14 @@
-# VSRepository
+<div align="center">
+  <img src="https://res.cloudinary.com/ddbfifdxd/image/upload/w_200,q_auto,f_auto/v1786386427/VS_logo_TextoAbaixo_yev4tq.png" alt="VSRepository Logo" width="200"/>
 
-![npm](https://img.shields.io/npm/v/vsrepo?style=flat-square)
-![NPM License](https://img.shields.io/npm/l/vsrepo?style=flat-square)
-![NPM Downloads](https://img.shields.io/npm/dt/vsrepo?style=flat-square)
+  <p style="margin-top: 12px;">
+    <img src="https://img.shields.io/npm/v/vsrepo?style=flat-square" alt="npm version"/>
+    <img src="https://img.shields.io/npm/l/vsrepo?style=flat-square" alt="npm license"/>
+    <img src="https://img.shields.io/npm/dt/vsrepo?style=flat-square" alt="npm downloads"/>
+  </p>
+</div>
+
+# VSRepository
 
 🇺🇸 You're reading the English version. [🇧🇷 Ler em português](./README.pt-BR.md)
 
