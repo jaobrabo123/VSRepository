@@ -5,6 +5,7 @@
     <img src="https://img.shields.io/npm/v/vsrepo?style=flat-square" alt="npm version"/>
     <img src="https://img.shields.io/npm/l/vsrepo?style=flat-square" alt="npm license"/>
     <img src="https://img.shields.io/npm/dt/vsrepo?style=flat-square" alt="npm downloads"/>
+    <img src="https://img.shields.io/badge/inspired%20by-JpaRepository-E73121?style=flat-square" alt="inspired by JpaRepository"/>
   </p>
 </div>
 
