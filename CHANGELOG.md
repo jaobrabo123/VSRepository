@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.3.9] - 2026-08-10
+
+### Added
+- Now `README.md` and `README.pt-BR.md` include the `VSRepository` logo for visual identity.
+
+---
+
+## [1.3.9] - 2026-08-10 (Português)
+
+### Adicionado
+- Agora `README.md` e `README.pt-BR.md` contém a logo do `VSRepository` para identidade visual.
+
+---
+
 ## [1.3.8] - 2026-08-03
 
 ### Fixed
