@@ -1,7 +1,8 @@
+import merge from "deepmerge";
 import { PrettyWhere } from "./types/pretty-where.type";
 
 export function resolveSpecificWhere(args: any[], prettyWheres: PrettyWhere[]) {
-    const specificWhere: Record<string, any> = {};
+    let specificWhere: Record<string, any> = {};
     let OR: any[] | undefined;
     let AND: any[] | undefined;
 
@@ -45,16 +46,20 @@ export function resolveSpecificWhere(args: any[], prettyWheres: PrettyWhere[]) {
         if (currentWhereRslvd.otherProps !== undefined) {
             Object.assign(path[currentWhereRslvd.argName], currentWhereRslvd.otherProps);
         }
+
         if (ormode) {
             if (!OR) OR = [];
             if (!OR[modeIdx!]) OR[modeIdx!] = {};
-            Object.assign(OR[modeIdx!], path);
+            OR[modeIdx!] = merge(OR[modeIdx!], path)
+            // Object.assign(OR[modeIdx!], path);
         } else if (andmode) {
             if (!AND) AND = [];
             if (!AND[modeIdx!]) AND[modeIdx!] = {};
-            Object.assign(AND[modeIdx!], path);
+            AND[modeIdx!] = merge(AND[modeIdx!], path);
+            // Object.assign(AND[modeIdx!], path);
         } else {
-            Object.assign(specificWhere, path);
+            specificWhere = merge(specificWhere, path)
+            // Object.assign(specificWhere, path);
         }
     }
 
