@@ -98,6 +98,7 @@ export function resolveUglyWhere(keySplitedAnd: string) {
         } else {
             uglyWhere.pushProperty = `isNot.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? "" : `.${uglyWhere.pushProperty}`}`;
         }
+
         keySplitedAnd = keySplitedConector[0]!;
     } else if (keySplitedAnd.includes("With")) {
         const keySplitedConector = keySplitedAnd.split("With");
@@ -112,6 +113,7 @@ export function resolveUglyWhere(keySplitedAnd: string) {
         } else {
             uglyWhere.pushProperty = `is.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? "" : `.${uglyWhere.pushProperty}`}`;
         }
+
         keySplitedAnd = keySplitedConector[0]!;
     } else if (keySplitedAnd.includes("Some")) {
         const keySplitedConector = keySplitedAnd.split("Some");
@@ -122,6 +124,7 @@ export function resolveUglyWhere(keySplitedAnd: string) {
         } else {
             uglyWhere.pushProperty = `some.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? "" : `.${uglyWhere.pushProperty}`}`;
         }
+
         keySplitedAnd = keySplitedConector[0]!;
     } else if (keySplitedAnd.includes("Every")) {
         const keySplitedConector = keySplitedAnd.split("Every");
@@ -132,6 +135,7 @@ export function resolveUglyWhere(keySplitedAnd: string) {
         } else {
             uglyWhere.pushProperty = `every.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? "" : `.${uglyWhere.pushProperty}`}`;
         }
+
         keySplitedAnd = keySplitedConector[0]!;
     } else if (keySplitedAnd.includes("None")) {
         const keySplitedConector = keySplitedAnd.split("None");
@@ -142,6 +146,7 @@ export function resolveUglyWhere(keySplitedAnd: string) {
         } else {
             uglyWhere.pushProperty = `none.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? "" : `.${uglyWhere.pushProperty}`}`;
         }
+
         keySplitedAnd = keySplitedConector[0]!;
     }
 
