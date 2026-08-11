@@ -6,6 +6,26 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.4.0] - 2026-08-11
+
+### Fixed
+- Dynamic methods combining multiple filters on the **same relation** no longer lose all but the last filter — previously, filters like `findBy...AndEnderecoWithEstadoAndEnderecoWithCidadeNormalizadaStartsWith...` produced a `where` with only the last relation filter (`estado` was lost), because `resolveSpecificWhere` merged the generated paths with `Object.assign` (shallow merge). It now uses `deepmerge` (deep merge), so relation filters coexist correctly (e.g. `endereco: { is: { estado, cidadeNormalizada } }`)
+
+### Added
+- Regression tests (`test/implementation/specific-where.test.ts`) covering multiple filters on the same relation in `resolveSpecificWhere`, including plain fields, relation filters, OR/AND groups, pure `With` combined with `WithField`, and `betweenMode` combined with another operator on the same field
+
+---
+
+## [1.4.0] - 2026-08-11 (Português)
+
+### Corrigido
+- Métodos dinâmicos que combinam múltiplos filtros na **mesma relation** não perdem mais todos os filtros exceto o último — antes, filtros como `findBy...AndEnderecoWithEstadoAndEnderecoWithCidadeNormalizadaStartsWith...` geravam um `where` apenas com o último filtro da relation (`estado` era perdido), porque o `resolveSpecificWhere` mesclava os caminhos gerados com `Object.assign` (merge raso). Agora ele usa `deepmerge` (merge profundo), fazendo os filtros de relation coexistirem corretamente (ex.: `endereco: { is: { estado, cidadeNormalizada } }`)
+
+### Adicionado
+- Testes de regressão (`test/implementation/specific-where.test.ts`) cobrindo múltiplos filtros na mesma relation em `resolveSpecificWhere`, incluindo campos simples, filtros de relation, grupos OR/AND, `With` puro combinado com `WithCampo`, e `betweenMode` combinado com outro operador no mesmo campo
+
+---
+
 ## [1.3.9] - 2026-08-10
 
 ### Added
