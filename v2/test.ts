@@ -5,7 +5,6 @@ import { UserGetPayload } from "../generated/prisma/models";
 import { VSRepoPrisma7Adapter } from "./adapters/prisma7/prisma7.adapter";
 import { DynamicMethod } from "./decorators/dynamic-method.decorator";
 
-import "reflect-metadata";
 import { VSLogLevel } from "./internal/enums/vs-log-level.enum";
 import { QueryMethod } from "./decorators/query-method.decorator";
 

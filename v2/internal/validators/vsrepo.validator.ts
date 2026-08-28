@@ -42,7 +42,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
 
     private readonly methodOptionsSchema = z.strictObject({
         db: z.looseObject({}).optional(),
-        see: z.enum(["active", "removed", "all"]).default("active"),
+        see: z.enum(["active", "removed", "all"]).optional(),
         relations: z.looseObject({}).optional(),
         select: z.looseObject({}).optional(),
     });

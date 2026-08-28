@@ -193,8 +193,7 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.method = "upsert";
             dynamicMethodInfo.createIndex = -3;
             dynamicMethodInfo.updateIndex = -2;
-            dynamicMethodInfo.otherParams.push("update");
-            dynamicMethodInfo.otherParams.push("create");
+            dynamicMethodInfo.otherParams.push("create", "update");
             dynamicMethodInfo.argsCount += 2;
         } else if (dynamicMethod.startsWith("upsertWhere")) {
             dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("upsertWhere", "");
@@ -204,7 +203,7 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.createIndex = -3;
             dynamicMethodInfo.updateIndex = -2;
             dynamicMethodInfo.whereIndex = 0;
-            dynamicMethodInfo.otherParams.push("where", "update", "create");
+            dynamicMethodInfo.otherParams.push("where", "create", "update");
             dynamicMethodInfo.argsCount += 3;
         } else if (dynamicMethod.startsWith("deleteManyReturningBy")) {
             dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("deleteManyReturningBy", "");

@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import { VSRepoOptions } from "./types/vsrepo/vsrepo-options.type";
 import { CountResult } from "./types/utils/count-result.type";
 import { DeepPartial } from "./types/utils/deep-partial.type";
@@ -90,11 +91,10 @@ export abstract class VSRepository<
         methodName: string,
         optionsUnchecked: unknown,
     ): Promise<R> {
-        const optionsChecked = (
+        const optionsChecked =
             methodName === "getAll"
-                ? this.validator.validateGetAllMethodOptions
-                : this.validator.validateMethodOptions
-        )(optionsUnchecked);
+                ? this.validator.validateGetAllMethodOptions(optionsUnchecked)
+                : this.validator.validateMethodOptions(optionsUnchecked);
 
         optionsChecked.db ??= this.getDbClient();
 
