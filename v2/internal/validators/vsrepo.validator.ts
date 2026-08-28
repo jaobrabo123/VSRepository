@@ -6,8 +6,13 @@ import orderingSchema from "./schemas/ordering.schema";
 import { MethodOptions } from "../../types/utils/methods-options.type";
 import { QueryMethodArg } from "../../types/utils/query-method-arg.type";
 import { VSRepoErrorType } from "../enums/vsrepo-errortype.enum";
+import { VSRepoTransactionOptions } from "../../types/vsrepo/vsrepo-transaction-options.type";
+import { TransactionIsolationLevel } from "../enums/transaction-isolation-level.enum";
+import { VSRepoOrmTypes } from "../../types/vsrepo/vsrepo-orm-types.type";
+import { Pagination } from "../../types/utils/pagination.type";
+import { Ordering } from "../../types/utils/ordering.type";
 
-export class VSRepoValidator<T, K> {
+export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
     private readonly constructorOptionsSchema = z.object({
         // * Usando any ao invés de instanceof para não ter erro de referencia
         adapter: z.any(),
@@ -42,8 +47,30 @@ export class VSRepoValidator<T, K> {
         select: z.looseObject({}).optional(),
     });
 
-    validateMethodOptions(options: unknown): MethodOptions<T> {
+    validateMethodOptions(options?: unknown): MethodOptions<T, O> {
         const optionsParsed = this.methodOptionsSchema.safeParse(options ?? {});
+
+        if (!optionsParsed.success) {
+            const firstIssue = optionsParsed.error.issues[0];
+            const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
+            throw new VSRepoError(`${path}: ${firstIssue?.message}`, VSRepoErrorType.VALIDATOR);
+        }
+
+        return optionsParsed.data as unknown as MethodOptions<T>;
+    }
+
+    private readonly getAllMethodOptionsSchema = this.methodOptionsSchema.safeExtend({
+        order: orderingSchema.optional(),
+        pagination: z
+            .object({ limit: z.number().optional(), offset: z.number().optional() })
+            .optional(),
+    });
+
+    validateGetAllMethodOptions(options?: unknown): MethodOptions<T, O> & {
+        pagination?: Pagination;
+        order?: Ordering<T>;
+    } {
+        const optionsParsed = this.getAllMethodOptionsSchema.safeParse(options ?? {});
 
         if (!optionsParsed.success) {
             const firstIssue = optionsParsed.error.issues[0];
@@ -69,5 +96,22 @@ export class VSRepoValidator<T, K> {
         }
 
         return argParsed.data;
+    }
+
+    private transactionOptionsSchema = z.object({
+        timeoutMs: z.number().optional(),
+        isolationLevel: z.enum(TransactionIsolationLevel).optional(),
+    });
+
+    validateTransactionOptions(options: unknown): VSRepoTransactionOptions {
+        const optionsParsed = this.transactionOptionsSchema.safeParse(options ?? {});
+
+        if (!optionsParsed.success) {
+            const firstIssue = optionsParsed.error.issues[0];
+            const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
+            throw new VSRepoError(`${path}: ${firstIssue?.message}`, VSRepoErrorType.VALIDATOR);
+        }
+
+        return optionsParsed.data;
     }
 }

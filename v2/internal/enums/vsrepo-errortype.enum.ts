@@ -6,4 +6,5 @@ export enum VSRepoErrorType {
     RESOLVER = "RESOLVER",
     DYNAMIC = "DYNAMIC",
     VALIDATOR = "VALIDATOR",
+    BASE = "BASE",
 }

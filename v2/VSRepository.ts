@@ -15,6 +15,8 @@ import { VSLogLevel } from "./internal/enums/vs-log-level.enum";
 import { VSRepoValidator } from "./internal/validators/vsrepo.validator";
 import { VSRepoArgs } from "./types/vsrepo/vsrepo-args.type";
 import { DynamicMethodsResolver } from "./internal/resolvers/dynamic-methods.resolver";
+import { VSRepoError } from "./errors/VSRepoError";
+import { VSRepoErrorType } from "./internal/enums/vsrepo-errortype.enum";
 
 /**
  * @publicApi
@@ -29,13 +31,13 @@ export abstract class VSRepository<
     private readonly adapter: VSRepoAdapter<Entity>;
     private readonly mergeWheresResolver: MergeWheresResolver<Entity>;
     private readonly logger: VSLogger;
-    private readonly validator: VSRepoValidator<Entity, PKType>;
+    private readonly validator: VSRepoValidator<Entity, PKType, OrmTypes>;
 
     private readonly softRemoveKey?: keyof Entity;
     private readonly defaultOrdering?: Ordering<Entity>;
 
     /**
-     * This is a property managed by the VSRepository, please don't modify it!!
+     * This is a property managed by VSRepository, please don't modify it!!
      * @internal
      */
     $vsrepocache: Map<
@@ -44,7 +46,7 @@ export abstract class VSRepository<
     > = new Map();
 
     constructor(options: VSRepoOptions<Entity, PKType>) {
-        this.validator = new VSRepoValidator<Entity, PKType>();
+        this.validator = new VSRepoValidator<Entity, PKType, OrmTypes>();
 
         const optionsValidated = this.validator.validateConstructorOptions(options);
 
@@ -83,42 +85,82 @@ export abstract class VSRepository<
         return { [this.pkName]: { in: pks } } as VSRepoWhere<Entity>;
     }
 
+    private async execBaseMethod<R>(
+        fn: (optionsChecked: MethodOptions<Entity, OrmTypes>) => Promise<R>,
+        methodName: string,
+        optionsUnchecked: unknown,
+    ): Promise<R> {
+        const optionsChecked = (
+            methodName === "getAll"
+                ? this.validator.validateGetAllMethodOptions
+                : this.validator.validateMethodOptions
+        )(optionsUnchecked);
+
+        optionsChecked.db ??= this.getDbClient();
+
+        const start = this.logger.startPerformLog("run " + methodName);
+        const result = await fn(optionsChecked);
+        this.logger.endPerformLog(start);
+
+        return result;
+    }
+
     async transaction<R, TX = OrmTypes["dbTransaction"]>(
         fn: (tx: TX) => Promise<R>,
         options?: VSRepoTransactionOptions,
     ): Promise<R> {
-        return this.adapter.runInTransaction(fn, options);
+        if (typeof fn !== "function") {
+            throw new VSRepoError("'fn' must be a valid function", VSRepoErrorType.BASE);
+        }
+
+        return this.adapter.runInTransaction(
+            fn,
+            this.validator.validateTransactionOptions(options),
+        );
     }
 
-    getDbClient<DB = OrmTypes["dbClient"]>(): DB {
+    getDbClient<DB extends any = OrmTypes["dbClient"]>(): DB {
         return this.adapter.getDbClient();
     }
 
     async get(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity | null> {
-        const result = await this.adapter.findOne(
-            this.mergeWheresResolver.resolve(options?.see, this.wherePk(pk)),
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.findOne(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    opt,
+                ),
+            "get",
             options,
         );
-
-        return result;
     }
 
     async getOrThrow(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
-        const result = await this.adapter.findOneOrThrow(
-            this.mergeWheresResolver.resolve(options?.see, this.wherePk(pk)),
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.findOneOrThrow(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    opt,
+                ),
+            "getOrThrow",
             options,
         );
-
-        return result;
     }
 
     async getList(pks: PKType[], options?: MethodOptions<Entity, OrmTypes>): Promise<Entity[]> {
-        const result = await this.adapter.findMany(
-            this.mergeWheresResolver.resolve(options?.see, this.wherePkIn(pks)),
+        if (!Array.isArray(pks)) {
+            throw new VSRepoError("'pks' must be a valid array", VSRepoErrorType.BASE);
+        }
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.findMany(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePkIn(pks)),
+                    opt,
+                ),
+            "getList",
             options,
         );
-
-        return result;
     }
 
     async getAll(
@@ -127,51 +169,60 @@ export abstract class VSRepository<
             order?: Ordering<Entity>;
         },
     ): Promise<Entity[]> {
-        const result = await this.adapter.findMany(
-            this.mergeWheresResolver.resolve(options?.see, {}),
+        return this.execBaseMethod(
+            opt => this.adapter.findMany(this.mergeWheresResolver.resolve(opt.see, {}), opt),
+            "getAll",
             options,
         );
-
-        return result;
     }
 
     async save(
         obj: DeepPartial<Entity>,
         options?: MethodOptions<Entity, OrmTypes>,
     ): Promise<Entity> {
-        const result = await this.adapter.save(obj, options);
-
-        return result;
+        return this.execBaseMethod(opt => this.adapter.save(obj, opt), "save", options);
     }
 
     async saveList(
         objs: DeepPartial<Entity>[],
-        options?: MethodOptions<Entity, OrmTypes>,
+        options?: MethodOptions<Entity, OrmTypes> & { db?: OrmTypes["dbTransaction"] },
     ): Promise<Entity[]> {
-        const result = await this.adapter.saveMany(objs, options);
+        if (!Array.isArray(objs)) {
+            throw new VSRepoError("'objs' must be a valid array", VSRepoErrorType.BASE);
+        }
 
-        return result;
+        return this.execBaseMethod(opt => this.adapter.saveMany(objs, opt), "saveList", options);
     }
 
     async remove(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
-        const result = await this.adapter.delete(
-            this.mergeWheresResolver.resolve(options?.see, this.wherePk(pk)),
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.delete(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    opt,
+                ),
+            "remove",
             options,
         );
-
-        return result;
     }
 
     async removeList(
         pks: PKType[],
         options?: MethodOptions<Entity, OrmTypes>,
     ): Promise<CountResult> {
-        const result = await this.adapter.deleteMany(
-            this.mergeWheresResolver.resolve(options?.see, this.wherePkIn(pks)),
+        if (!Array.isArray(pks)) {
+            throw new VSRepoError("'pks' must be a valid array", VSRepoErrorType.BASE);
+        }
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.deleteMany(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePkIn(pks)),
+                    opt,
+                ),
+            "removeList",
             options,
         );
-
-        return result;
     }
 
     async patch(
@@ -179,13 +230,16 @@ export abstract class VSRepository<
         obj: DeepPartial<Entity>,
         options?: MethodOptions<Entity, OrmTypes>,
     ): Promise<Entity> {
-        const result = await this.adapter.update(
-            this.mergeWheresResolver.resolve(options?.see, this.wherePk(pk)),
-            obj,
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.update(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    obj,
+                    opt,
+                ),
+            "patch",
             options,
         );
-
-        return result;
     }
 
     async merge<U extends DeepPartial<Entity>>(
@@ -193,45 +247,58 @@ export abstract class VSRepository<
         obj: U,
         options?: MethodOptions<Entity, OrmTypes>,
     ): Promise<(U & Entity) | null> {
-        const result = await this.adapter.merge<U>(
-            this.mergeWheresResolver.resolve(options?.see, this.wherePk(pk)),
-            obj,
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.merge<U>(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    obj,
+                    opt,
+                ),
+            "merge",
             options,
         );
-
-        return result;
     }
 
     async total(options?: MethodOptions<Entity, OrmTypes>): Promise<number> {
-        const result = await this.adapter.count(
-            this.mergeWheresResolver.resolve(options?.see, {}),
+        return this.execBaseMethod(
+            opt => this.adapter.count(this.mergeWheresResolver.resolve(opt.see, {}), opt),
+            "total",
             options,
         );
-
-        return result;
     }
 
     async has(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<boolean> {
-        const result = await this.adapter.exists(
-            this.mergeWheresResolver.resolve(options?.see, this.wherePk(pk)),
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.exists(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    opt,
+                ),
+            "has",
             options,
         );
-
-        return result;
     }
 
     async softRemove(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
         if (!this.softRemoveKey) {
-            throw new Error();
+            throw new VSRepoError(
+                "this method can only be used if you have configured 'softRemoveKey' in this repository.",
+                VSRepoErrorType.BASE,
+            );
         }
 
-        const result = await this.adapter.update(
-            this.mergeWheresResolver.resolve("all", this.wherePk(pk)),
-            { [this.softRemoveKey]: new Date() } as DeepPartial<Entity>,
+        const key = this.softRemoveKey;
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.update(
+                    this.mergeWheresResolver.resolve(opt.see ?? "all", this.wherePk(pk)),
+                    { [key]: new Date() } as DeepPartial<Entity>,
+                    opt,
+                ),
+            "softRemove",
             options,
         );
-
-        return result;
     }
 
     async softRemoveList(
@@ -239,30 +306,49 @@ export abstract class VSRepository<
         options?: MethodOptions<Entity, OrmTypes>,
     ): Promise<CountResult> {
         if (!this.softRemoveKey) {
-            throw new Error();
+            throw new VSRepoError(
+                "this method can only be used if you have configured 'softRemoveKey' in this repository.",
+                VSRepoErrorType.BASE,
+            );
+        }
+        if (!Array.isArray(pks)) {
+            throw new VSRepoError("'pks' must be a valid array", VSRepoErrorType.BASE);
         }
 
-        const result = await this.adapter.updateMany(
-            this.mergeWheresResolver.resolve("all", this.wherePkIn(pks)),
-            { [this.softRemoveKey]: new Date() } as DeepPartial<Entity>,
+        const key = this.softRemoveKey;
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.updateMany(
+                    this.mergeWheresResolver.resolve(opt.see ?? "all", this.wherePkIn(pks)),
+                    { [key]: new Date() } as DeepPartial<Entity>,
+                    opt,
+                ),
+            "softRemoveList",
             options,
         );
-
-        return result;
     }
 
     async restore(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
         if (!this.softRemoveKey) {
-            throw new Error();
+            throw new VSRepoError(
+                "this method can only be used if you have configured 'softRemoveKey' in this repository.",
+                VSRepoErrorType.BASE,
+            );
         }
 
-        const result = await this.adapter.update(
-            this.mergeWheresResolver.resolve("all", this.wherePk(pk)),
-            { [this.softRemoveKey]: null } as DeepPartial<Entity>,
+        const key = this.softRemoveKey;
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.update(
+                    this.mergeWheresResolver.resolve(opt.see ?? "all", this.wherePk(pk)),
+                    { [key]: null } as DeepPartial<Entity>,
+                    opt,
+                ),
+            "restore",
             options,
         );
-
-        return result;
     }
 
     async restoreList(
@@ -270,15 +356,26 @@ export abstract class VSRepository<
         options?: MethodOptions<Entity, OrmTypes>,
     ): Promise<CountResult> {
         if (!this.softRemoveKey) {
-            throw new Error();
+            throw new VSRepoError(
+                "this method can only be used if you have configured 'softRemoveKey' in this repository.",
+                VSRepoErrorType.BASE,
+            );
+        }
+        if (!Array.isArray(pks)) {
+            throw new VSRepoError("'pks' must be a valid array", VSRepoErrorType.BASE);
         }
 
-        const result = await this.adapter.updateMany(
-            this.mergeWheresResolver.resolve("all", this.wherePkIn(pks)),
-            { [this.softRemoveKey]: null } as DeepPartial<Entity>,
+        const key = this.softRemoveKey;
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.updateMany(
+                    this.mergeWheresResolver.resolve(opt.see ?? "all", this.wherePkIn(pks)),
+                    { [key]: null } as DeepPartial<Entity>,
+                    opt,
+                ),
+            "restoreList",
             options,
         );
-
-        return result;
     }
 }
