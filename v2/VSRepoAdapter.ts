@@ -5,6 +5,9 @@ import { DeepPartial } from "./types/utils/deep-partial.type";
 import { VSRepoTransactionOptions } from "./types/vsrepo/vsrepo-transaction-options.type";
 import { VSRepoWhere } from "./types/vsrepo/vsrepo-where.type";
 
+/**
+ * @publicApi
+ */
 export abstract class VSRepoAdapter<T> {
     public abstract runInTransaction<R>(
         fn: (tx: any) => Promise<R>,
@@ -37,10 +40,7 @@ export abstract class VSRepoAdapter<T> {
         options?: AdapterMethodOptions<T>,
     ): Promise<T[]>;
 
-    public abstract create(
-        objs: DeepPartial<T>,
-        options?: AdapterMethodOptions<T>,
-    ): Promise<T>;
+    public abstract create(objs: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;
 
     public abstract createMany(
         objs: DeepPartial<T>[],

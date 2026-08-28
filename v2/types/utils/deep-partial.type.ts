@@ -1,3 +1,6 @@
+/**
+ * @publicApi
+ */
 export type DeepPartial<T> =
     | T
     | (T extends Array<infer U>

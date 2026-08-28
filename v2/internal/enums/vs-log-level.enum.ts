@@ -1,3 +1,6 @@
+/**
+ * @publicApi
+ */
 export enum VSLogLevel {
     DEBUG,
     INFO,

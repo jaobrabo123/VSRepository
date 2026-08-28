@@ -16,4 +16,4 @@ export type DynamicMethodInfo = {
     createIndex?: number;
     whereIndex?: number;
     // prismaArgsIndex?: number;
-}
+};

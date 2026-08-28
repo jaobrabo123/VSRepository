@@ -1,10 +1,10 @@
 import { VSRepository } from "../../VSRepository";
 import { Pagination } from "../utils/pagination.type";
-import { VSRepoMethodOptions } from "./vsrepo-methods-options.type";
+import { MethodOptions } from "../utils/methods-options.type";
 
 export interface VSRepoResolveArgsData<T, K> {
     instance: VSRepository<T, K>;
-    options: VSRepoMethodOptions<T>;
+    options: MethodOptions<T>;
     withoutWhere?: boolean;
     wherePkValue?: unknown;
     withoutSelect?: boolean;

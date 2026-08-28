@@ -7,6 +7,7 @@ import { DynamicMethod } from "./decorators/dynamic-method.decorator";
 
 import "reflect-metadata";
 import { VSLogLevel } from "./internal/enums/vs-log-level.enum";
+import { QueryMethod } from "./decorators/query-method.decorator";
 
 type AnyAsyncFn = (...args: any[]) => Promise<any>;
 
@@ -51,10 +52,13 @@ class UserRepository extends VSRepository<
 
     @DynamicMethod()
     declare createManyIgnoreConflicts: AnyAsyncFn;
+
+    @QueryMethod("select * from \"usuario\" where id = $1")
+    declare findById: AnyAsyncFn;
 }
 
 const userRepository = new UserRepository();
-// console.log(userRepository);
+console.log(Object.keys(userRepository));
 
 // async function test() {
 //     const user = await prisma.user.create({

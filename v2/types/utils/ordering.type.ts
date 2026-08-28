@@ -1,7 +1,13 @@
 import { Primitive } from "./primitive.type";
 
+/**
+ * @publicApi
+ */
 export type SortDirection = "asc" | "desc" | "ASC" | "DESC";
 
+/**
+ * @publicApi
+ */
 export type OrderByField<T> = {
     [P in keyof T]?: NonNullable<T[P]> extends Primitive
         ? SortDirection
@@ -12,4 +18,7 @@ export type OrderByField<T> = {
             : SortDirection;
 };
 
+/**
+ * @publicApi
+ */
 export type Ordering<T> = OrderByField<T> | OrderByField<T>[];

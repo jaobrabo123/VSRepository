@@ -1,38 +1,27 @@
-import { DYNAMIC_METHODS_KEY } from "../constants/dynamic-methods-key.constant";
-import { DynamicMethodMetadata } from "../entities/dynamic-method-metadata.entity";
-import { VSRepoDecoratorError } from "../errors/vs-repo.error";
-import { validateQueryMethodOptions } from "../validation/query-method-options.validate";
-import { QueryMethodOptions } from "../validation/types/query-method-options.type";
+import { VSRepoError } from "../errors/VSRepoError";
+import { QUERY_METHODS_KEY } from "../internal/constants/query-methods-key.constant";
+import { VSRepoErrorType } from "../internal/enums/vsrepo-errortype.enum";
+import { DecoratorsValidator } from "../internal/validators/decorators.validator";
+import { QueryMethodOptions } from "../types/decorators/query-method-options.type";
+import { VSRepoQuery } from "../types/vsrepo/vsrepo-query.type";
 
-export function QueryMethod(value: unknown, options?: unknown): PropertyDecorator {
+/**
+ * @publicApi
+ */
+export function QueryMethod(value: string, options?: QueryMethodOptions): PropertyDecorator {
     if (typeof value !== "string") {
-        throw new VSRepoDecoratorError(
-            `[VSRepository] (unknown: decorator) 'value' must be a valid string`,
-        );
+        throw new VSRepoError(`'value' must be a valid string`, VSRepoErrorType.DECORATOR);
     }
 
     const validatedConfig: QueryMethodOptions = options
-        ? validateQueryMethodOptions(options)
+        ? DecoratorsValidator.validateQueryMethodOptions(options)
         : { modifying: false };
 
     return (target: Object, propertyKey: string | symbol) => {
-        const methods: DynamicMethodMetadata[] =
-            Reflect.getMetadata(DYNAMIC_METHODS_KEY, target) ?? [];
+        const methods: VSRepoQuery[] = Reflect.getMetadata(QUERY_METHODS_KEY, target) ?? [];
 
-        methods.push(
-            new DynamicMethodMetadata(
-                propertyKey,
-                true,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                undefined,
-                { value, ...validatedConfig },
-            ),
-        );
+        methods.push({ ...validatedConfig, value, propertyKey });
 
-        Reflect.defineMetadata(DYNAMIC_METHODS_KEY, methods, target);
+        Reflect.defineMetadata(QUERY_METHODS_KEY, methods, target);
     };
 }

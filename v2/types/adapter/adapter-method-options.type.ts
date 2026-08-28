@@ -3,6 +3,9 @@ import { Pagination } from "../utils/pagination.type";
 import { VSRepoRelations } from "../vsrepo/vsrepo-relations.type";
 import { VSRepoSelect } from "../vsrepo/vsrepo-select.type";
 
+/**
+ * @publicApi
+ */
 export type AdapterMethodOptions<T> = {
     select?: VSRepoSelect<T>;
     relations?: VSRepoRelations<T>;

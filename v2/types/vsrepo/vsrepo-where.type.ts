@@ -1,6 +1,9 @@
 import { Primitive } from "../utils/primitive.type";
 
-type VSRepoFieldOperators<V> = {
+/**
+ * @publicApi
+ */
+export type VSRepoFieldOperators<V> = {
     equals?: V;
     not?: V | VSRepoFieldOperators<V>;
 } & (V extends number | Date
@@ -27,8 +30,14 @@ type VSRepoFieldOperators<V> = {
               lte?: V;
           });
 
-type VSRepoFieldWhere<V> = V | VSRepoFieldOperators<V>;
+/**
+ * @publicApi
+ */
+export type VSRepoFieldWhere<V> = V | VSRepoFieldOperators<V>;
 
+/**
+ * @publicApi
+ */
 export type VSRepoWherePlain<T> = {
     [P in keyof T]?: NonNullable<T[P]> extends Primitive
         ? VSRepoFieldWhere<T[P]>
@@ -48,6 +57,9 @@ export type VSRepoWherePlain<T> = {
             : VSRepoFieldWhere<T[P]>;
 };
 
+/**
+ * @publicApi
+ */
 export type VSRepoWhere<T> = VSRepoWherePlain<T> & {
     AND?: VSRepoWherePlain<T> | VSRepoWherePlain<T>[];
     OR?: VSRepoWherePlain<T> | VSRepoWherePlain<T>[];

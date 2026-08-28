@@ -3,7 +3,9 @@ import { VSRepoOptions } from "../../types/vsrepo/vsrepo-options.type";
 import { VSLogLevel } from "../enums/vs-log-level.enum";
 import { VSRepoError } from "../../errors/VSRepoError";
 import orderingSchema from "./schemas/ordering.schema";
-import { VSRepoMethodOptions } from "../../types/vsrepo/vsrepo-methods-options.type";
+import { MethodOptions } from "../../types/utils/methods-options.type";
+import { QueryMethodArg } from "../../types/utils/query-method-arg.type";
+import { VSRepoErrorType } from "../enums/vsrepo-errortype.enum";
 
 export class VSRepoValidator<T, K> {
     private readonly constructorOptionsSchema = z.object({
@@ -27,7 +29,7 @@ export class VSRepoValidator<T, K> {
         if (!optionsParsed.success) {
             const firstIssue = optionsParsed.error.issues[0];
             const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
-            throw new VSRepoError(`${path}: ${firstIssue?.message}`, "VALIDATOR");
+            throw new VSRepoError(`${path}: ${firstIssue?.message}`, VSRepoErrorType.VALIDATOR);
         }
 
         return optionsParsed.data as unknown as VSRepoOptions<T, K>;
@@ -40,15 +42,32 @@ export class VSRepoValidator<T, K> {
         select: z.looseObject({}).optional(),
     });
 
-    validateMethodOptions(options: unknown): VSRepoMethodOptions<T> {
+    validateMethodOptions(options: unknown): MethodOptions<T> {
         const optionsParsed = this.methodOptionsSchema.safeParse(options ?? {});
 
         if (!optionsParsed.success) {
             const firstIssue = optionsParsed.error.issues[0];
             const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
-            throw new VSRepoError(`${path}: ${firstIssue?.message}`, "VALIDATOR");
+            throw new VSRepoError(`${path}: ${firstIssue?.message}`, VSRepoErrorType.VALIDATOR);
         }
 
-        return optionsParsed.data as unknown as VSRepoMethodOptions<T>;
+        return optionsParsed.data as unknown as MethodOptions<T>;
+    }
+
+    private queryArgSchema = z.strictObject({
+        args: z.array(z.any()).optional(),
+        db: z.looseObject({}).optional(),
+    });
+
+    validateQueryMethodArg(arg?: unknown): QueryMethodArg<any> {
+        const argParsed = this.queryArgSchema.safeParse(arg ?? {});
+
+        if (!argParsed.success) {
+            const firstIssue = argParsed.error.issues[0];
+            const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
+            throw new VSRepoError(`${path}: ${firstIssue?.message}`, VSRepoErrorType.VALIDATOR);
+        }
+
+        return argParsed.data;
     }
 }

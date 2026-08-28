@@ -1,6 +1,9 @@
 import { Primitive } from "../utils/primitive.type";
 
-type RelationKeys<T> = {
+/**
+ * @publicApi
+ */
+export type RelationKeys<T> = {
     [P in keyof T]: NonNullable<T[P]> extends Primitive
         ? never
         : NonNullable<T[P]> extends Array<infer U>
@@ -12,6 +15,9 @@ type RelationKeys<T> = {
             : never;
 }[keyof T];
 
+/**
+ * @publicApi
+ */
 export type VSRepoRelations<T> = {
     [P in RelationKeys<T>]?: NonNullable<T[P]> extends Array<infer U>
         ? U extends object

@@ -1,3 +1,6 @@
+/**
+ * @publicApi
+ */
 export enum TransactionIsolationLevel {
     READ_UNCOMMITTED = "ReadUncommitted",
     READ_COMMITTED = "ReadCommitted",
