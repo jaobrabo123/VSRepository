@@ -45,7 +45,7 @@ class UserRepository extends VSRepository<
     }
 
     @DynamicMethod()
-    declare findByNameIgnoreCaseOrAgeBetweenANDActiveIsNullOrderByCreatedAtAscAndUpdatedAtDescPaginated: AnyAsyncFn;
+    declare findByNameIgnoreCaseOrAgeBetweenANDActiveIsNullDistinctNameAndAgeOrderByCreatedAtAscAndUpdatedAtDescPaginated: AnyAsyncFn;
 
     @DynamicMethod()
     declare upsertById: AnyAsyncFn;
@@ -53,7 +53,7 @@ class UserRepository extends VSRepository<
     @DynamicMethod()
     declare createManyIgnoreConflicts: AnyAsyncFn;
 
-    @QueryMethod("select * from \"usuario\" where id = $1")
+    @QueryMethod('select * from "usuario" where id = $1')
     declare findById: AnyAsyncFn;
 }
 

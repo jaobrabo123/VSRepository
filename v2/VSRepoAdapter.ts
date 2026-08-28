@@ -30,7 +30,7 @@ export abstract class VSRepoAdapter<T> {
 
     public abstract findMany(
         where: VSRepoWhere<T>,
-        options?: AdapterMethodOptions<T>,
+        options?: AdapterMethodOptions<T> & { distinct?: (keyof T)[] },
     ): Promise<T[]>;
 
     public abstract save(obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;

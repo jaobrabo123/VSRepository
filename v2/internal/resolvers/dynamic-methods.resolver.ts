@@ -43,6 +43,7 @@ export class DynamicMethodsResolver<T, K> {
             method: "unknown",
             existsMode: false,
             ignoreIgnoreConflicts: true,
+            ignoreDistinct: true,
             whereParams: [],
             otherParams: [],
         };
@@ -50,10 +51,11 @@ export class DynamicMethodsResolver<T, K> {
         if (dynamicMethod.startsWith("findOneBy")) {
             dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("findOneBy", "");
             dynamicMethodInfo.ignoreOrderByAndPagination = false;
-            dynamicMethodInfo.method = "findFirst";
+            dynamicMethodInfo.method = "findOne";
         } else if (dynamicMethod.startsWith("findBy")) {
             dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("findBy", "");
             dynamicMethodInfo.ignoreOrderByAndPagination = false;
+            dynamicMethodInfo.ignoreDistinct = false;
             dynamicMethodInfo.method = "findMany";
         }
         // else if (dynamicMethod === "groupBy") {
@@ -247,6 +249,7 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.ignoreOrderByAndPagination = false;
             dynamicMethodInfo.ignoreWhere = true;
             dynamicMethodInfo.onlyBaseWheres = true;
+            dynamicMethodInfo.ignoreDistinct = false;
             dynamicMethodInfo.method = "findMany";
             dynamicMethodInfo.whereIndex = 0;
             dynamicMethodInfo.otherParams.push("where");
@@ -256,12 +259,15 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.ignoreOrderByAndPagination = false;
             dynamicMethodInfo.ignoreWhere = true;
             dynamicMethodInfo.onlyBaseWheres = true;
-            dynamicMethodInfo.method = "findFirst";
+            dynamicMethodInfo.method = "findOne";
             dynamicMethodInfo.whereIndex = 0;
             dynamicMethodInfo.otherParams.push("where");
             dynamicMethodInfo.argsCount += 1;
         } else {
-            throw new VSRepoError(`Unknown dynamic method: ${dynamicMethod}.`, VSRepoErrorType.RESOLVER);
+            throw new VSRepoError(
+                `Unknown dynamic method: ${dynamicMethod}.`,
+                VSRepoErrorType.RESOLVER,
+            );
         }
 
         return dynamicMethodInfo;
@@ -357,17 +363,17 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodCustomization.injectOrdering ??= methodData.injectOrdering;
         }
 
-        // if (!dynamicMethodInfo.ignoreDistinct) {
-        //     const keySplitedDistinct = dynamicMethodInfo.keyToMapReplaced.split("Distinct");
+        if (!dynamicMethodInfo.ignoreDistinct) {
+            const keySplitedDistinct = dynamicMethodInfo.keyToMapReplaced.split("Distinct");
 
-        //     if (keySplitedDistinct[1]) {
-        //         dynamicMethodCustomization.distinctKeys = keySplitedDistinct[1]
-        //             .split("And")
-        //             .map(uncapitalize);
-        //     }
+            if (keySplitedDistinct[1]) {
+                dynamicMethodCustomization.distinctKeys = keySplitedDistinct[1]
+                    .split("And")
+                    .map(uncapitalize);
+            }
 
-        //     dynamicMethodInfo.keyToMapReplaced = keySplitedDistinct[0]!;
-        // }
+            dynamicMethodInfo.keyToMapReplaced = keySplitedDistinct[0]!;
+        }
 
         return dynamicMethodCustomization;
     }
@@ -644,6 +650,7 @@ export class DynamicMethodsResolver<T, K> {
             pagination,
             withOrderingAndPagination,
             ignoreConflicts,
+            distinctKeys,
         } = data;
 
         // console.log(this.adapter)
@@ -690,9 +697,10 @@ export class DynamicMethodsResolver<T, K> {
             (vsrepoArgs.options as any).ignoreConflicts = ignoreConflicts;
         }
 
-        // if (distinctKeys !== undefined) {
-        //     vsrepoArgs.distinct = distinctKeys;
-        // }
+        if (distinctKeys !== undefined) {
+            // * Usado no findMany
+            (vsrepoArgs.options as any).distinct = distinctKeys;
+        }
 
         return vsrepoArgs;
     }
@@ -827,6 +835,7 @@ export class DynamicMethodsResolver<T, K> {
                             ? args.at(dynamicMethodInfo.updateIndex)
                             : undefined,
                     withOrderingAndPagination: !dynamicMethodInfo.ignoreOrderByAndPagination,
+                    distinctKeys: dynamicMethodCustomization.distinctKeys,
                 };
 
                 if (!dynamicMethodInfo.ignoreWhere) {
