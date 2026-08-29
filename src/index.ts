@@ -36,3 +36,6 @@ export type { Ordering, OrderByField, SortDirection } from "./types/utils/orderi
 export type { Pagination } from "./types/utils/pagination.type.js";
 export type { Primitive } from "./types/utils/primitive.type.js";
 export type { SeeMode } from "./types/utils/see-mode.type.js";
+
+// Internal features
+export { VSLogger } from "./internal/utils/vs-logger.util.js"
