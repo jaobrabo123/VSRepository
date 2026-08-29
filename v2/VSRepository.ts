@@ -20,6 +20,34 @@ import { VSRepoError } from "./errors/VSRepoError";
 import { VSRepoErrorType } from "./internal/enums/vsrepo-errortype.enum";
 
 /**
+ * ORM-agnostic base repository, exposing a complete set of ready-to-use CRUD
+ * and soft-delete methods around an entity, plus any `@DynamicMethod`/`@QueryMethod`
+ * decorated methods declared on the subclass.
+ *
+ * Unlike the previous (v1) `VSRepository`, this class delegates every
+ * operation to a `VSRepoAdapter` instead of talking to Prisma directly, which
+ * is what allows it to work with any ORM/database that has an adapter
+ * implementation (e.g. Prisma, TypeORM).
+ *
+ * @template Entity Type of the entity managed by the repository.
+ * @template PKType Type of the entity's primary key value.
+ * @template OrmTypes ORM-specific client/transaction types. See `VSRepoOrmTypes`.
+ *
+ * @example
+ * ```typescript
+ * class UserRepository extends VSRepository<User, string> {
+ *     constructor() {
+ *         super({ pkName: "id", adapter: new VSRepoPrisma7Adapter(prisma, "user") });
+ *     }
+ *
+ *     @DynamicMethod()
+ *     declare findByEmail: (email: string) => Promise<User[]>;
+ * }
+ *
+ * const userRepository = new UserRepository();
+ * const user = await userRepository.get("123");
+ * ```
+ *
  * @publicApi
  */
 export abstract class VSRepository<
@@ -46,6 +74,10 @@ export abstract class VSRepository<
         (args: any[], methodOptions?: MethodOptions<Entity, OrmTypes>) => VSRepoArgs<Entity>
     > = new Map();
 
+    /**
+     * Creates a configured instance of `VSRepository`, resolving and validating
+     * every `@DynamicMethod`/`@QueryMethod` declared on the subclass.
+     */
     constructor(options: VSRepoOptions<Entity, PKType>) {
         this.validator = new VSRepoValidator<Entity, PKType, OrmTypes>();
 
@@ -66,7 +98,9 @@ export abstract class VSRepository<
         this.logger.logInfo(
             `Initializing ${this.constructor.name} (pk: '${String(this.pkName)}'` +
                 (this.softRemoveKey ? `, softRemoveKey: '${String(this.softRemoveKey)}'` : "") +
-                (this.defaultOrdering ? `, defaultOrdering: ${JSON.stringify(this.defaultOrdering)}` : "") +
+                (this.defaultOrdering
+                    ? `, defaultOrdering: ${JSON.stringify(this.defaultOrdering)}`
+                    : "") +
                 `)`,
         );
 
@@ -140,6 +174,10 @@ export abstract class VSRepository<
         }
     }
 
+    /**
+     * Runs `fn` inside a native transaction of the underlying ORM, sharing the
+     * transaction client (`tx`) across every repository call made within it.
+     */
     async transaction<R, TX = OrmTypes["dbTransaction"]>(
         fn: (tx: TX) => Promise<R>,
         options?: VSRepoTransactionOptions,
@@ -154,10 +192,12 @@ export abstract class VSRepository<
         );
     }
 
+    /** Returns the underlying ORM client instance used outside of transactions. */
     getDbClient<DB extends any = OrmTypes["dbClient"]>(): DB {
         return this.adapter.getDbClient();
     }
 
+    /** Fetches a record by its primary key (PK). */
     async get(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity | null> {
         return this.execBaseMethod(
             opt =>
@@ -170,6 +210,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Fetches a record by PK and throws an Error if not found. */
     async getOrThrow(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
         return this.execBaseMethod(
             opt =>
@@ -182,6 +223,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Fetches multiple records by a list of primary keys (PKs). */
     async getList(pks: PKType[], options?: MethodOptions<Entity, OrmTypes>): Promise<Entity[]> {
         if (!Array.isArray(pks)) {
             this.fail("'pks' must be a valid array", VSRepoErrorType.BASE);
@@ -198,6 +240,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Fetches all records (respects the repository's `defaultOrdering` unless `order` is provided). */
     async getAll(
         options?: MethodOptions<Entity, OrmTypes> & {
             pagination?: Pagination;
@@ -205,12 +248,17 @@ export abstract class VSRepository<
         },
     ): Promise<Entity[]> {
         return this.execBaseMethod(
-            opt => this.adapter.findMany(this.mergeWheresResolver.resolve(opt.see, {}), opt),
+            (opt: MethodOptions<Entity, OrmTypes> & { order?: Ordering<Entity> }) =>
+                this.adapter.findMany(this.mergeWheresResolver.resolve(opt.see, {}), {
+                    ...opt,
+                    order: opt.order ?? this.defaultOrdering,
+                }),
             "getAll",
             options,
         );
     }
 
+    /** Creates or updates (upsert) a record. */
     async save(
         obj: DeepPartial<Entity>,
         options?: MethodOptions<Entity, OrmTypes>,
@@ -218,6 +266,7 @@ export abstract class VSRepository<
         return this.execBaseMethod(opt => this.adapter.save(obj, opt), "save", options);
     }
 
+    /** Creates or updates (upsert) multiple records in a single operation. */
     async saveList(
         objs: DeepPartial<Entity>[],
         options?: MethodOptions<Entity, OrmTypes> & { db?: OrmTypes["dbTransaction"] },
@@ -229,6 +278,7 @@ export abstract class VSRepository<
         return this.execBaseMethod(opt => this.adapter.saveMany(objs, opt), "saveList", options);
     }
 
+    /** Deletes a record identified by its primary key (PK). */
     async remove(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
         return this.execBaseMethod(
             opt =>
@@ -241,6 +291,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Deletes multiple records by their primary keys, returning the count of affected rows. */
     async removeList(
         pks: PKType[],
         options?: MethodOptions<Entity, OrmTypes>,
@@ -260,6 +311,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Partially updates an existing record by its primary key (PK). */
     async patch(
         pk: PKType,
         obj: DeepPartial<Entity>,
@@ -277,6 +329,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Partially updates a record by PK and returns it deep-merged with the provided object. */
     async merge<U extends DeepPartial<Entity>>(
         pk: PKType,
         obj: U,
@@ -294,6 +347,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Returns the total number of records. */
     async total(options?: MethodOptions<Entity, OrmTypes>): Promise<number> {
         return this.execBaseMethod(
             opt => this.adapter.count(this.mergeWheresResolver.resolve(opt.see, {}), opt),
@@ -302,6 +356,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Checks whether a record exists by its primary key (PK). */
     async has(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<boolean> {
         return this.execBaseMethod(
             opt =>
@@ -314,6 +369,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Marks a record as deleted (soft-delete). Requires `softRemoveKey` to be configured on the repository. */
     async softRemove(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
         if (!this.softRemoveKey) {
             this.fail(
@@ -336,6 +392,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Marks multiple records as deleted (soft-delete) in batch. Requires `softRemoveKey` to be configured on the repository. */
     async softRemoveList(
         pks: PKType[],
         options?: MethodOptions<Entity, OrmTypes>,
@@ -364,6 +421,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Restores a record previously marked as deleted (soft-delete). Requires `softRemoveKey` to be configured on the repository. */
     async restore(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
         if (!this.softRemoveKey) {
             this.fail(
@@ -386,6 +444,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Restores multiple records previously marked as deleted (soft-delete) in batch. Requires `softRemoveKey` to be configured on the repository. */
     async restoreList(
         pks: PKType[],
         options?: MethodOptions<Entity, OrmTypes>,

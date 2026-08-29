@@ -6,6 +6,28 @@ import { QueryMethodOptions } from "../types/decorators/query-method-options.typ
 import { VSRepoQuery } from "../types/vsrepo/vsrepo-query.type";
 
 /**
+ * Property decorator used to declare a raw SQL query method on a `VSRepository`
+ * subclass, bypassing name-based method parsing entirely.
+ *
+ * Applied to a `declare` class field, it executes `value` directly through the
+ * adapter's `query()` method, with parameters injected positionally via the
+ * `args` array passed at the call site (`$1`, `$2`, ... placeholders).
+ *
+ * @param value Raw SQL statement to execute. Use `$1`, `$2`, ... placeholders for
+ * the values that will be passed via `args` — never interpolate values directly into `value`.
+ * @param options Optional configuration; set `modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements.
+ *
+ * @example
+ * ```typescript
+ * class UserRepository extends VSRepository<User, string> {
+ *     @QueryMethod('SELECT * FROM "user" WHERE email = $1')
+ *     declare findByEmailRaw: (arg: QueryMethodArg<[email: string]>) => Promise<User[]>;
+ *
+ *     @QueryMethod('UPDATE "user" SET active = true WHERE id = $1', { modifying: true })
+ *     declare activateUser: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
+ * }
+ * ```
+ *
  * @publicApi
  */
 export function QueryMethod(value: string, options?: QueryMethodOptions): PropertyDecorator {
