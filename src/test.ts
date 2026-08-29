@@ -55,13 +55,13 @@ class UserRepository extends VSRepository<
     @QueryMethod('select * from "usuario" where id = $1')
     declare findById: AnyAsyncFn;
 
-    @DynamicMethod()
+    @DynamicMethod<User>({ injectOrdering: { active: "DESC" } })
     declare findByAge: AnyAsyncFn;
 }
 
 const userRepository = new UserRepository();
-console.log(Object.keys(userRepository));
-// userRepository.findByAge({})
+// console.log(Object.keys(userRepository));
+userRepository.findByAge({})
 
 // async function test() {
 //     const user = await prisma.user.create({

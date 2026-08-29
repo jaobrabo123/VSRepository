@@ -101,6 +101,7 @@ export abstract class VSRepository<
                 (this.defaultOrdering
                     ? `, defaultOrdering: ${JSON.stringify(this.defaultOrdering)}`
                     : "") +
+                `, adapter: ${this.adapter.constructor.name}` +
                 `)`,
         );
 

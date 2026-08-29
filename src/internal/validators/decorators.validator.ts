@@ -1,4 +1,4 @@
-import z from "zod";
+import * as v from "valibot";
 import { DynamicMethodOptions } from "../../types/decorators/dynamic-method-options.type";
 import { VSRepoError } from "../../errors/VSRepoError";
 import orderingSchema from "./schemas/ordering.schema";
@@ -6,36 +6,40 @@ import { QueryMethodOptions } from "../../types/decorators/query-method-options.
 import { VSRepoErrorType } from "../enums/vsrepo-errortype.enum";
 
 export class DecoratorsValidator {
-    private static readonly dynamicMethodOptionsSchema = z.object({
-        proxyTo: z.string().optional(),
-        injectOrdering: orderingSchema.optional(),
+    private static readonly dynamicMethodOptionsSchema = v.object({
+        proxyTo: v.optional(v.string()),
+        injectOrdering: v.optional(orderingSchema),
     });
 
     static validateDynamicMethodOptions(options: unknown): DynamicMethodOptions {
-        const optionsParsed = this.dynamicMethodOptionsSchema.safeParse(options);
+        const parsed = v.safeParse(this.dynamicMethodOptionsSchema, options);
 
-        if (!optionsParsed.success) {
-            const firstIssue = optionsParsed.error.issues[0];
-            const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
-            throw new VSRepoError(`${path}: ${firstIssue?.message}`, VSRepoErrorType.DECORATOR);
+        if (!parsed.success) {
+            const firstIssue = parsed.issues[0];
+            const path = firstIssue.path?.length
+                ? firstIssue.path.map(p => String(p.key)).join(".")
+                : "options";
+            throw new VSRepoError(`${path}: ${firstIssue.message}`, VSRepoErrorType.DECORATOR);
         }
 
-        return optionsParsed.data;
+        return parsed.output as DynamicMethodOptions;
     }
 
-    private static queryMethodOptionsSchema = z.object({
-        modifying: z.boolean().default(false),
+    private static queryMethodOptionsSchema = v.object({
+        modifying: v.optional(v.boolean(), false),
     });
 
     static validateQueryMethodOptions(options: unknown): QueryMethodOptions {
-        const optionsParsed = this.queryMethodOptionsSchema.safeParse(options);
+        const parsed = v.safeParse(this.queryMethodOptionsSchema, options);
 
-        if (!optionsParsed.success) {
-            const firstIssue = optionsParsed.error.issues[0];
-            const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
-            throw new VSRepoError(`${path}: ${firstIssue?.message}`, VSRepoErrorType.DECORATOR);
+        if (!parsed.success) {
+            const firstIssue = parsed.issues[0];
+            const path = firstIssue.path?.length
+                ? firstIssue.path.map(p => String(p.key)).join(".")
+                : "options";
+            throw new VSRepoError(`${path}: ${firstIssue.message}`, VSRepoErrorType.DECORATOR);
         }
 
-        return optionsParsed.data;
+        return parsed.output as QueryMethodOptions;
     }
 }

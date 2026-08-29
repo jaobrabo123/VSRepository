@@ -1,5 +1,4 @@
-import z from "zod";
+import * as v from "valibot";
 
-export default z
-    .record(z.string(), z.enum(["asc", "desc", "ASC", "DESC"]))
-    .or(z.array(z.record(z.string(), z.enum(["asc", "desc", "ASC", "DESC"]))));
+const recordSchema = v.record(v.string(), v.picklist(["asc", "desc", "ASC", "DESC"]));
+export default v.union([recordSchema, v.array(recordSchema)]);
