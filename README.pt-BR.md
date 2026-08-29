@@ -51,6 +51,7 @@ O VSRepository permite criar repositories fortemente tipados com:
 - [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)
 - [Tratamento de erros](#tratamento-de-erros)
 - [Logging](#logging)
+- [Desenvolvimento](#desenvolvimento)
 - [Requisitos](#requisitos)
 - [Contribuindo](#contribuindo)
 
@@ -110,7 +111,7 @@ Quando lançada, a v2 será instalada como o pacote core mais um pacote de adapt
 npm i vsrepo @vsrepo/prisma7-adapter
 ```
 
-> Nem o `vsrepo` v2 nem nenhum pacote `@vsrepo/*-adapter` foram publicados ainda, e o `package.json` desta branch ainda reflete o build da v1. Até que sejam lançados, consuma o core diretamente da pasta `src/` desta branch e escreva seu próprio adapter (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) ou adapte um dos protótipos em `src/adapters/`.
+> Nem o `vsrepo` v2 nem nenhum pacote `@vsrepo/*-adapter` foram publicados no npm ainda. O core já pode ser compilado e empacotado a partir desta branch (`pnpm build` + `npm pack` + `npm install ../caminho/vsrepo-<versão>.tgz`) e o seu `package.json` reflete a API da v2. O que ainda falta para um release publicado de verdade são os pacotes `@vsrepo/*-adapter` e o publish em si. Até lá, se quiser usar a v2 hoje, instale o core a partir do tarball empacotado ou consuma da pasta `src/` e escreva seu próprio adapter (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) ou adapte um dos protótipos em `src/adapters/`.
 
 ---
 
@@ -134,9 +135,8 @@ export default prisma;
 
 ```typescript
 // src/repositories/user.repository.ts
-import { VSRepository } from "vsrepo/VSRepository";
-import { DynamicMethod } from "vsrepo/decorators/dynamic-method.decorator";
-import { VSRepoPrisma7Adapter } from "vsrepo/adapters/prisma7/prisma7.adapter";
+import { VSRepository, DynamicMethod } from "vsrepo";
+import { VSRepoPrisma7Adapter } from "@vsrepo/prisma7-adapter";
 import prisma from "../configs/db";
 import type { UserGetPayload } from "../../generated/prisma/models";
 
@@ -161,6 +161,8 @@ class UserRepository extends VSRepository<User, string> {
 
 export default new UserRepository();
 ```
+
+> A API do core (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums e tipos) é importada do entry point único `vsrepo`. O adapter concreto vem de um pacote **separado** (`@vsrepo/*-adapter`). Até que esses pacotes de adapter sejam publicados, implemente o contrato `VSRepoAdapter` você mesmo (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) ou adapte um dos protótipos de referência em `src/adapters/`.
 
 ### Usando o repository
 
@@ -565,6 +567,35 @@ super({
 | `INFO` | Eventos de alto nível do ciclo de vida, como a inicialização do repository. |
 | `WARN` (padrão) | Problemas recuperáveis e operações lentas (veja `logSlowThresholdMs`, padrão de 300ms). |
 | `ERROR` | Falhas lançadas durante a execução de uma operação. |
+
+---
+
+## Desenvolvimento
+
+O core da v2 é compilado e empacotado a partir desta branch como um pacote npm padrão:
+
+```bash
+# 1. Instalar as dependências
+pnpm install
+
+# 2. Compilar os fontes TypeScript em dist/ (remove um dist/ anterior primeiro)
+pnpm build
+
+# 3. (Opcional) Inspecionar o que seria publicado sem gerar um tarball
+npm pack --dry-run
+
+# 4. Gerar o tarball instalável (roda `prepack` -> `pnpm build` automaticamente)
+npm pack
+
+# 5. Consumir localmente em outro projeto
+npm install ../caminho/vsrepo-1.4.0.tgz
+```
+
+Observações:
+
+- `pnpm build` executa `tsc -p tsconfig.build.json`, que gera o JS compilado e as declarações de tipo em `dist/` com `rootDir: src`.
+- O pacote publicado contém **apenas** a pasta `dist/` além dos READMEs e da `LICENSE` (veja `files` no `package.json`). Fontes, testes, a pasta `v1/`, `generated/` e os protótipos `src/adapters/**` **não** são enviados — os adapters viverão em seus próprios pacotes `@vsrepo/*-adapter`.
+- O core é ORM-agnóstico e não tem dependência peer de `@prisma/client`.
 
 ---
 

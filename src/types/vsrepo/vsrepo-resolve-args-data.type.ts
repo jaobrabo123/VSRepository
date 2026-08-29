@@ -1,4 +1,4 @@
-import { VSRepository } from "../../../v2/VSRepository";
+import { VSRepository } from "../../VSRepository";
 import { Pagination } from "../utils/pagination.type";
 import { MethodOptions } from "../utils/methods-options.type";
 

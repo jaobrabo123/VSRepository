@@ -1,9 +1,9 @@
-import { AdapterMethodOptions } from "../src/types/adapter/adapter-method-options.type";
-import { AdapterQueryOptions } from "../src/types/adapter/adapter-query-options.type";
-import { CountResult } from "../src/types/utils/count-result.type";
-import { DeepPartial } from "../src/types/utils/deep-partial.type";
-import { VSRepoTransactionOptions } from "../src/types/vsrepo/vsrepo-transaction-options.type";
-import { VSRepoWhere } from "../src/types/vsrepo/vsrepo-where.type";
+import { AdapterMethodOptions } from "./types/adapter/adapter-method-options.type";
+import { AdapterQueryOptions } from "./types/adapter/adapter-query-options.type";
+import { CountResult } from "./types/utils/count-result.type";
+import { DeepPartial } from "./types/utils/deep-partial.type";
+import { VSRepoTransactionOptions } from "./types/vsrepo/vsrepo-transaction-options.type";
+import { VSRepoWhere } from "./types/vsrepo/vsrepo-where.type";
 
 /**
  * Contract implemented by ORM-specific adapters (e.g. Prisma, TypeORM) that

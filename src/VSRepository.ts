@@ -1,23 +1,23 @@
 import "reflect-metadata";
-import { VSRepoOptions } from "../src/types/vsrepo/vsrepo-options.type";
-import { CountResult } from "../src/types/utils/count-result.type";
-import { DeepPartial } from "../src/types/utils/deep-partial.type";
-import { KeysOfType } from "../src/types/utils/keys-of-type.type";
+import { VSRepoOptions } from "./types/vsrepo/vsrepo-options.type";
+import { CountResult } from "./types/utils/count-result.type";
+import { DeepPartial } from "./types/utils/deep-partial.type";
+import { KeysOfType } from "./types/utils/keys-of-type.type";
 import { VSRepoAdapter } from "./VSRepoAdapter";
-import { VSRepoWhere } from "../src/types/vsrepo/vsrepo-where.type";
-import { MergeWheresResolver } from "../src/internal/resolvers/merge-wheres.resolver";
-import { VSRepoOrmTypes } from "../src/types/vsrepo/vsrepo-orm-types.type";
-import { VSRepoTransactionOptions } from "../src/types/vsrepo/vsrepo-transaction-options.type";
-import { MethodOptions } from "../src/types/utils/methods-options.type";
-import { Ordering } from "../src/types/utils/ordering.type";
-import { Pagination } from "../src/types/utils/pagination.type";
-import { VSLogger } from "../src/internal/utils/vs-logger.util";
-import { VSLogLevel } from "../src/internal/enums/vs-log-level.enum";
-import { VSRepoValidator } from "../src/internal/validators/vsrepo.validator";
-import { VSRepoArgs } from "../src/types/vsrepo/vsrepo-args.type";
-import { DynamicMethodsResolver } from "../src/internal/resolvers/dynamic-methods.resolver";
-import { VSRepoError } from "../src/errors/VSRepoError";
-import { VSRepoErrorType } from "../src/internal/enums/vsrepo-errortype.enum";
+import { VSRepoWhere } from "./types/vsrepo/vsrepo-where.type";
+import { MergeWheresResolver } from "./internal/resolvers/merge-wheres.resolver";
+import { VSRepoOrmTypes } from "./types/vsrepo/vsrepo-orm-types.type";
+import { VSRepoTransactionOptions } from "./types/vsrepo/vsrepo-transaction-options.type";
+import { MethodOptions } from "./types/utils/methods-options.type";
+import { Ordering } from "./types/utils/ordering.type";
+import { Pagination } from "./types/utils/pagination.type";
+import { VSLogger } from "./internal/utils/vs-logger.util";
+import { VSLogLevel } from "./internal/enums/vs-log-level.enum";
+import { VSRepoValidator } from "./internal/validators/vsrepo.validator";
+import { VSRepoArgs } from "./types/vsrepo/vsrepo-args.type";
+import { DynamicMethodsResolver } from "./internal/resolvers/dynamic-methods.resolver";
+import { VSRepoError } from "./errors/VSRepoError";
+import { VSRepoErrorType } from "./internal/enums/vsrepo-errortype.enum";
 
 /**
  * ORM-agnostic base repository, exposing a complete set of ready-to-use CRUD

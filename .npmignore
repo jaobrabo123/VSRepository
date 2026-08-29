@@ -1,50 +1,43 @@
-# Ignore development files and artifacts not needed on npm
+# VSRepository v2 core - development files that must NOT be published.
 
-# Tests and coverage
-tests/
-coverage/
-.nyc_output/
+# O pacote core (`vsrepo`) empacota apenas a pasta `dist` (+ READMEs/LICENCE).
+# Tudo abaixo e desenvolvimento e nao deve ir para o npm.
 
-# src/
+# Diretorios do monorepo / desenvolvimento
+src/
+v1/
+generated/
+prisma/
 examples/
 example/
-
-# Prisma
-prisma/
-
-# Local envs and editor settings
-.env
-.env.example
-.env.local
+coverage/
+.nyc_output/
+.github/
 .vscode/
 .idea/
-.DS_Store
 
-# Lockfiles and workspace configs
+# Config e tooling do projeto
+tsconfig.json
+tsconfig.build.json
+jest.config.js
+prisma.config.ts
 pnpm-lock.yaml
 pnpm-workspace.yaml
 package-lock.json
-
-# Logs and CI artifacts
-logs/
-*.log
-.github/
-
-# Build folders
-# dist/
-build/
-
-# TypeScript config
-tsconfig.json
-
-# Misc
-*.local
-
+.env
+.env.example
+.env.local
 .prettierrc
 
+# Artifacts e logs
+*.log
+logs/
+*.local
+node_modules/
+
+# Arquivos de teste/orfao espalhados na raiz
 teste.js
 teste.ts
-
+teste-class.ts
 VSRepository (OG)/
-
 linkedin/

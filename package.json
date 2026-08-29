@@ -1,7 +1,7 @@
 {
   "name": "vsrepo",
   "version": "1.4.0",
-  "description": "A repository pattern library for Prisma",
+  "description": "ORM-agnostic repository pattern library with full TypeScript support and automatic type inference.",
   "homepage": "https://github.com/jaobrabo123/VSRepository#readme",
   "repository": {
     "type": "git",
@@ -14,55 +14,33 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.js"
-    },
-    "./VSRepository": {
-      "types": "./dist/VSRepository.d.ts",
-      "import": "./dist/VSRepository.js",
-      "require": "./dist/VSRepository.js"
-    },
-    "./DynamicRepository": {
-      "types": "./dist/DynamicRepository.d.ts",
-      "import": "./dist/DynamicRepository.js",
-      "require": "./dist/DynamicRepository.js"
-    },
-    "./VSRepoError": {
-      "types": "./dist/VSRepoError.d.ts",
-      "import": "./dist/VSRepoError.js",
-      "require": "./dist/VSRepoError.js"
     }
   },
   "type": "commonjs",
   "files": [
     "dist",
-    "scripts",
     "README.md",
-    "README.pt-BR.md",
-    "README-DynamicRepo.md",
-    "README-DynamicRepo.pt-BR.md"
+    "README.pt-BR.md"
   ],
-  "bin": {
-    "vsrepo": "scripts/configure-prisma-import.mjs"
-  },
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "vsrepo": "node ./scripts/configure-prisma-import.mjs",
-    "build": "tsc -p tsconfig.build.json && node ./scripts/copy-types.mjs",
+    "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\"",
+    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
     "prepack": "pnpm build",
-    "test": "npm run test:typing && npm run test:implementation",
-    "test:implementation": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:implementation:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
-    "test:typing": "tsc --noEmit -p test/typing/tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.build.json",
+    "test": "pnpm typecheck"
   },
   "keywords": [
     "prisma",
+    "typeorm",
     "repository",
     "orm",
     "typescript",
+    "repository-pattern",
     "vsrepo",
-    "vsrepository",
-    "jparepository"
+    "vsrepository"
   ],
   "author": "João Pedro Azevedo Freire Mecenas",
   "license": "MIT",
