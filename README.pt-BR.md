@@ -48,6 +48,7 @@ O VSRepository permite criar repositories fortemente tipados com:
   - [Options do decorador](#options-do-decorador)
 - [Query methods (SQL raw)](#query-methods-sql-raw)
 - [Transações](#transações)
+- [Tipos utilitários](#tipos-utilitários)
 - [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)
 - [Tratamento de erros](#tratamento-de-erros)
 - [Logging](#logging)
@@ -482,6 +483,74 @@ await userRepository.transaction(async tx => {
 ```
 
 Repositories diferentes podem compartilhar a mesma transação, desde que seus adapters apontem para a mesma conexão do ORM por trás deles.
+
+---
+
+## Tipos utilitários
+
+Além dos tipos que descrevem o formato da entidade já vistos acima (`VSRepoSelect`, `VSRepoRelations`, `VSRepoWhere`), o VSRepository exporta um conjunto de tipos utilitários pequenos e focados em `src/types/utils/`. Eles aparecem ao longo de várias seções anteriores, mas aqui está uma referência consolidada. Todos fazem parte da API pública e podem ser importados diretamente:
+
+```typescript
+import type {
+    MethodOptions,
+    Pagination,
+    Ordering,
+    OrderByField,
+    SortDirection,
+    SeeMode,
+    DeepPartial,
+    CountResult,
+    QueryMethodArg,
+    KeysOfType,
+    Primitive,
+} from "vsrepo";
+```
+
+| Tipo | Descrição | Usado por |
+| --- | --- | --- |
+| `MethodOptions<T, K>` | Options aceitas como último argumento por todo método base e dinâmico: `select`, `relations`, `see`, `db`. | [Métodos base](#métodos-base). |
+| `Pagination` | `{ limit?, offset? }` aceito por `getAll` e pelos métodos dinâmicos com `Paginated`. | [Métodos base](#métodos-base), [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct). |
+| `Ordering<T>` / `OrderByField<T>` / `SortDirection` | Formato de ordenação aceito por `getAll`, `defaultOrdering` e `injectOrdering`, e pelos métodos dinâmicos com `Ordered`. Pode ser um único objeto ou um array encadeado; objetos aninhados ordenam relações to-one. | [Options do construtor](#options-do-construtor), [Options do decorador](#options-do-decorador). |
+| `SeeMode` | `"active" \| "removed" \| "all"` — controla a visibilidade de registros com soft-delete. | [Soft-delete](#soft-delete). |
+| `DeepPartial<T>` | Torna todas as propriedades de `T` opcionais recursivamente, incluindo objetos aninhados e elementos de array. | `save`, `saveList`, `patch`, `merge`, e todo método de escrita do `VSRepoAdapter`. |
+| `CountResult` | `{ count: number }` — o formato retornado por operações em lote. | `removeList`, `softRemoveList`, `restoreList`, `createManyIgnoreConflicts`. |
+| `QueryMethodArg<T>` | `{ args?: T, db? }` — parâmetros posicionais do SQL (`$1`, `$2`, ...) e cliente de transação para o `@QueryMethod`. | [Query methods (SQL raw)](#query-methods-sql-raw). |
+| `KeysOfType<T, K>` | Extrai as chaves de `T` cujo tipo de valor é atribuível a `K`. | Restringe `pkName`, em [Options do construtor](#options-do-construtor), aos campos da entidade compatíveis com o tipo de chave primária configurado. |
+| `Primitive` | União de tipos escalares (`string \| number \| boolean \| bigint \| symbol \| undefined \| null \| Date`) tratados como valores-folha — e não relações — ao percorrer o formato de uma entidade. | Usado por `Ordering<T>` para distinguir campos escalares de campos de relação. |
+
+### `DeepPartial<T>`
+
+Torna todas as propriedades opcionais recursivamente, percorrendo objetos aninhados e elementos de array — diferente do `Partial<T>` nativo do TypeScript, que só torna o nível superior opcional:
+
+```typescript
+type User = { id: string; name: string; address: { city: string; zip: string } };
+
+const patch: DeepPartial<User> = {
+    address: { city: "São Paulo" }, // zip pode ser omitido; city mantém seu tipo
+};
+
+await userRepository.patch(id, patch);
+```
+
+### `KeysOfType<T, K>`
+
+Filtra um tipo de objeto para as chaves cujo valor corresponde a um tipo dado — é isso que permite que `pkName` aceite apenas campos da entidade que sejam de fato atribuíveis ao tipo de chave primária do repository:
+
+```typescript
+type User = { id: string; age: number; name: string };
+type StringKeys = KeysOfType<User, string>; // "id" | "name"
+```
+
+### `Ordering<T>`
+
+Aceita um único objeto de ordenação ou um array deles, aplicados na ordem declarada:
+
+```typescript
+const order: Ordering<User> = { createdAt: "desc" };
+const chained: Ordering<User> = [{ name: "asc" }, { createdAt: "desc" }];
+
+await userRepository.getAll({ order: chained });
+```
 
 ---
 

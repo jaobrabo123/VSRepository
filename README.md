@@ -48,6 +48,7 @@ VSRepository lets you create strongly-typed repositories with:
   - [Decorator options](#decorator-options)
 - [Query methods (raw SQL)](#query-methods-raw-sql)
 - [Transactions](#transactions)
+- [Utility types](#utility-types)
 - [Writing your own adapter](#writing-your-own-adapter)
 - [Error handling](#error-handling)
 - [Logging](#logging)
@@ -482,6 +483,74 @@ await userRepository.transaction(async tx => {
 ```
 
 Different repositories can share the same transaction as long as their adapters point to the same underlying ORM connection.
+
+---
+
+## Utility types
+
+Beyond the entity-shaping types covered above (`VSRepoSelect`, `VSRepoRelations`, `VSRepoWhere`), VSRepository exports a set of small, focused utility types under `src/types/utils/`. They show up throughout the sections above, but here's a consolidated reference. All of them are part of the public API and can be imported directly:
+
+```typescript
+import type {
+    MethodOptions,
+    Pagination,
+    Ordering,
+    OrderByField,
+    SortDirection,
+    SeeMode,
+    DeepPartial,
+    CountResult,
+    QueryMethodArg,
+    KeysOfType,
+    Primitive,
+} from "vsrepo";
+```
+
+| Type | Description | Used by |
+| --- | --- | --- |
+| `MethodOptions<T, K>` | Options accepted as the last argument of every base and dynamic method: `select`, `relations`, `see`, `db`. | [Base methods](#base-methods). |
+| `Pagination` | `{ limit?, offset? }` accepted by `getAll` and by `Paginated` dynamic methods. | [Base methods](#base-methods), [Ordering, pagination and distinct](#ordering-pagination-and-distinct). |
+| `Ordering<T>` / `OrderByField<T>` / `SortDirection` | Ordering shape accepted by `getAll`, `defaultOrdering` and `injectOrdering`, and by `Ordered` dynamic methods. A single object or a chained array; nested objects order to-one relations. | [Constructor options](#constructor-options), [Decorator options](#decorator-options). |
+| `SeeMode` | `"active" \| "removed" \| "all"` — controls visibility of soft-deleted records. | [Soft-delete](#soft-delete). |
+| `DeepPartial<T>` | Recursively makes every property of `T` optional, including nested objects and array elements. | `save`, `saveList`, `patch`, `merge`, and every write method on `VSRepoAdapter`. |
+| `CountResult` | `{ count: number }` — the shape returned by batch operations. | `removeList`, `softRemoveList`, `restoreList`, `createManyIgnoreConflicts`. |
+| `QueryMethodArg<T>` | `{ args?: T, db? }` — positional SQL parameters (`$1`, `$2`, ...) and transaction client for `@QueryMethod`. | [Query methods (raw SQL)](#query-methods-raw-sql). |
+| `KeysOfType<T, K>` | Extracts the keys of `T` whose value type is assignable to `K`. | Constrains `pkName` in [Constructor options](#constructor-options) to fields of the entity matching the configured primary-key type. |
+| `Primitive` | Union of scalar types (`string \| number \| boolean \| bigint \| symbol \| undefined \| null \| Date`) treated as leaves — not relations — when walking an entity's shape. | Used by `Ordering<T>` to tell scalar fields apart from relation fields. |
+
+### `DeepPartial<T>`
+
+Recursively makes all properties optional, walking into nested objects and array elements — unlike TypeScript's built-in `Partial<T>`, which only makes the top level optional:
+
+```typescript
+type User = { id: string; name: string; address: { city: string; zip: string } };
+
+const patch: DeepPartial<User> = {
+    address: { city: "São Paulo" }, // zip can be omitted; city keeps its type
+};
+
+await userRepository.patch(id, patch);
+```
+
+### `KeysOfType<T, K>`
+
+Filters an object type down to the keys whose value matches a given type — this is what lets `pkName` accept only fields of the entity that are actually assignable to the repository's primary-key type:
+
+```typescript
+type User = { id: string; age: number; name: string };
+type StringKeys = KeysOfType<User, string>; // "id" | "name"
+```
+
+### `Ordering<T>`
+
+Accepts either a single ordering object or an array of them, applied in the order they're declared:
+
+```typescript
+const order: Ordering<User> = { createdAt: "desc" };
+const chained: Ordering<User> = [{ name: "asc" }, { createdAt: "desc" }];
+
+await userRepository.getAll({ order: chained });
+```
 
 ---
 
