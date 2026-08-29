@@ -4,144 +4,125 @@
   <p style="margin-top: 12px;">
     <img src="https://img.shields.io/npm/v/vsrepo?style=flat-square" alt="npm version"/>
     <img src="https://img.shields.io/npm/l/vsrepo?style=flat-square" alt="npm license"/>
-    <img src="https://img.shields.io/npm/dt/vsrepo?style=flat-square" alt="npm downloads"/>
     <img src="https://img.shields.io/badge/inspired%20by-JpaRepository-E73121?style=flat-square" alt="inspired by JpaRepository"/>
   </p>
 </div>
 
-# VSRepository
+# VSRepository v2
 
 🇧🇷 Você está lendo a versão em português. [🇺🇸 Read in English](./README.md)
 
-Biblioteca de repository pattern para projetos que usam **Prisma**, com suporte completo a **TypeScript** e **inferência de tipos** automática.
+> ⚠️ **Trabalho em andamento.** Este documento descreve a branch `v2`, uma reescrita em andamento do VSRepository. O núcleo (classe de repositório, parser de métodos dinâmicos, decoradores, tratamento de erros) já funciona de ponta a ponta, mas nem todos os adapters estão completos ainda — veja [Status dos adapters](#status-dos-adapters) antes de depender desta branch. Se você precisa da versão estável, somente Prisma, use o código/docs da [`v1`](https://github.com/jaobrabo123/VSRepository/tree/v1).
 
-O VSRepository permite criar repositórios fortemente tipados com:
+Biblioteca de repository pattern **agnóstica de ORM**, com suporte completo a **TypeScript** e **type inference** automático. O VSRepository v2 é uma reescrita da biblioteca [v1](./v1): em vez de falar diretamente com o Prisma, o núcleo agora delega toda operação a um **adapter** plugável, permitindo que a mesma API de repository funcione com Prisma, TypeORM ou qualquer outro ORM/banco que implemente o contrato de adapter.
 
-- **Métodos base** automáticos: `get`, `getOrThrow`, `getList`, `save`, `saveList`, `remove`, `removeList`, `patch`, `patchList`, `merge`, `getAll`, `total`, `has`
+O VSRepository permite criar repositories fortemente tipados com:
+
+- **Métodos base** automáticos: `get`, `getOrThrow`, `getList`, `save`, `saveList`, `remove`, `removeList`, `patch`, `merge`, `getAll`, `total`, `has`
 - **Soft-delete nativo**: `softRemove`, `softRemoveList`, `restore`, `restoreList`
-- **Métodos dinâmicos** inferidos pelo nome: `findOneByEmail`, `findManyPaginated`, `updateById`, `deleteManyByNameStartsWith`
-- **Select models** reutilizáveis para diferentes projeções de dados
+- **Métodos dinâmicos** inferidos a partir do nome de um campo `declare` via o decorador `@DynamicMethod`: `findByEmail`, `findManyByStatusPaginated`, `updateById`
+- **Métodos de query SQL raw** através do novo decorador `@QueryMethod`, ignorando totalmente o engine de parsing por nome
+- **`select`/`relations`** ad-hoc em cada chamada — sem mais projeções nomeadas pré-declaradas
 - **Type safety** em 100% das operações
-- **Transações** nativas do Prisma (automáticas em `saveList` e `patchList`)
-- **Extensibilidade** com métodos customizados
-
-> 💡 Quer ver tudo isso na prática? A pasta [`examples/`](https://github.com/jaobrabo123/VSRepository/tree/main/examples) do repositório tem exemplos comentados e executáveis para cada funcionalidade — veja a seção [Exemplos práticos](#exemplos-práticos) mais abaixo.
+- **Transações** nativas do ORM, compartilhadas entre repositories
+- Um **núcleo agnóstico de ORM** — a mesma classe de repository funciona com qualquer implementação de `VSRepoAdapter`
 
 ---
 
 ## Sumário
 
+- [O que mudou da v1](#o-que-mudou-da-v1)
+- [Status dos adapters](#status-dos-adapters)
 - [Instalação](#instalação)
-- [Gerando os tipos](#gerando-os-tipos)
 - [Uso básico](#uso-básico)
-- [Abordagem baseada em classes (DynamicRepository)](#abordagem-baseada-em-classes-dynamicrepository)
-- [Integração com NestJS](#integração-com-nestjs)
+- [Options do construtor](#options-do-construtor)
 - [Métodos base](#métodos-base)
-  - [Soft-delete](#soft-delete)
-  - [Operações em lote](#operações-em-lote)
-  - [Merge](#merge)
-  - [Configurando os métodos base](#configurando-os-métodos-base)
-- [Select Models](#select-models)
-  - [Select bruto (options.select)](#select-bruto-optionsselect)
-- [Include Models](#include-models)
-  - [Include bruto (options.include)](#include-bruto-optionsinclude)
-- [Required Where](#required-where)
-- [Ordenação padrão (Default Ordering)](#ordenação-padrão-default-ordering)
-- [Opção `see`](#opção-see)
+- [Soft-delete](#soft-delete)
+- [`select` e `relations`](#select-e-relations)
 - [Métodos dinâmicos](#métodos-dinâmicos)
   - [Prefixos disponíveis](#prefixos-disponíveis)
   - [Filtros de campo](#filtros-de-campo)
   - [Operadores lógicos](#operadores-lógicos)
   - [Filtros de relação](#filtros-de-relação)
-  - [Sufixos de paginação e ordenação](#sufixos-de-paginação-e-ordenação)
-  - [Distinct](#distinct)
-  - [Configuração de método](#configuração-de-método)
-  - [Aggregate e GroupBy](#aggregate-e-groupby)
-  - [Query Methods](#query-methods)
-- [Relações no save](#relações-no-save)
+  - [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct)
+  - [Options do decorador](#options-do-decorador)
+- [Query methods (SQL raw)](#query-methods-sql-raw)
 - [Transações](#transações)
-- [Estendendo um repositório](#estendendo-um-repositório)
+- [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)
 - [Tratamento de erros](#tratamento-de-erros)
-- [Tipos utilitários](#tipos-utilitários)
-- [Referência da API](#referência-da-api)
-- [Exemplos práticos](#exemplos-práticos)
-- [Contribuindo](#contribuindo)
+- [Logging](#logging)
 - [Requisitos](#requisitos)
-- [Solução de problemas](#solução-de-problemas)
+- [Contribuindo](#contribuindo)
+
+---
+
+## O que mudou da v1
+
+Se você vem do código/docs da [v1](./v1), aqui está o resumo. Veja cada seção linkada para detalhes.
+
+| Área | v1 | v2 |
+| --- | --- | --- |
+| Acesso ao banco | Fala diretamente com o **Prisma**, embutido no pacote core | Fala com um **`VSRepoAdapter`**; o suporte a cada ORM é distribuído em pacotes separados (`@vsrepo/prisma7-adapter`, `@vsrepo/typeorm-adapter`, ...) em vez de vir embutido no pacote core `vsrepo` |
+| Definindo um repository | `setupVSRepo<T, M>()({...}).build(prisma)` funcional, **ou** uma classe `DynamicRepository` | Uma única API **baseada em classes**: `extends VSRepository<Entity, PKType, OrmTypes>` |
+| Métodos dinâmicos | Objeto de config `methods: { findByEmail: { map: true } }` | Decorador `@DynamicMethod()` em um campo `declare` |
+| Projeções de dados | `selectModels` + `defaultSelectModel` nomeados e reutilizáveis | `select`/`relations` ad-hoc passados em cada chamada (sem modelos nomeados) |
+| Eager loading | `include`/`includeModels` (específico do Prisma) | Option `relations` agnóstica de ORM |
+| Filtros globais | `requiredWhere` (qualquer filtro arbitrário, sempre aplicado) | `softRemoveKey` + `see: "active" \| "removed" \| "all"` (apenas soft-delete, não é mais um filtro genérico) |
+| Sufixo de filtro case-insensitive | `Insensitive` | `IgnoreCase` |
+| Ordenação inline no nome do método | Não suportado (`order` tinha que ser passado como argumento via `Ordered`/`Paginated`) | Cadeias `OrderBy<Campo>Asc`/`OrderBy<Campo>Desc` embutidas diretamente no nome do método |
+| Tratamento de duplicatas no `createMany` | Sufixo `SkipDuplicates` | Sufixo `IgnoreConflicts` |
+| Escape hatch de SQL raw | Não disponível | Decorador `@QueryMethod(sql, { modifying })`, com placeholders `$1`, `$2`, ... |
+| Upsert em lote | Não disponível | `saveList` |
+| `aggregate` / `groupBy` | Suportado (passthrough nativo do Prisma) | **Ainda não implementado** (planejado) |
+| Tipos de erro | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | Uma única classe `VSRepoError` com um campo `type: VSRepoErrorType` (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`) |
+| Log de debug | Boolean `showWorking: true` | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` para avisos de queries lentas |
+| CLI `vsrepo generate` (etapa de geração de tipos) | Obrigatória antes de usar | Não faz parte do núcleo da v2 — os tipos vêm diretamente das suas entidades/tipos do ORM |
+| Extras de CRUD | `patchList`, `options.select`/`options.include` raw | `select`/`relations` já são o padrão (sempre "raw"); `patch`/`merge` mantêm a mesma semântica |
+
+---
+
+## Status dos adapters
+
+O VSRepository v2 é **agnóstico de ORM por design**. O pacote core (`vsrepo`) traz apenas a classe de repository, os decoradores, o engine de parsing de nomes, o tratamento de erros e o logging — ele **não** inclui um adapter de produção. O suporte de fato a cada ORM/banco deve viver em **pacotes separados, versionados de forma independente**, um por ORM (e, quando fizer sentido, um por versão principal do ORM), por exemplo:
+
+- `@vsrepo/prisma7-adapter`
+- `@vsrepo/prisma8-adapter`
+- `@vsrepo/typeorm-adapter`
+- `@vsrepo/drizzle-adapter`
+
+Nenhum desses pacotes de adapter foi publicado ainda. O que existe nesta branch, dentro de `src/adapters/`, são **protótipos/implementações de referência** usados para desenhar e validar o contrato do `VSRepoAdapter` enquanto o core estava sendo construído — não são os adapters reais e distribuíveis:
+
+| Protótipo | Status |
+| --- | --- |
+| `VSRepoPrisma7Adapter` (`src/adapters/prisma7`) | 🟡 **Protótipo de referência.** `findOne` está implementado; todos os outros métodos (`findMany`, `save`, `update`, `delete`, `count`, `exists`, `query`, etc.) atualmente lançam `"Method not implemented."`. É o ponto de partida do futuro pacote `@vsrepo/prisma7-adapter`, não o pacote em si. |
+| TypeORM (`src/adapters/typeorm.adapter.ts`) | 🟡 **Protótipo de referência.** Só existe o parser da cláusula `where` (`parseVSRepoWhere`) até agora; ele **ainda não** implementa o contrato completo de `VSRepoAdapter`. É o ponto de partida do futuro pacote `@vsrepo/typeorm-adapter`. |
+| Adapters customizados | 🟢 Totalmente suportados hoje — implemente você mesmo a classe abstrata [`VSRepoAdapter`](#escrevendo-seu-próprio-adapter) para qualquer ORM/banco que precisar, no seu próprio projeto ou pacote, seguindo o mesmo formato esperado dos `@vsrepo/*-adapter`. |
+
+Resumindo: a classe de repository, os decoradores `@DynamicMethod`/`@QueryMethod`, o engine de parsing de nomes, o tratamento de erros e o logging já funcionam de ponta a ponta — o que ainda está sendo construído é a integração concreta com cada ORM, que será distribuída como pacotes `@vsrepo/*-adapter` separados, e não como parte do pacote core `vsrepo`. Trate esta branch como um preview da arquitetura da v2, e não como um substituto imediato para a v1.
 
 ---
 
 ## Instalação
 
-```bash
-npm i vsrepo @prisma/client
-```
-
-Gere o Prisma Client:
+Quando lançada, a v2 será instalada como o pacote core mais um pacote de adapter para o seu ORM, por exemplo:
 
 ```bash
-npx prisma generate
+npm i vsrepo @vsrepo/prisma7-adapter
 ```
 
----
-
-## Gerando os tipos
-
-O VSRepository precisa saber o caminho real do seu Prisma Client para gerar as tipagens corretamente.
-
-```bash
-npx vsrepo generate
-```
-
-Equivalente a:
-
-```bash
-npx vsrepo generate \
-  --output generated/vsrepo \
-  --prisma generated/prisma
-```
-
-**Flags disponíveis:**
-
-| Flag       | Atalho | Padrão               |
-| ---------- | ------ | -------------------- |
-| `--output` | `-o`   | `generated/vsrepo`   |
-| `--prisma` | `-p`   | `generated/prisma`   |
-
-**Arquivos gerados:**
-
-```text
-generated/vsrepo/
-├── DynamicRepository.ts
-├── DynamicRepository.types.d.ts
-├── VSRepoError.ts
-├── VSRepoError.types.d.ts
-├── VSRepository.ts
-├── VSRepository.types.d.ts
-└── index.ts
-```
-
-Depois de gerar, sempre importe a partir da pasta gerada:
-
-```ts
-// CORRETO ✅
-import { setupVSRepo } from "../../generated/vsrepo";
-
-// ERRADO ❌
-import { setupVSRepo } from "vsrepo";
-```
+> Nem o `vsrepo` v2 nem nenhum pacote `@vsrepo/*-adapter` foram publicados ainda, e o `package.json` desta branch ainda reflete o build da v1. Até que sejam lançados, consuma o core diretamente da pasta `src/` desta branch e escreva seu próprio adapter (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) ou adapte um dos protótipos em `src/adapters/`.
 
 ---
 
 ## Uso básico
 
-### Configurando o Prisma Client
+### Implementando/escolhendo um adapter
 
-```ts
+```typescript
 // src/configs/db.ts
-import { PrismaClient } from '../../generated/prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import 'dotenv/config';
+import { PrismaClient } from "../../generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import "dotenv/config";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -149,1459 +130,469 @@ const prisma = new PrismaClient({ adapter });
 export default prisma;
 ```
 
-### Criando um repositório
+### Criando um repository
 
-```ts
-// src/repositories/userRepository.ts
+```typescript
+// src/repositories/user.repository.ts
+import { VSRepository } from "vsrepo/VSRepository";
+import { DynamicMethod } from "vsrepo/decorators/dynamic-method.decorator";
+import { VSRepoPrisma7Adapter } from "vsrepo/adapters/prisma7/prisma7.adapter";
 import prisma from "../configs/db";
-import { setupVSRepo } from "../../generated/vsrepo";
-import type { User } from "../../generated/prisma/client";
+import type { UserGetPayload } from "../../generated/prisma/models";
 
-const userRepository = setupVSRepo<User, "User">()(({
-  tableName: "user",
-  pkName: "id",
-  selectModels: {
-    public: { id: true, name: true, email: true },
-  },
-  defaultSelectModel: "public",
-}).build(prisma);
+type User = UserGetPayload<{ include: { address: true } }>;
 
-export default userRepository;
-```
-
-### Usando o repositório
-
-```ts
-import userRepository from "./repositories/userRepository";
-
-const user = await userRepository.save({
-  name: "John",
-  email: "john@email.com",
-  password: "password",
-});
-
-const found = await userRepository.get(user.id);
-const all = await userRepository.getAll();
-
-user.name = "John Smith";
-
-await userRepository.save(user);
-await userRepository.remove(user.id);
-```
-
----
-
-## Abordagem baseada em classes (DynamicRepository)
-
-Se você prefere um estilo OOP com decorators em vez da abordagem funcional `setupVSRepo`, o VSRepository também oferece `DynamicRepository` — uma classe que você pode estender com decorators `@DynamicMethod()` para definir seus métodos dinâmicos.
-
-Veja **[README-DynamicRepo.pt-BR.md](./README-DynamicRepo.pt-BR.md)** para a documentação completa da abordagem baseada em classes, incluindo exemplos de integração com NestJS, configuração de decorators e uma comparação com o `setupVSRepo`.
-
----
-
-## Integração com NestJS
-
-O VSRepository pode ser facilmente integrado a projetos NestJS através de providers. Abaixo está um exemplo completo usando o padrão de injeção de dependência do NestJS.
-
-### Configurando o repositório como provider
-
-```ts
-// src/modules/user/user.repository.ts
-import { Provider } from "@nestjs/common";
-import { PrismaService } from "../../database/prisma.service";
-import { UserGetPayload } from "../../../generated/prisma/models";
-import { setupVSRepo } from "../../../generated/vsrepo";
-
-const userVSRepo = setupVSRepo<
-    UserGetPayload<{ include: { profile: true } }>,
-    "User"
->()(({
-    tableName: "user",
-    pkName: "id",
-    selectModels: {
-        public: {
-            id: true,
-            email: true,
-            createdAt: true,
-            updatedAt: true,
-        },
-        auth: {
-            id: true,
-            email: true,
-            password: true,
-        },
-    },
-    defaultSelectModel: "public",
-    requiredWhere: {
-        deletedAt: null,
-    },
-    relations: {
-        profile: {
-            mode: "oto",
-            pk: "id",
-            restriction: "add",
-        },
-    },
-    methods: {
-        findAuthByEmail: {
-            map: true,
-            proxyTo: "findUniqueByEmail",
-            selectModel: "auth",
-        },
-        findByEmailEndsWith: {
-            map: true,
-        }
-    },
-});
-
-const setupUserRepository = (prisma: PrismaService) => {
-    return userVSRepo.build(prisma);
-};
-
-export type UserRepository = ReturnType<typeof setupUserRepository>;
-/* 
-O tipo também pode ser inferido usando o `RepositoryOf` do VSRepository, passando o tipo de `userVSRepo`:
-
-export type UserRepository = RepositoryOf<typeof userVSRepo>;
-
-OBS: Se você usar `.extend` para estender o repositório ou configurar os métodos base,
-usar `ReturnType` é recomendado por ser mais simples de inferir o tipo
-*/
-
-export const USER_REPOSITORY = Symbol("USER_REPOSITORY");
-
-export const UserRepositoryProvider: Provider = {
-    provide: USER_REPOSITORY,
-    inject: [PrismaService],
-    useFactory: setupUserRepository,
-};
-```
-
-### Registrando o provider no módulo
-
-```ts
-// src/modules/user/user.module.ts
-import { Module } from "@nestjs/common";
-import { UserRepositoryProvider } from "./user.repository";
-import { UserService } from "./user.service";
-import { UserController } from "./user.controller";
-
-@Module({
-    imports: [DatabaseModule],
-    providers: [UserRepositoryProvider, UserService],
-    controllers: [UserController],
-    exports: [UserService],
-})
-export class UserModule {}
-```
-
-### Usando o repositório em um service
-
-```ts
-// src/modules/user/user.service.ts
-import { Injectable, Inject } from "@nestjs/common";
-import { USER_REPOSITORY, type UserRepository } from "./user.repository";
-
-@Injectable()
-export class UserService {
-    constructor(
-        @Inject(USER_REPOSITORY)
-        private readonly userRepository: UserRepository,
-    ) {}
-
-    async getUserById(id: string) {
-        return this.userRepository.get(id);
-    }
-
-    async getUserAuthByEmail(email: string) {
-        return this.userRepository.findAuthByEmail(email);
-    }
-
-    async createUser(data: { email: string; password: string; name: string }) {
-        return this.userRepository.save({
-            email: data.email,
-            password: data.password,
-            name: data.name,
+class UserRepository extends VSRepository<User, string> {
+    constructor() {
+        super({
+            pkName: "id",
+            adapter: new VSRepoPrisma7Adapter<User>(prisma, "user"),
+            softRemoveKey: "deletedAt",
+            defaultOrdering: { createdAt: "desc" },
         });
     }
+
+    @DynamicMethod()
+    declare findByEmail: (email: string) => Promise<User[]>;
+
+    @DynamicMethod()
+    declare findOneByEmail: (email: string) => Promise<User | null>;
 }
+
+export default new UserRepository();
 ```
 
-**Benefícios dessa abordagem:**
+### Usando o repository
 
-- ✅ Repositórios type-safe com injeção de dependência
-- ✅ Fácil de testar (mock do `USER_REPOSITORY`)
-- ✅ Isolamento da lógica de persistência
-- ✅ Reuso do repositório em múltiplos services
-- ✅ Suporte a transações via `PrismaService`
+```typescript
+import userRepository from "./repositories/user.repository";
+
+const usuario = await userRepository.save({
+    name: "Joao",
+    email: "joao@email.com",
+    password: "password",
+});
+
+const encontrado = await userRepository.get(usuario.id);
+const todos = await userRepository.getAll();
+const porEmail = await userRepository.findByEmail("joao@email.com");
+
+await userRepository.patch(usuario.id, { name: "Joao Pedro" });
+await userRepository.remove(usuario.id);
+```
+
+---
+
+## Options do construtor
+
+`VSRepoOptions<T, K>`, passado para o `super(...)` dentro do construtor do seu repository:
+
+| Option | Tipo | Descrição |
+| --- | --- | --- |
+| `adapter` | `VSRepoAdapter<T>` | **Obrigatório.** A instância do adapter que traduz as chamadas do repository em chamadas contra o ORM/banco por trás dele. |
+| `pkName` | `keyof T` | **Obrigatório.** Nome do campo que representa a primary key da entidade. |
+| `softRemoveKey` | `keyof T` | Opcional. Quando definido, habilita `softRemove`, `softRemoveList`, `restore` e `restoreList`. |
+| `defaultOrdering` | `Ordering<T>` | Opcional. Ordenação padrão aplicada automaticamente em queries que aceitam `order`, a menos que seja sobrescrita em uma chamada específica. |
+| `logLevel` | `VSLogLevel` | Opcional. Severidade mínima impressa pelo logger interno. Padrão: `VSLogLevel.WARN`. |
+| `logSlowThresholdMs` | `number` | Opcional. Duração (ms) acima da qual uma operação concluída é logada como `WARN` em vez de `DEBUG`. Padrão: 300ms. |
 
 ---
 
 ## Métodos base
 
-Ao chamar `.build(prisma)`, os métodos base abaixo ficam automaticamente disponíveis:
+Disponíveis automaticamente em toda subclasse de `VSRepository`:
 
-| Método                    | Descrição                                                                                                      |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `get(pk)`                 | Busca um registro pela sua chave primária                                                                      |
-| `getOrThrow(pk)`          | Busca um registro pela sua chave primária; lança `VSRepoRuntimeError` (código `"20727"`) se não for encontrado |
-| `getList(pks)`            | Busca múltiplos registros a partir de uma lista de chaves primárias                                            |
-| `save(obj)`               | Cria ou atualiza — se o objeto tiver uma `pk`, realiza um `upsert`; caso contrário, um `create`                |
-| `saveList(objs)`          | Salva um array de objetos em uma única transação automática                                                    |
-| `patch(pk, obj)`          | Atualiza parcialmente um registro pela sua chave primária                                                      |
-| `patchList(tuples)`       | Atualiza parcialmente múltiplos registros via um array de tuplas `[pk, obj]` em uma transação automática       |
-| `merge(pk, obj)`          | Busca um registro e faz um deep merge em memória — **não persiste**, retorna o objeto mesclado                 |
-| `remove(pk)`              | Remove um registro pela sua chave primária                                                                     |
-| `removeList(pks)`         | Remove vários registros a partir de uma lista de chaves primárias — retorna `{ count }`                        |
-| `getAll()`                | Retorna todos os registros (aceita `pagination` e `order` em `options`)                                        |
-| `total()`                 | Retorna o número total de registros                                                                            |
-| `has(pk)`                 | Verifica se um registro existe pela sua chave primária — retorna `boolean`                                     |
+| Método | Descrição |
+| --- | --- |
+| `get(pk, options?)` | Busca um registro pela primary key. |
+| `getOrThrow(pk, options?)` | Busca um registro pela primary key, lançando erro se não encontrar. |
+| `getList(pks, options?)` | Busca vários registros por uma lista de primary keys. |
+| `getAll(options?)` | Busca todos os registros; aceita `pagination` e `order` em `options`. |
+| `save(obj, options?)` | Cria ou atualiza (upsert) um único registro. |
+| `saveList(objs, options?)` | Cria ou atualiza (upsert) vários registros em uma única chamada. |
+| `patch(pk, obj, options?)` | Atualiza parcialmente um registro pela primary key. |
+| `merge(pk, obj, options?)` | Atualiza parcialmente um registro e o retorna mesclado (deep-merge) com o objeto informado. |
+| `remove(pk, options?)` | Remove um registro pela primary key. |
+| `removeList(pks, options?)` | Remove vários registros pela primary key, retornando `{ count }`. |
+| `total(options?)` | Retorna o total de registros. |
+| `has(pk, options?)` | Verifica se um registro existe, retornando `boolean`. |
+| `transaction(fn, options?)` | Executa `fn` dentro de uma transação nativa do ORM. |
+| `getDbClient()` | Retorna a instância do client do ORM usada fora de transações. |
 
-Todos eles aceitam `options` como último argumento.
-
-### Soft-delete
-
-Quando `softRemovekName` está configurado no repositório, os métodos adicionais abaixo ficam disponíveis:
-
-| Método                      | Descrição                                                                          |
-| --------------------------- | ---------------------------------------------------------------------------------- |
-| `softRemove(pk)`            | Marca um registro como removido, preenchendo `softRemovekName` com a data atual    |
-| `softRemoveList(pks)`       | Marca múltiplos registros como removidos em lote — retorna `{ count }`             |
-| `restore(pk)`               | Restaura um registro com soft-delete, limpando o campo `softRemovekName`           |
-| `restoreList(pks)`          | Restaura múltiplos registros com soft-delete em lote — retorna `{ count }`         |
-
-```ts
-const userRepository = setupVSRepo<User, "user">()(({
-  tableName: "user",
-  pkName: "id",
-  softRemovekName: "deletedAt", // deve ser um campo DateTime no schema do Prisma
-}).build(prisma);
-
-await userRepository.softRemove(1);
-await userRepository.restore(1);
-```
-
-> O campo informado em `softRemovekName` **deve** ser do tipo `DateTime` no schema do Prisma. O VSRepository valida isso no momento do `build` e lança `VSRepoBuildError` se o tipo estiver incorreto.
-
-### Operações em lote
-
-`saveList` e `patchList` executam automaticamente todas as operações dentro de uma única transação do Prisma. Se alguma operação falhar, todas as anteriores são desfeitas (rollback).
-
-```ts
-// saveList — cria ou atualiza múltiplos objetos em uma transação automática
-const users = await userRepository.saveList([
-  { name: "Mary", email: "mary@email.com" },
-  { id: 2, name: "John Updated", email: "john@email.com" },
-]);
-
-// patchList — atualiza parcialmente múltiplos registros via tuplas [pk, obj]
-const updated = await userRepository.patchList([
-  [1, { active: false }],
-  [2, { name: "New Name" }],
-]);
-```
-
-Quando você já está dentro de uma transação existente, passe-a em `options.db`. Nesse caso, `db` deve ser um `DbTransaction` (não o client principal):
-
-```ts
-await prisma.$transaction(async (tx) => {
-  await userRepository.saveList([{ name: "Mary" }, { name: "Gus" }], { db: tx });
-  await userRepository.patchList([[1, { active: false }], [2, { active: true }]], { db: tx });
-});
-```
-
-### Merge
-
-O método `merge` busca um registro pela PK e faz um deep merge (`deepmerge`) do objeto informado com os dados existentes **em memória**. Ele **não persiste** as alterações — retorna o resultado mesclado para que você decida o que fazer com ele.
-
-```ts
-const existing = await userRepository.get(1);
-// existing: { id: 1, name: "Mary", profile: { bio: "Hi", age: 25 } }
-
-const merged = await userRepository.merge(1, {
-  profile: { bio: "Updated bio" },
-});
-// merged: { id: 1, name: "Mary", profile: { bio: "Updated bio", age: 25 } }
-
-// Para persistir, passe para save ou patch:
-await userRepository.save(merged);
-```
-
-Retorna `null` se o registro não for encontrado.
-
-**O merge de relações to-many (`otm`/`mtm`) é feito por PK, não por simples concatenação.** Para relações to-one (`oto`/`mto`), o `merge` faz um deep merge comum do objeto. Para relações to-many, cada item do array enviado é comparado com o item existente que tem a mesma PK (definida em `relations[key].pk`): se a PK bater, os dois objetos são mesclados; se não bater (um item novo, sem correspondente), ele é simplesmente adicionado à lista. Itens existentes que não aparecem no array enviado são mantidos.
-
-```ts
-const existing = await userRepository.get(1);
-// existing: {
-//   id: 1,
-//   posts: [
-//     { id: 10, title: "Post A", published: false },
-//     { id: 11, title: "Post B", published: true },
-//   ],
-// }
-
-const merged = await userRepository.merge(1, {
-  posts: [
-    { id: 10, published: true },  // mesma PK (id: 10) → mescla com o item existente
-    { title: "Post C" },          // sem PK → adicionado como novo item
-  ],
-});
-// merged: {
-//   id: 1,
-//   posts: [
-//     { id: 10, title: "Post A", published: true },  // mesclado
-//     { id: 11, title: "Post B", published: true },  // mantido, não estava no array enviado
-//     { title: "Post C" },                            // adicionado
-//   ],
-// }
-```
-
-> Observe que o `merge` nunca remove itens de uma relação to-many — ele apenas mescla os que batem por PK e adiciona os que não batem. Para remover itens de uma relação, use `save`/`patch` com `restriction: "set"` na configuração da relação.
-
-### Configurando os métodos base
-
-O segundo argumento de `.build(prisma, config)` permite ajustar o comportamento global do repositório e customizar cada método base individualmente através de `baseMethods`.
-
-```ts
-userVSRepo.build(prisma, {
-  // Exibe os logs internos do VSRepository no console (queries montadas, prefixo
-  // detectado, filtros aplicados, etc). Ótimo para debugar métodos dinâmicos. Padrão = false.
-  showWorking: true,
-
-  baseMethods: {
-    get: {
-      // Habilita/desabilita o método no repositório final. Se `false`, o método
-      // nem aparece no tipo do repositório (não é apenas um erro em runtime). Padrão = true.
-      active: true,
-
-      // Select model aplicado por padrão quando o método é chamado sem `options.selectModel`.
-      // Sobrescreve o `defaultSelectModel` de setupVSRepo apenas para este método.
-      defaultSelect: "public",
-    },
-    remove: {
-      active: true,
-      defaultSelect: "minimal",
-
-      // Quando `true`, ignora o `requiredWhere` configurado em setupVSRepo para
-      // este método específico — útil quando um método precisa "furar" um
-      // filtro global (ex: multi-tenancy) em um caso específico. Padrão = false.
-      ignoreRequiredWhere: false,
-    },
-    save: {
-      // Aqui apenas `ignoreRequiredWhere` é definido — `active` e `defaultSelect`
-      // mantêm seus padrões (true e o `defaultSelectModel` global).
-      ignoreRequiredWhere: true,
-    },
-    patch: {
-      // Apenas o select é sobrescrito; o método continua ativo normalmente.
-      defaultSelect: "minimal",
-    },
-    has: {
-      active: false, // Desabilita 'has' (padrão = true) — o método desaparece do repositório
-    },
-    softRemove: {
-      // Métodos de soft-delete seguem as mesmas opções (`active`, `defaultSelect`,
-      // `ignoreRequiredWhere`). Só estão disponíveis se `softRemovekName` estiver configurado.
-      active: true,
-      defaultSelect: "minimal",
-    },
-  },
-});
-```
-
-> Métodos de lote/agregação como `removeList`, `softRemoveList`, `restoreList`, `total` e `has` **não** aceitam `defaultSelect` (eles não retornam um registro selecionável — retornam `{ count }` ou `boolean`). Nesses casos, `BaseMethodConfig` fica restrito a `active` e `ignoreRequiredWhere`.
+Todos os métodos acima aceitam um objeto `MethodOptions<Entity, OrmTypes>` como último argumento (`select`, `relations`, `see`, `db`).
 
 ---
 
-## Select Models
+## Soft-delete
 
-`selectModels` define projeções de dados nomeadas e reutilizáveis.
+O soft-delete agora é um **conceito nativo de primeira classe**, em vez de algo que você tinha que modelar sozinho com `requiredWhere`. Configure `softRemoveKey` uma vez no repository:
 
-```ts
-selectModels: {
-  public:   { id: true, name: true, email: true },
-  internal: { id: true, name: true, email: true, password: true },
-  minimal:  { id: true },
-},
-defaultSelectModel: "public",
-```
-
-`defaultSelectModel` define qual select é usado automaticamente quando nenhum é especificado na chamada. É recomendado sempre defini-lo junto com `selectModels`.
-
-**Usando um select específico na chamada:**
-
-```ts
-const user = await userRepository.get(id, { selectModel: "minimal" });
-```
-
-**Retornando o payload padrão do Prisma (sem select):**
-
-```ts
-const fullUser = await userRepository.get(id, { selectModel: false });
-```
-
-### Select bruto (`options.select`)
-
-Além do `selectModel` (nomeado, pré-configurado em `selectModels`), você pode passar um `select` bruto do Prisma diretamente na chamada, sem precisar registrá-lo antecipadamente no repositório.
-
-```ts
-const usuario = await usuarioRepository.get(id, {
-  select: { id: true, nome: true },
+```typescript
+super({
+    pkName: "id",
+    adapter,
+    softRemoveKey: "deletedAt",
 });
 ```
 
-`options.select` aceita qualquer `select` válido para o modelo Prisma do repositório — é totalmente tipado e oferece o mesmo autocomplete/validação de chamar `prisma.usuario.findMany({ select: ... })` diretamente, e o tipo de retorno do método é restrito exatamente aos campos selecionados.
+Isso libera quatro métodos extras:
 
-**Regras e comportamento:**
+| Método | Efeito |
+| --- | --- |
+| `softRemove(pk, options?)` | Define `deletedAt` para a data atual. |
+| `softRemoveList(pks, options?)` | O mesmo, em lote — retorna `{ count }`. |
+| `restore(pk, options?)` | Volta `deletedAt` para `null`. |
+| `restoreList(pks, options?)` | O mesmo, em lote — retorna `{ count }`. |
 
-- **Mutuamente exclusivo com `selectModel`, `includeModel` e `include`.** Apenas um dos quatro pode ser fornecido por chamada; os tipos garantem isso — passar mais de um é um erro em tempo de compilação.
-- **Ad hoc, não reutilizável.** Diferente do `selectModel`, não precisa ser declarado em `selectModels`. Use-o para projeções pontuais que não justificam um select model nomeado.
-- **Nenhum `defaultSelectModel` é aplicado.** Quando `select` é fornecido, o select padrão (`defaultSelectModel`) é ignorado e apenas o `select` bruto é enviado ao Prisma.
+Todo o restante dos métodos aceita uma option `see` que controla a visibilidade de registros com soft-delete:
 
-```ts
-// CORRETO ✅ — apenas select bruto
-await usuarioRepository.get(id, { select: { id: true, nome: true } });
-
-// ERRADO ❌ — combinar select com selectModel/includeModel/include não é permitido
-await usuarioRepository.get(id, { selectModel: "public", select: { id: true } });
-await usuarioRepository.get(id, { include: { posts: true }, select: { id: true } });
+```typescript
+await userRepository.getAll({ see: "active" });  // padrão — apenas registros não removidos
+await userRepository.getAll({ see: "removed" }); // apenas registros com soft-delete
+await userRepository.getAll({ see: "all" });      // todos, ignorando o soft-delete
 ```
-
-> **Quando usar `selectModel` vs. `select`:** prefira `selectModel` para projeções reutilizadas em várias chamadas (definidas uma vez em `selectModels`); use `select` para projeções específicas e ocasionais que não precisam de um nome.
 
 ---
 
-## Include Models
+## `select` e `relations`
 
-`includeModels` funciona de forma parecida com `selectModels`, mas em vez de receber um `select`, recebe um `include` válido do Prisma.
+Os `selectModels`/`defaultSelectModel` nomeados e reutilizáveis da v1 não existem mais. Na v2 você passa `select` e `relations` diretamente em cada chamada — não há nada para pré-registrar:
 
-```ts
-const userRepository = setupVSRepo<User, "user">()(({
-  tableName: "user",
-  pkName: "id",
-  selectModels: {
-    public: { id: true, name: true, email: true },
-  },
-  defaultSelectModel: "public",
-  includeModels: {
-    withPosts: { posts: true },
-    withPostsAndProfile: { posts: true, profile: true },
-  },
-}).build(prisma);
-```
+```typescript
+const usuario = await userRepository.get(id, {
+    select: { id: true, name: true, address: { city: true } },
+});
 
-**Usando um `includeModel` na chamada:**
-
-```ts
-const user = await userRepository.get(id, { includeModel: "withPosts" });
-```
-
-Nesse caso, o `select` padrão (`selectModels`/`defaultSelectModel`) é ignorado e apenas o `include` é enviado ao Prisma.
-
-### Diferenças em relação a `selectModels`
-
-- **Só pode ser passado na chamada do método**, via `options.includeModel`. Não existe `defaultIncludeModel` ou `defaultInclude` — não há como configurar um `includeModel` padrão no repositório, ao contrário do que acontece com `defaultSelectModel`.
-- **`includeModel` e `selectModel` não podem ser passados juntos** na mesma chamada. Se um `includeModel` for informado, qualquer `selectModel` (incluindo o padrão) é ignorado.
-
-```ts
-// CORRETO ✅ — apenas includeModel
-await userRepository.get(id, { includeModel: "withPosts" });
-
-// CORRETO ✅ — apenas selectModel
-await userRepository.get(id, { selectModel: "public" });
-
-// ERRADO ❌ — combinar os dois não é permitido
-await userRepository.get(id, { selectModel: "public", includeModel: "withPosts" });
-```
-
-### Include bruto (`options.include`)
-
-Além do `includeModel` (nomeado, pré-configurado em `includeModels`), você pode passar um `include` bruto do Prisma diretamente na chamada, sem precisar registrá-lo antes no repositório.
-
-```ts
-const user = await userRepository.get(id, {
-  include: { posts: true, profile: true },
+const usuarioComEndereco = await userRepository.get(id, {
+    relations: { address: true },
 });
 ```
 
-`options.include` aceita qualquer `include` válido para o modelo Prisma do repositório — é totalmente tipado e oferece o mesmo autocomplete/validação de chamar `prisma.user.findMany({ include: ... })` diretamente.
-
-**Regras e comportamento:**
-
-- **Mutuamente exclusivo com `selectModel` e `includeModel`.** Apenas um dos três pode ser informado por chamada; os tipos garantem isso — passar mais de um é um erro em tempo de compilação.
-- **Ad hoc, não reutilizável.** Diferente do `includeModel`, não precisa ser declarado em `includeModels`. Use para includes pontuais que não justificam um model nomeado.
-- **Nenhum `selectModel` padrão é aplicado.** Assim como com `includeModel`, quando `include` é informado, o select (incluindo `defaultSelectModel`) é ignorado e apenas o `include` é enviado ao Prisma.
-
-```ts
-// CORRETO ✅ — apenas include bruto
-await userRepository.get(id, { include: { posts: true } });
-
-// ERRADO ❌ — combinar include com selectModel/includeModel não é permitido
-await userRepository.get(id, { selectModel: "public", include: { posts: true } });
-await userRepository.get(id, { includeModel: "withPosts", include: { posts: true } });
-```
-
-> **Quando usar `includeModel` vs. `include`:** prefira `includeModel` para includes reutilizados em várias chamadas (definidos uma vez em `includeModels`); use `include` para includes específicos e pontuais que não precisam de um nome.
-
----
-
-## Required Where
-
-`requiredWhere` define filtros que são aplicados automaticamente em toda query do repositório.
-
-```ts
-requiredWhere: { active: true },
-```
-
-Agora toda query vai incluir automaticamente `active: true`:
-
-```ts
-// Internamente: WHERE active = true
-const users = await userRepository.findMany();
-
-// Internamente: WHERE email = 'john@email.com' AND active = true
-const user = await userRepository.findByEmail("john@email.com");
-```
-
-Útil para soft-deletes manuais, multi-tenancy e filtros globais de qualquer tipo.
-
----
-
-## Ordenação padrão (Default Ordering)
-
-`defaultOrdering` define uma ordenação padrão que é aplicada automaticamente em toda query que aceita `orderBy`, sem precisar repetir o argumento `order` em cada chamada.
-
-```ts
-const userRepository = setupVSRepo<User, "user">()(({
-  tableName: "user",
-  pkName: "id",
-  defaultOrdering: { createdAt: "desc" },
-}).build(prisma);
-```
-
-Com isso, toda query de listagem já virá ordenada por `createdAt` decrescente:
-
-```ts
-// Internamente: ORDER BY createdAt DESC
-const users = await userRepository.getAll();
-
-// Também se aplica ao getAll com paginação
-const paginated = await userRepository.getAll({ pagination: { take: 10 } });
-```
-
-**`defaultOrdering` é ignorado quando:**
-
-- O método usa o sufixo `Ordered`, `OrderedAndPaginated` ou `PaginatedAndOrdered` — nesses casos, o argumento `order` passado na chamada tem prioridade.
-- O método dinâmico tem `injectOrdering` configurado — a ordenação fixa do método tem precedência.
-
-```ts
-methods: {
-  findManyPaginatedAndOrdered: { map: true },         // order vem do argumento → defaultOrdering ignorado
-  findManyByActive:            { map: true },         // sem Ordered → defaultOrdering aplicado
-  findManyByStatus: {
-    map: true,
-    injectOrdering: { name: "asc" },                  // injectOrdering → defaultOrdering ignorado
-  },
-}
-```
-
-> `defaultOrdering` aceita o mesmo tipo do `orderBy` nativo do Prisma para o modelo — incluindo arrays de ordenações encadeadas.
-
----
-
-## Opção `see`
-
-Quando `softRemovekName` está configurado, todo método aceita a opção `see` para controlar a visibilidade de registros com soft-delete:
-
-| Valor       | Comportamento                                                  |
-| ----------- | -------------------------------------------------------------- |
-| `"active"`  | Retorna apenas registros que **não** foram removidos (padrão)  |
-| `"removed"` | Retorna apenas registros removidos                             |
-| `"all"`     | Retorna todos os registros, independente do status             |
-
-```ts
-// Retorna apenas usuários ativos (padrão)
-const active = await userRepository.getAll();
-
-// Retorna apenas usuários removidos
-const removed = await userRepository.getAll({ see: "removed" });
-
-// Retorna todos
-const all = await userRepository.getAll({ see: "all" });
-```
-
-> A opção `see` funciona independentemente do `requiredWhere` — ela é aplicada em cima do filtro de soft-delete, não como substituta dele.
+- `select` espelha o formato da entidade: campos escalares recebem um `boolean`; campos de relação recebem um `boolean` ou um `select` aninhado.
+- `relations` carrega registros relacionados; cada campo de relação recebe um `boolean` ou um objeto `relations` aninhado.
+- `select` e `relations` são options independentes entre si — combine-as conforme a necessidade de cada chamada.
 
 ---
 
 ## Métodos dinâmicos
 
-Métodos dinâmicos são definidos na propriedade `methods` e têm seu comportamento inferido pelo nome.
+Métodos dinâmicos são declarados como um campo `declare` anotado com `@DynamicMethod()`. O comportamento deles — qual método do adapter chamar, quais filtros aplicar e como os argumentos se mapeiam para eles — é inferido inteiramente a partir do **nome** do campo, seguindo a mesma filosofia de convenção sobre configuração da v1.
 
-```ts
-methods: {
-  findOneByEmail:     { map: true },
-  findManyPaginated:  { map: true },
-  updateById:         { map: true },
-  deleteManyByIdIn:   { map: true },
+```typescript
+class UserRepository extends VSRepository<User, string> {
+    @DynamicMethod()
+    declare findByEmail: (email: string) => Promise<User[]>;
+
+    @DynamicMethod()
+    declare findOneByEmail: (email: string) => Promise<User | null>;
+
+    @DynamicMethod()
+    declare updateById: (id: string, data: Partial<User>) => Promise<User>;
+
+    @DynamicMethod()
+    declare findByNameIgnoreCaseOrAgeBetweenANDActiveIsNullDistinctNameAndAgeOrderByCreatedAtAscAndUpdatedAtDescPaginated:
+        (name: string, age: [number, number], pagination: { limit?: number; offset?: number }) => Promise<User[]>;
 }
 ```
-
----
 
 ### Prefixos disponíveis
 
-O prefixo do nome do método determina qual operação do Prisma será chamada e quais argumentos são esperados.
+| Prefixo | Método do adapter | Observações |
+| --- | --- | --- |
+| `findBy` | `findMany` | Filtros de campo seguem o prefixo. |
+| `findOneBy` | `findOne` | Filtros de campo seguem o prefixo; resultado único. |
+| `findOneOrThrowBy` | `findOneOrThrow` | Lança erro se não encontrar. |
+| `findOneOrThrow` | `findOneOrThrow` | Sem filtros de campo; aplica só soft-delete/`see`. |
+| `findOneOrThrowWhere` | `findOneOrThrow` | Recebe um objeto `where` explícito como argumento. |
+| `findWhere` | `findMany` | Recebe um objeto `where` explícito como argumento. |
+| `findOneWhere` | `findOne` | Recebe um objeto `where` explícito como argumento. |
+| `countBy` | `count` | Filtros de campo seguem o prefixo. |
+| `countWhere` | `count` | Recebe um objeto `where` explícito como argumento. |
+| `count` | `count` | Sem filtros de campo. |
+| `existsBy` | `exists` | Retorna `boolean`. |
+| `existsWhere` | `exists` | Recebe um objeto `where` explícito como argumento. |
+| `create` | `create` | Recebe `data` como argumento. |
+| `createMany` | `createMany` | Recebe `data[]` como argumento; suporta `IgnoreConflicts`. |
+| `updateBy` | `update` | Filtros de campo + `data` como argumento. |
+| `updateWhere` | `update` | `where` explícito + `data` como argumentos. |
+| `updateManyBy` | `updateMany` | Filtros de campo + `data`. |
+| `updateManyWhere` | `updateMany` | `where` explícito + `data`. |
+| `updateManyReturningBy` | `updateManyReturning` | Filtros de campo + `data`; retorna os registros atualizados. |
+| `updateManyReturningWhere` | `updateManyReturning` | `where` explícito + `data`; retorna os registros atualizados. |
+| `upsertBy` | `upsert` | Filtros de campo + payloads `create`/`update`. |
+| `upsertWhere` | `upsert` | `where` explícito + payloads `create`/`update`. |
+| `deleteBy` | `delete` | Filtros de campo seguem o prefixo. |
+| `deleteWhere` | `delete` | Objeto `where` explícito como argumento. |
+| `deleteManyBy` | `deleteMany` | Filtros de campo seguem o prefixo. |
+| `deleteManyWhere` | `deleteMany` | Objeto `where` explícito como argumento. |
+| `deleteManyReturningBy` | `deleteManyReturning` | Filtros de campo seguem o prefixo; retorna os registros removidos. |
+| `deleteManyReturningWhere` | `deleteManyReturning` | Objeto `where` explícito; retorna os registros removidos. |
 
-| Prefixo                      | Operação do Prisma          | Retorno                  | Observações                                                                                                      |
-| ---------------------------- | --------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `findOneBy`                  | `findFirst`                 | `T \| null`              | Retorno único.                                                                                                   |
-| `findBy`                     | `findMany` / `findFirst`    | `T[]` ou `T \| null`     | Padrão é lista; use `fbMode: "one"` para retorno único (**deprecated**, use `findOneBy`)                         |
-| `findUniqueBy`               | `findUnique`                | `T \| null`              |                                                                                                                  |
-| `findUniqueOrThrowBy`        | `findUniqueOrThrow`         | `T`                      | Lança um erro se não encontrado                                                                                  |
-| `findFirstBy`                | `findFirst`                 | `T \| null`              | Aceita campos como filtro                                                                                        |
-| `findFirstOrThrowBy`         | `findFirstOrThrow`          | `T`                      | Aceita campos como filtro; lança um erro se não encontrado                                                       |
-| `findFirst`                  | `findFirst`                 | `T \| null`              | Sem filtros de campo; aplica apenas `requiredWhere` e `pushWhere`                                                |
-| `findFirstOrThrow`           | `findFirstOrThrow`          | `T`                      | Sem filtros de campo; aplica apenas `requiredWhere` e `pushWhere`; lança um erro se não encontrado               |
-| `findManyBy`                 | `findMany`                  | `T[]`                    | Aceita campos como filtro                                                                                        |
-| `findMany`                   | `findMany`                  | `T[]`                    | Sem filtros de campo; aplica apenas `requiredWhere` e `pushWhere`                                                |
-| `findOneWhere`               | `findFirst`                 | `T \| null`              | Recebe um objeto `where` explícito como argumento                                                                |
-| `findListWhere`              | `findMany`                  | `T[]`                    | Recebe um objeto `where` explícito como argumento                                                                |
-| `existsBy`                   | `findFirst`                 | `boolean`                | Retorna `true` se encontrado, `false` caso contrário                                                             |
-| `existsWhere`                | `findFirst`                 | `boolean`                | Recebe um objeto `where` explícito e retorna se existe                                                           |
-| `countBy`                    | `count`                     | `number`                 | Aceita campos como filtro                                                                                        |
-| `countWhere`                 | `count`                     | `number`                 | Recebe um objeto `where` explícito como argumento                                                                |
-| `count`                      | `count`                     | `number`                 | Sem filtros de campo; aplica apenas `requiredWhere` e `pushWhere`                                                |
-| `create`                     | `create`                    | `T`                      | Recebe `data` como argumento                                                                                     |
-| `createMany`                 | `createMany`                | `{ count: number }`      | Recebe `data` como argumento; suporta `SkipDuplicates`                                                           |
-| `createManyAndReturn`        | `createManyAndReturn`       | `T[]`                    | Recebe `data` como argumento; suporta `SkipDuplicates`                                                           |
-| `updateBy`                   | `update`                    | `T`                      | Recebe `data` como argumento                                                                                     |
-| `updateManyBy`               | `updateMany`                | `{ count: number }`      | Recebe `data` como argumento                                                                                     |
-| `updateManyWhere`            | `updateMany`                | `{ count: number }`      | Recebe um objeto `where` e um objeto `data` como argumentos                                                      |
-| `updateManyAndReturnBy`      | `updateManyAndReturn`       | `T[]`                    | Recebe `data` como argumento                                                                                     |
-| `updateManyAndReturnWhere`   | `updateManyAndReturn`       | `T[]`                    | Recebe um objeto `where` e um objeto `data` como argumentos                                                      |
-| `upsertBy`                   | `upsert`                    | `T`                      | Recebe `update` e `create` como argumentos                                                                       |
-| `deleteBy`                   | `delete`                    | `T`                      |                                                                                                                  |
-| `deleteManyBy`               | `deleteMany`                | `{ count: number }`      |                                                                                                                  |
-| `deleteManyWhere`            | `deleteMany`                | `{ count: number }`      | Recebe um objeto `where` explícito como argumento                                                                |
-| `aggregate`                  | `aggregate`                 | `Dynamic`                | O nome deve ser exato; recebe argumentos nativos do Prisma; ignora `selectModels`, `pushWhere` e `requiredWhere` |
-| `groupBy`                    | `groupBy`                   | `Dynamic[]`              | O nome deve ser exato; recebe argumentos nativos do Prisma; ignora `selectModels`, `pushWhere` e `requiredWhere` |
-
----
+> `aggregate` e `groupBy` **ainda não estão implementados** na v2 (existiam na v1). Está planejado, mas não disponível no momento.
 
 ### Filtros de campo
 
-Filtros são sufixos aplicados ao nome do campo dentro do método. O próprio campo vem capitalizado logo após o prefixo (ou após `By`).
+Aplicados como sufixos ao nome do campo dentro do método (mesma ideia da v1, com um sufixo renomeado):
 
-| Sufixo                | Operador Prisma        | Argumento obrigatório       |
-| --------------------- | ---------------------- | --------------------------- |
-| *(sem sufixo)*        | igualdade (`=`)        | sim                         |
-| `Not`                 | `not`                  | sim                         |
-| `In`                  | `in`                   | sim (array)                 |
-| `NotIn`               | `notIn`                | sim (array)                 |
-| `Contains`            | `contains`             | sim                         |
-| `NotContains`         | `not.contains`         | sim                         |
-| `StartsWith`          | `startsWith`           | sim                         |
-| `NotStartsWith`       | `not.startsWith`       | sim                         |
-| `EndsWith`            | `endsWith`             | sim                         |
-| `NotEndsWith`         | `not.endsWith`         | sim                         |
-| `GreaterThan`         | `gt`                   | sim                         |
-| `GreaterThanEqual`    | `gte`                  | sim                         |
-| `LessThan`            | `lt`                   | sim                         |
-| `LessThanEqual`       | `lte`                  | sim                         |
-| `Between`             | `gte` + `lte`          | sim (tupla `[min, max]`)    |
-| `NotBetween`          | `not.gte` + `not.lte`  | sim (tupla `[min, max]`)    |
-| `IsNull`              | `null`                 | não                         |
-| `IsNotNull`           | `not: null`            | não                         |
-| `IsTrue`              | `true`                 | não                         |
-| `IsFalse`             | `false`                | não                         |
-| `Insensitive`         | `mode: 'insensitive'`  | combinador                  |
+| Sufixo | Significado | Argumento |
+| --- | --- | --- |
+| *(sem sufixo)* | igualdade (`=`) | sim |
+| `Not` | negação | sim |
+| `In` | está em | sim (array) |
+| `NotIn` | não está em | sim (array) |
+| `Contains` | contém substring | sim |
+| `NotContains` | não contém substring | sim |
+| `StartsWith` | começa com | sim |
+| `NotStartsWith` | não começa com | sim |
+| `EndsWith` | termina com | sim |
+| `NotEndsWith` | não termina com | sim |
+| `GreaterThan` | `>` | sim |
+| `GreaterThanEqual` | `>=` | sim |
+| `LessThan` | `<` | sim |
+| `LessThanEqual` | `<=` | sim |
+| `Between` | intervalo inclusivo | sim (tupla `[min, max]`) |
+| `NotBetween` | fora de um intervalo inclusivo | sim (tupla `[min, max]`) |
+| `IsNull` | campo é `null` | não |
+| `IsNotNull` | campo não é `null` | não |
+| `IsTrue` | campo é `true` | não |
+| `IsFalse` | campo é `false` | não |
+| `IgnoreCase` | combinador case-insensitive para filtros de texto | não *(renomeado do `Insensitive` da v1)* |
+| `Optional` | torna o argumento do campo opcional (pode ser `undefined`) | — |
 
-`Insensitive` é um combinador e pode ser usado junto com outro filtro de texto:
+```typescript
+@DynamicMethod()
+declare findByNameContainsIgnoreCase: (name: string) => Promise<User[]>;
 
-```ts
-findByNameContainsInsensitive    // { name: { contains: value, mode: 'insensitive' } }
-findByEmailStartsWithInsensitive // { email: { startsWith: value, mode: 'insensitive' } }
-findByNameInsensitive            // { name: { equals: value, mode: 'insensitive' } }
+@DynamicMethod()
+declare findByAgeBetween: (age: [number, number]) => Promise<User[]>;
 ```
-
-`Between` e `NotBetween` recebem uma **tupla `[valorMinimo, valorMaximo]`**:
-
-```ts
-methods: {
-  findManyByAgeBetween:      { map: true },
-  findManyBySalaryNotBetween: { map: true },
-  findManyByCreatedAtBetween: { map: true },
-}
-
-await userRepository.findManyByAgeBetween([18, 65]);
-await userRepository.findManyBySalaryNotBetween([1000, 5000]);
-await userRepository.findManyByCreatedAtBetween([new Date("2024-01-01"), new Date("2024-12-31")]);
-```
-
-O sufixo `Optional` pode ser adicionado a qualquer campo para tornar o argumento opcional:
-
-```ts
-findByNameOptionalAndEmail // name é opcional, email é obrigatório
-```
-
----
 
 ### Operadores lógicos
 
-| Operador  | Uso no nome                      | Exemplo                            |
-| --------- | -------------------------------- | ---------------------------------- |
-| `And`     | entre dois campos                | `findOneByIdAndEmail`              |
-| `Or`      | entre dois campos                | `findByNameOrEmail`                |
-| `AND`     | separa um bloco final de `AND`   | `findByEmailOrNameANDActiveStatus` |
+| Operador | Uso no nome | Exemplo |
+| --- | --- | --- |
+| `And` | entre dois campos | `findOneByIdAndEmail` |
+| `Or` | entre dois campos | `findByNameOrEmail` |
+| `AND` | separa um bloco final em `AND` | `findByEmailOrNameANDActiveStatusAndAgeGreaterThan` |
 
-`AND` (em maiúsculas) tem uma regra específica:
-
-- Só pode existir **um** `AND` por método.
-- Todos os campos depois do `AND` são injetados dentro de `AND: []`.
-- Depois de um `AND`, não pode haver um `Or`.
-
-Exemplo:
-
-```ts
-methods: {
-  findOneByIdAndEmail:   { map: true },
-  findByNameOrEmail:  { map: true },
-  findFirstByIdOrEmailAndName: { map: true },
-  findByEmailOrNameANDActiveStatusAndAgeGreaterThan: { map: true }
-}
-
-await userRepository.findOneByIdAndEmail(1, "john@email.com");
-await userRepository.findByNameOrEmail("John", "john@email.com");
-await userRepository.findFirstByIdOrEmailAndName(1, "john@email.com", "John");
-await userRepository.findByEmailOrNameANDActiveStatusAndAgeGreaterThan("john@email.com", "John", true, 17)
-```
-
-Gera (`findOneByIdAndEmail`):
-
-```ts
-{
-  id: 1,
-  email: "john@email.com"
-}
-```
-
-Gera (`findByNameOrEmail`):
-
-```ts
-{
-  OR: [
-    { name: "John" },
-    { email: "john@email.com" }
-  ]
-}
-```
-
-Gera (`findFirstByIdOrEmailAndName`):
-
-```ts
-{
-  OR: [
-    { id: 1 },
-    {
-      email: "john@email.com",
-      name: "John"
-    }
-  ]
-}
-```
-
-Gera (`findByEmailOrNameANDActiveStatusAndAgeGreaterThan`):
-
-```ts
-{
-  OR: [
-    { email: "john@email.com" },
-    { name: "John" }
-  ],
-  AND: [
-    { activeStatus: true },
-    { age: { gt: 17 } }
-  ]
-}
-```
-
----
+Regras do `AND` (em capslock), iguais às da v1: só é permitido **um** `AND` por nome de método; todo campo conectado por `And` depois dele é aninhado dentro de `AND: []`; `Or` não pode aparecer depois de um `AND`.
 
 ### Filtros de relação
 
-Permitem filtrar por campos de modelos relacionados.
+Filtram por campos de entidades relacionadas. Internamente, mapeiam para os operadores `_some`/`_every`/`_none`/`_with`/`_without` de `VSRepoWhere` (veja [`select` e `relations`](#select-e-relations) para o equivalente de eager loading).
 
-> [!IMPORTANT]
->
-> - **Tipagem de relação**: Para que o TypeScript reconheça os tipos dos campos de relação nos métodos dinâmicos, o tipo genérico da entidade passado para `setupVSRepo` deve incluir as relações estruturadas (ex.: usando o `UserGetPayload<{ include: { profile: true, posts: true } }>` do Prisma).
-> - **Compatibilidade de sufixos**:
->   - Os sufixos `Some`, `Every` e `None` só funcionam em relações **to-many** (`many-to-many` e `one-to-many`).
->   - Os sufixos `With` e `Without` só funcionam em relações **to-one** (`one-to-one` e `many-to-one`).
+| Sufixo | Significado | Restrição |
+| --- | --- | --- |
+| `Some` | pelo menos um registro relacionado corresponde | apenas relações to-many |
+| `SomeField` | filtra dentro dos registros relacionados | apenas relações to-many |
+| `Every` | todo registro relacionado corresponde | apenas relações to-many (precisa de `Field` para ser um filtro efetivo) |
+| `EveryField` | filtra dentro dos registros relacionados | apenas relações to-many |
+| `None` | nenhum registro relacionado corresponde | apenas relações to-many |
+| `NoneField` | filtra dentro dos registros relacionados | apenas relações to-many |
+| `With` | o registro relacionado existe | apenas relações to-one |
+| `WithField` | filtra um campo dentro do registro relacionado | apenas relações to-one |
+| `Without` | o registro relacionado não existe | apenas relações to-one |
+| `WithoutField` | filtro negado em um campo do registro relacionado | apenas relações to-one |
 
-| Sufixo de relação      | Operador Prisma  | Observação                                        |
-| ---------------------- | ---------------- | ------------------------------------------------- |
-| `Some`                 | `some: {}`       | A relação tem *algum* registro                    |
-| `SomeField`            | `some.field`     | Filtra dentro dos registros da relação            |
-| `EveryField`           | `every.field`    | Filtra dentro dos registros da relação            |
-| `None`                 | `none: {}`       | A relação não tem *nenhum* registro               |
-| `NoneField`            | `none.field`     | Filtra dentro dos registros da relação            |
-| `With`                 | `is: {}`         | A relação existe (não é nula)                     |
-| `WithField`            | `is.field`       | Filtra um campo dentro da relação                 |
-| `Without`              | `isNot: {}`      | A relação não existe (é nula)                     |
-| `WithoutField`         | `isNot.field`    | Filtra um campo dentro da relação com negação     |
+```typescript
+@DynamicMethod()
+declare findByAddressWithCityStartsWithIgnoreCase: (city: string) => Promise<User[]>;
 
-Considerando `user` com uma relação to-one `profile` e uma relação to-many `posts`:
-
-```ts
-methods: {
-  // to-many (posts)
-  findByPostsSome:                { map: true }, // tem pelo menos um post
-  findByPostsSomeTitle:           { map: true }, // tem pelo menos um post com aquele título
-  findByPostsEveryPublishedIsTrue:{ map: true }, // todos os posts estão publicados
-  findByPostsNone:                { map: true }, // não tem nenhum post
-  findByPostsNoneTitle:           { map: true }, // nenhum post tem aquele título
-
-  // to-one (profile)
-  findByProfileWith:             { map: true }, // tem um profile (não é nulo)
-  findByProfileWithBio:          { map: true }, // tem um profile com aquela bio
-  findByProfileWithout:          { map: true }, // não tem profile (é nulo)
-  findByProfileWithoutBio:       { map: true }, // tem um profile, mas com uma bio diferente da informada
-}
-
-await userRepository.findByPostsSome();
-await userRepository.findByPostsSomeTitle("My first post");
-await userRepository.findByPostsEveryPublishedIsTrue();
-await userRepository.findByPostsNone();
-await userRepository.findByPostsNoneTitle("Draft");
-
-await userRepository.findByProfileWith();
-await userRepository.findByProfileWithBio("Hello, world!");
-await userRepository.findByProfileWithout();
-await userRepository.findByProfileWithoutBio("Old bio");
+@DynamicMethod()
+declare findByProductsSome: () => Promise<User[]>;
 ```
 
-Gera (`findByPostsSomeTitle`):
+### Ordenação, paginação e distinct
 
-```ts
-{
-  posts: {
-    some: { title: "My first post" }
-  }
-}
+| Sufixo | Efeito |
+| --- | --- |
+| `Paginated` | injeta um argumento `pagination` (`{ limit?, offset? }`) no final da chamada. |
+| `Ordered` | injeta um argumento `order` no final da chamada. |
+| `OrderedAndPaginated` | injeta `order`, depois `pagination`. |
+| `PaginatedAndOrdered` | injeta `pagination`, depois `order`. |
+| `OrderBy<Campo>Asc` / `OrderBy<Campo>Desc` | **Novo na v2.** Embute uma ordenação fixa diretamente no nome do método — encadeie campos com `And` (ex.: `OrderByCreatedAtAscAndNameDesc`). Não precisa de argumento `order`. |
+| `Distinct<Campo>And<Campo>...` | **Novo na v2.** Embute campos `distinct` fixos diretamente no nome do método (só válido em métodos da família `findBy`/`findWhere`). |
+| `IgnoreConflicts` | No `createMany`, ignora registros que violariam uma constraint única, em vez de lançar erro. *(Renomeado do `SkipDuplicates` da v1.)* |
+
+```typescript
+@DynamicMethod()
+declare findByActiveOrderByCreatedAtDescPaginated:
+    (active: boolean, pagination: { limit?: number; offset?: number }) => Promise<User[]>;
+
+@DynamicMethod()
+declare createManyIgnoreConflicts: (data: Partial<User>[]) => Promise<{ count: number }>;
 ```
 
-Gera (`findByPostsEveryPublishedIsTrue`):
+### Options do decorador
 
-```ts
-{
-  posts: {
-    every: { published: true }
-  }
-}
+`@DynamicMethod<T>(options?)` aceita:
+
+| Option | Tipo | Descrição |
+| --- | --- | --- |
+| `proxyTo` | `string` | Redireciona a lógica do método para outro padrão de método dinâmico válido — útil para nomes que não seguem a convenção de nomenclatura. |
+| `injectOrdering` | `Ordering<T>` | Ordenação fixa injetada automaticamente, sobrescrevendo o `defaultOrdering` do repository. |
+
+```typescript
+@DynamicMethod<User>({ injectOrdering: { createdAt: "desc" } })
+declare findByStatus: (status: string) => Promise<User[]>;
 ```
-
-Gera (`findByProfileWithBio`):
-
-```ts
-{
-  profile: {
-    is: { bio: "Hello, world!" }
-  }
-}
-```
-
-Gera (`findByProfileWithout`):
-
-```ts
-{
-  profile: {
-    isNot: {}
-  }
-}
-```
-
-> `Some`, `None`, `With` e `Without` (sem campo) não recebem argumento — toda a relação é testada quanto à existência de registros (`some`/`none`) ou quanto a ser `null`/não `null` (`is`/`isNot`). As variantes `SomeField`, `EveryField`, `NoneField`, `WithField` e `WithoutField` recebem como argumento o valor do campo filtrado.
 
 ---
 
-### Sufixos de paginação e ordenação
+## Query methods (SQL raw)
 
-Aplicados no **final** do nome do método, injetam automaticamente os argumentos de paginação e ordenação.
+`@QueryMethod` ignora totalmente o engine de parsing por nome e executa uma instrução SQL raw através do método `query()` do adapter. Use placeholders `$1`, `$2`, ... — nunca interpole valores diretamente na string SQL.
 
-| Sufixo                   | Argumentos adicionais        |
-| ------------------------ | ---------------------------- |
-| `Paginated`              | `(pagination)`               |
-| `Ordered`                | `(order)`                    |
-| `OrderedAndPaginated`    | `(order, pagination)`        |
-| `PaginatedAndOrdered`    | `(pagination, order)`        |
+```typescript
+class UserRepository extends VSRepository<User, string> {
+    @QueryMethod('SELECT * FROM "user" WHERE email = $1')
+    declare findByEmailRaw: (arg: QueryMethodArg<[email: string]>) => Promise<User[]>;
 
-Para `createMany` e `createManyAndReturn`, o sufixo `SkipDuplicates` está disponível:
-
-| Sufixo               | Efeito                                         |
-| ---------------------| ---------------------------------------------- |
-| `SkipDuplicates`     | Ignora registros duplicados durante a inserção |
-
----
-
-### Distinct
-
-O sufixo `Distinct` permite obter apenas registros únicos com base em um ou mais campos, equivalente à opção `distinct` do Prisma.
-
-Para usá-lo, coloque `Distinct` no nome do método (depois dos filtros de campo, se houver), seguido dos campos desejados separados por `And`. A primeira letra de cada campo deve ser maiúscula, assim como nos filtros de campo comuns.
-
-```ts
-methods: {
-    // Retorna usuários únicos combinando "age" e "role" (sem filtro de campo)
-    findManyDistinctAgeAndRole: { map: true },
-
-    // Distinct combinado com o sufixo Paginated
-    findManyDistinctNamePaginated: { map: true },
-
-    // Distinct combinado com um filtro de campo (name) — filtra por name e depois aplica distinct em role
-    findManyByNameDistinctRole: { map: true },
-},
-```
-
-```ts
-// Sem argumentos: os campos distinct já estão fixados no nome do método
-await userRepository.findManyDistinctAgeAndRole();
-
-// O argumento de paginação continua funcionando normalmente
-await userRepository.findManyDistinctNamePaginated({ take: 10, skip: 0 });
-
-// O filtro do campo "name" continua sendo passado normalmente como argumento
-await userRepository.findManyByNameDistinctRole("John");
-```
-
-> Os campos especificados depois de `Distinct` são resolvidos a partir do nome do método em tempo de build — eles **não** se tornam argumentos em tempo de execução, diferente dos filtros de campo comuns.
-
-`Distinct` está disponível nos prefixos que leem múltiplos ou um único registro: `findMany`, `findManyBy`, `findFirst`, `findFirstBy`, `findFirstOrThrow`, `findFirstOrThrowBy`, `findBy`, `findOneBy`, `findWhere`, `findOneWhere`, `findListWhere`, `existsBy` e `existsWhere`.
-
----
-
-### Configuração de método
-
-Cada entrada em `methods` aceita as seguintes opções:
-
-| Opção                 | Tipo                                     | Padrão         | Descrição                                                                                                                           |
-| --------------------- | ---------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `map`                 | `boolean`                                | —              | **Obrigatório.** Define se o método será exposto no repositório.                                                                    |
-| `whereType`           | `'extending'` \| `'overwrite'`           | `extending`    | `extending` combina com `requiredWhere`. `overwrite` ignora `requiredWhere`.                                                        |
-| `selectModel`         | `keyof SelectModels \| false`            | —              | Sobrescreve o `defaultSelectModel` para este método.                                                                                |
-| `fbMode`              | `'one'` \| `'list'`                      | `'list'`       | (**Deprecated. Use `findOneBy`**) Apenas para `findBy`. `'one'` retorna `T \| null`; `'list'` retorna `T[]`.                        |
-| `proxyTo`             | `Padrão de método válido`                | —              | Delega a lógica para outro padrão de método válido.                                                                                 |
-| `pushWhere`           | `WhereModel<M>`                          | —              | `where` extra adicionado à query além do `requiredWhere`.                                                                           |
-| `injectOrdering`      | `OrderingModel<M>`                       | —              | Ordenação fixa injetada automaticamente na query.                                                                                   |
-| `injectPagination`    | `PaginationModel<M>`                     | —              | Paginação fixa injetada automaticamente na query.                                                                                   |
-| `query`               | `{ value: string; modifying?: boolean }` | —              | Transforma o método em um **Query Method** (SQL bruto). Ignora todas as outras opções acima — veja [Query Methods](#query-methods). |
-
----
-
-### Aggregate e GroupBy
-
-```ts
-const userRepository = setupVSRepo<User, "user">()(({
-  tableName: "user",
-  pkName: "id",
-  methods: {
-    aggregate: { map: true },
-    groupBy: { map: true },
-  },
-}).build(prisma);
-```
-
-> [!NOTE]
-> Esses métodos devem ter exatamente esses nomes (`aggregate` e `groupBy`).
-> Diferente dos demais métodos dinâmicos, eles recebem argumentos nativos do Prisma e **ignoram** as configurações `selectModels`, `pushWhere` e `requiredWhere`.
-
----
-
-### Query Methods
-
-Query Methods permitem que um método execute **SQL bruto** diretamente, contornando totalmente o parser de nomes dos métodos dinâmicos. São úteis para consultas complexas (joins pesados, CTEs, funções específicas do banco) que não são práticas de expressar com os prefixos/sufixos padrão.
-
-Internamente, o VSRepository executa a SQL através do Prisma usando `$queryRawUnsafe` (para leitura) ou `$executeRawUnsafe` (para escrita), e os valores do array `args` são passados como **parâmetros posicionais** (`$1`, `$2`, ...) — a mesma técnica de *prepared statements* usada pelo próprio Prisma. Isso significa que os valores nunca são concatenados na string SQL, o que é o que efetivamente previne SQL Injection.
-
-> [!WARNING]
-> `$1`, `$2`, ... na sua SQL devem representar sempre **valores** (parâmetros de dados), nunca nomes de colunas, tabelas ou trechos de SQL dinâmicos. Nomes de identificadores (colunas/tabelas) não podem ser passados como parâmetro posicional — se seu método precisar variar isso, monte o SQL a partir de um conjunto fixo e conhecido de opções no seu próprio código, nunca a partir de entrada não confiável.
-
-```ts
-const userRepository = setupVSRepo<User, "user">()({
-  tableName: "user",
-  pkName: "id",
-  methods: {
-    // Query method de leitura (não-modifying)
-    findActiveUsersRaw: {
-      map: true,
-      query: {
-        value: 'SELECT * FROM "user" WHERE active = $1',
-      },
-    },
-
-    // Query method de escrita (modifying: true)
-    deactivateUsersOlderThanRaw: {
-      map: true,
-      query: {
-        value: 'UPDATE "user" SET active = false WHERE "createdAt" < $1',
-        modifying: true,
-      },
-    },
-  },
-}).build(prisma);
-```
-
-**Chamando um Query Method:**
-
-Todo Query Method recebe um único argumento no formato `{ args: [...], db? }`:
-
-```ts
-// Não-modifying: retorna 'any' por padrão, mas aceita um generic para
-// inferir/afirmar o tipo de retorno na própria chamada
-const usuariosAtivos = await userRepository.findActiveUsersRaw<User[]>({
-  args: [true],
-});
-
-// Modifying: sempre retorna 'number' (quantidade de linhas afetadas)
-const afetados = await userRepository.deactivateUsersOlderThanRaw({
-  args: [new Date("2024-01-01")],
-});
-
-// Participando de uma transação, via 'db'
-await userRepository.prisma.$transaction(async (tx) => {
-  await userRepository.deactivateUsersOlderThanRaw({
-    args: [new Date("2024-01-01")],
-    db: tx,
-  });
-});
-```
-
-| Opção         | Tipo      | Padrão  | Descrição                                                                                                                                                                                                                     |
-| ------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `value`       | `string`  | —       | **Obrigatório.** SQL bruto a ser executado. Use `$1`, `$2`, ... para os placeholders dos valores em `args`.                                                                                                                   |
-| `modifying`   | `boolean` | `false` | Quando `true`, executa via `$executeRawUnsafe` e o método sempre resolve para `number`. Quando `false`, executa via `$queryRawUnsafe` e o método resolve para `TReturn` (`any` por padrão, inferível via generic na chamada). |
-
-> [!NOTE]
-> Diferente dos demais métodos dinâmicos, Query Methods **ignoram completamente** `selectModels`, `requiredWhere`, `pushWhere`, `whereType`, `injectOrdering`, `injectPagination` e `proxyTo` — nada disso se aplica, já que não há parsing de nome nem montagem de `where`/`select` pelo VSRepository. Nomes de métodos livres (fora dos padrões de `findBy`, `updateBy`, etc.) também **não** exigem `proxyTo`.
-
-A mesma funcionalidade está disponível na abordagem baseada em classes através do decorator `@QueryMethod` — veja o [README-DynamicRepo.pt-BR.md](./README-DynamicRepo.pt-BR.md#o-decorator-querymethod).
-
----
-
-## Relações no save
-
-Configure as relações para que `save` e `patch` as gerenciem automaticamente (`saveList` e `patchList` também gerenciam relações automaticamente).
-
-```ts
-import type { Prisma } from "../../generated/prisma/client";
-
-type User = Prisma.userGetPayload<{
-  include: { profile: true; posts: true };
-}>;
-
-const userRepository = setupVSRepo<User, "user">()(({
-  tableName: "user",
-  pkName: "id",
-
-  relations: {
-    profile: {
-      pk: "id",
-      mode: "oto",
-      restriction: "set",
-    },
-    posts: {
-      pk: "id",
-      mode: "otm",
-      restriction: "add",
-    },
-  },
-}).build(prisma);
-```
-
-**Modos de relação:**
-
-| Modo  | Relação            |
-| ----- | ------------------ |
-| `oto` | um-para-um         |
-| `otm` | um-para-muitos     |
-| `mto` | muitos-para-um     |
-| `mtm` | muitos-para-muitos |
-
-**Restrições:**
-
-| Restrição   | Comportamento na atualização                                |
-| ----------- | ----------------------------------------------------------- |
-| `set`       | Substitui totalmente (remove os que não foram enviados)     |
-| `add`       | Adiciona/atualiza sem remover os existentes                 |
-
-> [!WARNING]
-> **`set` significa coisas diferentes dependendo do `mode` da relação — e isso pode causar perda de dados se você não tomar cuidado.**
->
-> Em relações onde o registro relacionado **pertence** ao registro pai (`oto` e `otm`), "remover os que não foram enviados" significa **apagar o registro do banco de dados** (`delete`/`deleteMany`). Em relações onde o registro relacionado é **independente** (`mto` e `mtm`), "remover" significa apenas **desvincular** (`disconnect`/`set: []`) — o registro relacionado continua existindo no banco, apenas deixa de apontar para o pai (ou de estar na tabela de junção).
->
-> | Modo | `restriction: "set"` quando um item é omitido | O item continua existindo no banco de dados? |
-> | ----- | ------------------------------------------------ | ----------------------------------------------------- |
-> | `oto` | Passar `null` no campo → **apaga** o registro relacionado (`delete: true`) | Não |
-> | `otm` | Itens fora da lista enviada → **apagados** (`deleteMany` com `notIn`) | Não |
-> | `mto` | Passar `null` no campo (com `nullable: true`) → **desvincula** (`disconnect: true`) | Sim |
-> | `mtm` | Itens fora da lista enviada → **desvinculados** da tabela de junção (`set: []`) | Sim |
->
-> Exemplo prático: se `posts` for `otm` com `restriction: "set"`, um `save`/`patch` que envia o usuário com apenas 2 dos 5 posts existentes vai **apagar os outros 3 posts do banco de dados**, não apenas desvinculá-los do usuário. Se o comportamento esperado for apenas desvincular sem apagar, use `restriction: "add"` (que nunca remove nada) e trate a remoção manualmente.
-
-**Relação `mto` com nullable:**
-
-Use `nullable` (minúsculo) para permitir desvincular uma relação many-to-one:
-
-```ts
-relations: {
-  category: {
-    pk: "id",
-    mode: "mto",
-    restriction: "set",
-    nullable: true, // permite passar null para desvincular
-  },
+    @QueryMethod('UPDATE "user" SET active = true WHERE id = $1', { modifying: true })
+    declare activateUser: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
 }
 ```
+
+| Option | Tipo | Padrão | Descrição |
+| --- | --- | --- | --- |
+| `modifying` | `boolean` | `false` | Quando `true`, executa como `INSERT`/`UPDATE`/`DELETE` e o método resolve para o número de linhas afetadas. Quando `false`, executa como query de leitura e resolve para o tipo de retorno declarado. |
+
+Query methods aceitam `{ args, db? }` na chamada — `db` permite que participem de um bloco `transaction()`, assim como os métodos base e dinâmicos.
 
 ---
 
 ## Transações
 
-Todos os métodos aceitam `options.db` para participar de uma transação:
+Todos os métodos (base, dinâmicos e de query) aceitam `options.db` para participar de uma transação compartilhada:
 
-```ts
-await userRepository.prisma.$transaction(async (tx) => {
-  const user = await userRepository.save(
-    { name: "Mary", email: "mary@email.com", password: "password" },
-    { db: tx }
-  );
+```typescript
+await userRepository.transaction(async tx => {
+    const usuario = await userRepository.save(
+        { name: "Maria", email: "maria@email.com" },
+        { db: tx },
+    );
 
-  await userLogsRepository.save(
-    { action: "User registration", data: { registeredUser: user.id } },
-    { db: tx }
-  );
+    await userLogsRepository.save(
+        { action: "Usuário criado", data: { userId: usuario.id } },
+        { db: tx },
+    );
 });
 ```
 
-Para `saveList` e `patchList`, o campo `db` deve ser um `DbTransaction`:
-
-```ts
-await prisma.$transaction(async (tx) => {
-  // CORRETO: tx é um DbTransaction
-  const registeredUsers = await userRepository.saveList([{ name: "Mary" }, { name: "Lucas" }], { db: tx });
-
-  await userLogsRepository.save(
-    { action: "User registration", data: { registeredUsers: registeredUsers.map(u => u.id) } },
-    { db: tx }
-  );
-});
-```
+Repositories diferentes podem compartilhar a mesma transação, desde que seus adapters apontem para a mesma conexão do ORM por trás deles.
 
 ---
 
-## Estendendo um repositório
+## Escrevendo seu próprio adapter
 
-```ts
-const userRepository = setupVSRepo<User, "user">()(({
-  tableName: "user",
-  pkName: "id",
-  methods: {
-    findOneByEmailEndsWith: { map: true },
-  },
-})
-  .build(prisma)
-  .extend((repo) => ({
-    findActiveByDomain: async (domain: string) => {
-      return repo.findOneByEmailEndsWith(`@${domain}`);
-    },
+Como o núcleo é agnóstico de ORM e é distribuído sem um adapter embutido, adicionar suporte a um ORM/banco — seja como solução provisória para o seu próprio projeto, seja como candidato a um futuro pacote `@vsrepo/*-adapter` — significa implementar a classe abstrata `VSRepoAdapter<T>`:
 
-    activateMultiple: async (ids: string[]) => {
-      return repo.patchList(ids.map(id => [id, { active: true }]));
-    },
-  }));
+```typescript
+export abstract class VSRepoAdapter<T> {
+    abstract runInTransaction<R>(fn: (tx: any) => Promise<R>, options?: VSRepoTransactionOptions): Promise<R>;
+    abstract getDbClient(): any;
+    abstract query<T = any>(query: string, options?: AdapterQueryOptions): Promise<T>;
+    abstract findOne(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T | null>;
+    abstract findOneOrThrow(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T>;
+    abstract findMany(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T> & { distinct?: (keyof T)[] }): Promise<T[]>;
+    abstract save(obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;
+    abstract saveMany(objs: DeepPartial<T>[], options?: AdapterMethodOptions<T>): Promise<T[]>;
+    abstract create(objs: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;
+    abstract createMany(objs: DeepPartial<T>[], options?: AdapterMethodOptions<T> & { ignoreConflicts?: boolean }): Promise<CountResult>;
+    abstract delete(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T>;
+    abstract deleteMany(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<CountResult>;
+    abstract deleteManyReturning(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T[]>;
+    abstract update(where: VSRepoWhere<T>, obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;
+    abstract updateMany(where: VSRepoWhere<T>, obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<CountResult>;
+    abstract updateManyReturning(where: VSRepoWhere<T>, obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T[]>;
+    abstract count(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<number>;
+    abstract exists(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<boolean>;
+    abstract merge<K>(where: VSRepoWhere<T>, obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<K & T>;
+    abstract upsert(where: VSRepoWhere<T>, create: DeepPartial<T>, update: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;
+}
 ```
+
+O `VSRepository` nunca fala diretamente com o ORM — ele só chama esses métodos com um `VSRepoWhere<T>` e um `AdapterMethodOptions<T>` já resolvidos. Uma vez que um adapter implemente esse contrato, todo método base, método dinâmico e query method passa a funcionar com ele automaticamente. Veja `src/adapters/prisma7/prisma7.adapter.ts` para uma implementação parcial de referência, e `src/adapters/typeorm.adapter.ts` para um parser de referência da cláusula `where`.
 
 ---
 
 ## Tratamento de erros
 
-O VSRepository lança `VSRepoError` e suas subclasses em situações específicas (erros do Prisma não são sobrescritos):
+A v2 simplifica a hierarquia de erros da v1: em vez de várias subclasses, existe uma única classe `VSRepoError` carregando um campo `type: VSRepoErrorType`.
 
-```ts
-import { VSRepoError, VSRepoRuntimeError } from "../../generated/vsrepo";
+```typescript
+import { VSRepoError } from "vsrepo/errors/VSRepoError";
 
 try {
-  const user = await userRepository.getOrThrow("id-that-does-not-exist");
+    await userRepository.get(id);
 } catch (error) {
-  if (error instanceof VSRepoRuntimeError && error.code === "20727") {
-    console.error("Record not found");
-  } else if (error instanceof VSRepoError) {
-    console.error("Repository error:", error.message);
-  } else {
-    console.error("Error:", error.message)
-  }
+    if (error instanceof VSRepoError) {
+        console.error(`[${error.type}] ${error.message}`);
+    }
 }
 ```
 
-**Subclasses disponíveis:**
+| `VSRepoErrorType` | Quando é lançado |
+| --- | --- |
+| `DECORATOR` | Argumentos inválidos foram passados para `@DynamicMethod` ou `@QueryMethod`. |
+| `RESOLVER` | A biblioteca falhou ao resolver a configuração de um método dinâmico/de query em um método chamável (ex.: um nome de método desconhecido). |
+| `DYNAMIC` | Um método dinâmico já resolvido falhou em tempo de execução (ex.: argumentos faltando). |
+| `VALIDATOR` | Options ou argumentos de método inválidos foram detectados durante a validação. |
+| `BASE` | Uso inválido de um método base (`get`, `save`, `remove`, etc). |
 
-| Classe                    | Quando é lançada                                                     |
-| ------------------------- | -------------------------------------------------------------------- |
-| `VSRepoConfigError`       | Configuração inválida em `setupVSRepo`                               |
-| `VSRepoBuildError`        | Nome de método, tipo de campo ou configuração inválida em `build`    |
-| `VSRepoExtendError`       | Argumento inválido em `extend`                                       |
-| `VSRepoDecoratorError`    | Argumento inválido passado para `@DynamicMethod` ou `@QueryMethod`   |
-| `VSRepoRuntimeError`      | Erro em tempo de execução durante uma operação                       |
-
-`VSRepoRuntimeError` tem uma propriedade `code: VSRepoRuntimeErrorCode` para identificação programática, sem precisar fazer parsing da mensagem (legível por humanos, e possivelmente localizada):
-
-| Código | Significado |
-| ------ | ----------- |
-| `"65706"` | Um argumento obrigatório está ausente ou tem formato inválido — ex.: `pk` ausente, `pks`/`objs`/`tuples` que não são um array, ou `options`/`obj` que não são um objeto válido. |
-| `"20727"` | Nenhum registro foi encontrado para a primary key informada (`getOrThrow` ao buscar o registro base). |
-| `"67542"` | A validação (zod) de `options` de um método, ou de um argumento de `@QueryMethod`, falhou. |
-| `"91868"` | Uma relação passada em `save`/`patch`/`merge` tem formato inválido para o `mode`/`restriction` configurados (ex.: `null` numa relação `mtm`/`otm`, ou um array numa relação `oto`/`mto`). |
-| `"48670"` | Um método dinâmico (`config.methods`) foi chamado com menos argumentos posicionais do que os campos do `where` exigem. |
+Erros lançados pelo próprio ORM por trás do adapter **não** são encapsulados em `VSRepoError` — eles se propagam como estão.
 
 ---
 
-## Tipos utilitários
+## Logging
 
-### Tipos de client
+Todo repository tem um logger interno, configurado via `logLevel` e `logSlowThresholdMs` nas options do construtor:
 
-```ts
-import type { DbClient, DbTransaction, ClientOrTransaction } from "../../generated/vsrepo";
+```typescript
+import { VSLogLevel } from "vsrepo/internal/enums/vs-log-level.enum";
 
-type DbClient            = PrismaClient;
-type DbTransaction       = Prisma.TransactionClient;
-type ClientOrTransaction = DbClient | DbTransaction;
-```
-
-### Tipo de visibilidade do soft-delete
-
-```ts
-import type { SeeMode } from "../../generated/vsrepo";
-
-type SeeMode = "active" | "removed" | "all";
-```
-
-### Tipos derivados do modelo Prisma
-
-```ts
-import type {
-  SelectModel,
-  SelectModels,
-  IncludeModel,
-  IncludeModels,
-  WhereModel,
-  OrderingModel,
-  PaginationModel,
-  ModelUpsertInput,
-  PrismaModelInputs,
-} from "../../generated/vsrepo";
-```
-
-### Tipos de opções de método
-
-```ts
-import type { MethodOptions, MethodOptionsModel } from "../../generated/vsrepo";
-
-// MethodOptions<S, IM> — opções passadas para os métodos do repositório
-type Opts = MethodOptions<"public" | "minimal", "withPosts">;
-
-// MethodOptionsModel<TRepo> — derivado de uma instância configurada do VSRepository
-const userVSRepo = setupVSRepo<User, "user">()(config);
-type OptsModel = MethodOptionsModel<typeof userVSRepo>;
-```
-
-> O segundo parâmetro de `MethodOptions` (`IM`) representa as chaves válidas de `includeModels`. Quando informado, `selectModel` e `includeModel` se tornam mutuamente exclusivos no tipo — não é possível passar os dois na mesma chamada.
->
-> `MethodOptions` também aceita mais dois parâmetros genéricos, `RI` e `RS`, para tipar `include` e `select` brutos respectivamente (ambos com padrão `never`, ou seja, não são aceitos a menos que tipados explicitamente): `MethodOptions<"public", "withPosts", "usuario", IncludeModel<"usuario">, SelectModel<"usuario">>`. O `MethodOptionsModel`, derivado diretamente de um repositório configurado, não expõe `RI`/`RS` — use `MethodOptions` diretamente se precisar tipar as opções de `include`/`select` brutos.
-
-### Tipos de configuração
-
-```ts
-import type {
-  MethodConfig,
-  RepoConfig,
-  BuildConfig,
-  RepositoryRelations,
-  ExtractRelationConfig,
-} from "../../generated/vsrepo";
-```
-
-### Tipo do repositório construído
-
-```ts
-import type { RepositoryOf } from "../../generated/vsrepo";
-
-const userVSRepo = setupVSRepo<User, "user">()({ ... });
-type UserRepository = RepositoryOf<typeof userVSRepo>;
-```
-
-`RepositoryOf` aceita três parâmetros:
-
-```ts
-type RepositoryOf<TRepo, C extends BuildConfig | undefined = undefined, E = unknown>
-```
-
-### Tipos de payload para `save` e `patch`
-
-```ts
-import type { SaveObject, PatchObject } from "../../generated/vsrepo";
-
-const userVSRepo = setupVSRepo<User, "user">()(({
-  tableName: "user",
-  pkName: "id",
-  relations: {
-    profile: { pk: "id", mode: "oto", restriction: "set" },
-  },
-});
-
-type UserSavePayload  = SaveObject<Prisma.UserCreateInput, typeof userVSRepo>;
-type UserPatchPayload = PatchObject<Prisma.UserUpdateInput, typeof userVSRepo>;
-```
-
----
-
-## Referência da API
-
-### `setupVSRepo<T, M>()(config)`
-
-```ts
-setupVSRepo<TPayload, TTableName>()({
-  tableName: Uncapitalize<M>;                     // Nome da tabela no Prisma
-  pkName: keyof T;                                // Nome da chave primária
-  softRemovekName?: keyof T & string;             // Campo DateTime para soft-delete
-  selectModels?: SelectModels<M>;                 // Projeções de dados nomeadas (select)
-  defaultSelectModel?: keyof SM;                  // Select aplicado por padrão
-  includeModels?: IncludeModels<M>;               // Projeções de dados nomeadas (include) — sem padrão, apenas na chamada
-  requiredWhere?: WhereModel<M>;                  // Filtros sempre aplicados
-  defaultOrdering?: OrderingModel<M>;             // Ordenação padrão para queries sem Ordered/injectOrdering
-  relations?: RepositoryRelations<T>;             // Configuração de relações
-  methods?: Record<string, MethodConfig<M, SM>>;  // Métodos dinâmicos
+super({
+    pkName: "id",
+    adapter,
+    logLevel: VSLogLevel.DEBUG,
+    logSlowThresholdMs: 200,
 });
 ```
 
-### `.build(prisma, config?)`
-
-```ts
-vsRepo.build(prisma, {
-  showWorking?: boolean;   // Exibe os logs internos no console (padrão = false)
-
-  baseMethods?: {
-    // Métodos que podem usar um defaultSelect
-    get?:             { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    getOrThrow?:      { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    getList?:         { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    remove?:          { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    save?:            { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    saveList?:        { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    patch?:           { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    patchList?:       { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    merge?:           { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    getAll?:          { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    softRemove?:      { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-    restore?:         { active?: boolean; defaultSelect?: string; ignoreRequiredWhere?: boolean };
-
-    // Métodos que NÃO aceitam defaultSelect
-    removeList?:      { active?: boolean; ignoreRequiredWhere?: boolean };
-    softRemoveList?:  { active?: boolean; ignoreRequiredWhere?: boolean };
-    restoreList?:     { active?: boolean; ignoreRequiredWhere?: boolean };
-    total?:           { active?: boolean; ignoreRequiredWhere?: boolean };
-    has?:             { active?: boolean; ignoreRequiredWhere?: boolean };
-  };
-});
-```
-
-### `.extend(fn)`
-
-```ts
-repo.extend((repo) => ({
-  myMethod: () => { ... }
-}));
-```
-
----
-
-## Exemplos práticos
-
-Além deste README, o repositório tem uma pasta **[`examples/`](https://github.com/jaobrabo123/VSRepository/tree/main/examples)** com exemplos práticos, comentados e prontos para executar — é o melhor lugar para ver o VSRepository sendo usado em cenários reais.
-
-```text
-examples/
-├── prisma.ts             # Instância do PrismaClient usada pelos exemplos
-├── repositories.ts       # Configuração dos repositórios (User, Address, Product) com setupVSRepo
-└── tests/
-    ├── base-methods.test.ts       # Métodos base: get, save, patch, remove, getAll, total, has...
-    ├── relations.test.ts          # Como configurar e usar relações em save/patch e em filtros
-    ├── required-where.test.ts     # Como requiredWhere é aplicado automaticamente às queries
-    ├── dynamic-methods.test.ts    # Prefixos, filtros de campo, operadores lógicos e paginação/ordenação
-    ├── transactions.test.ts       # Transações com options.db e acesso à instância via repository.prisma
-    ├── soft-delete.test.ts        # Soft-delete: softRemove, softRemoveList, restore, restoreList e SeeMode
-    └── batch-methods.test.ts      # Operações em lote: getList, saveList, patchList e merge
-```
-
-Cada arquivo em `tests/` é um script independente e executável (via `tsx`) que demonstra um conjunto específico de funcionalidades, com `console.log` em cada etapa para você acompanhar o resultado no terminal. A própria pasta tem um [README](https://github.com/jaobrabo123/VSRepository/blob/main/examples/README.md) explicando a ordem de leitura sugerida, como configurar o ambiente e como rodar os testes.
-
----
-
-## Contribuindo
-
-Contribuições são bem-vindas! Se você encontrou um bug, tem uma ideia de melhoria ou quer ajudar com a documentação, sinta-se à vontade para participar (**[Repositório no GitHub](https://github.com/jaobrabo123/VSRepository)**):
-
-1. Faça um **fork** do projeto.
-2. Crie uma nova branch com sua alteração: `git checkout -b fixing-bug`.
-3. Envie para sua branch: `git push origin fixing-bug`.
-4. Abra um **Pull Request**.
-
-Para reportar problemas ou sugerir novas funcionalidades, abra uma **Issue**.
+| Nível | Significado |
+| --- | --- |
+| `DEBUG` | Detalhes internos verbosos, incluindo toda query resolvida — muito útil para debugar métodos dinâmicos. |
+| `INFO` | Eventos de alto nível do ciclo de vida, como a inicialização do repository. |
+| `WARN` (padrão) | Problemas recuperáveis e operações lentas (veja `logSlowThresholdMs`, padrão de 300ms). |
+| `ERROR` | Falhas lançadas durante a execução de uma operação. |
 
 ---
 
 ## Requisitos
 
-- Node.js 18+ (ESM)
-- Prisma
-- TypeScript (opcional, mas fortemente recomendado)
-- `"moduleResolution": "bundler"` ou `"nodenext"` no tsconfig
-
-`tsconfig.json` recomendado:
+- Node.js 18+
+- TypeScript, com **decorators legacy/experimentais** habilitados (necessário para `@DynamicMethod`/`@QueryMethod`):
 
 ```json
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "strict": true,
-    "skipLibCheck": true,
-    "lib": ["ES2020"]
+    "experimentalDecorators": true
   }
 }
 ```
 
+- `reflect-metadata` (já incluso como dependência, importado internamente — você não precisa importá-lo você mesmo)
+- Pelo menos um `VSRepoAdapter` funcional para o seu banco — nenhum pacote `@vsrepo/*-adapter` foi publicado ainda, então por enquanto isso significa escrever o seu próprio ou adaptar um dos protótipos de referência em `src/adapters/` (veja [Status dos adapters](#status-dos-adapters))
+
 ---
 
-## Solução de problemas
+## Contribuindo
 
-**Tipos genéricos não são inferidos** — Verifique se `strict: true` e `moduleResolution: "bundler"` ou `"nodenext"` estão configurados no `tsconfig.json`.
+Contribuições são bem-vindas, especialmente para finalizar os adapters do Prisma e do TypeORM! (**[Repositório do GitHub](https://github.com/jaobrabo123/VSRepository)**):
 
-**Método dinâmico não existe em tempo de execução** — O campo referenciado no nome do método deve existir no modelo do Prisma. Ex.: `findByEmail` requer que o modelo tenha um campo `email`.
+1. Faça um **Fork** do projeto.
+2. Crie uma branch a partir de `v2` para sua alteração: `git checkout -b v2-minha-alteracao`.
+3. Faça o push da sua branch: `git push origin v2-minha-alteracao`.
+4. Abra um **Pull Request** contra a `v2`.
 
-**`proxyTo` obrigatório** — Nomes fora dos padrões conhecidos (ex.: `searchByEmail`) não são interpretados diretamente. Use `proxyTo: "findByEmail"` nesses casos.
-
-**Select model retorna campos inesperados** — Verifique se o select model define exatamente os campos que o seu tipo TypeScript espera.
-
-**`selectModel`, `includeModel` e `include` juntos na mesma chamada** — Não é permitido. Apenas um dos três pode ser informado por chamada: se `includeModel` ou `include` for informado, o `select` (incluindo `defaultSelectModel`) é ignorado e apenas o `include` é enviado ao Prisma.
-
-**`includeModel` não aparece como opção padrão do repositório** — Isso é esperado. Diferente do `defaultSelectModel`, não existe `defaultIncludeModel`/`defaultInclude`. Um `includeModel` só pode ser definido na chamada do método, via `options.includeModel`. Um include bruto e ad hoc pode ser definido via `options.include`, sem precisar ser registrado em `includeModels`.
-
-**`softRemovekName` lança um erro no build** — O campo informado deve ser do tipo `DateTime` no schema do Prisma. Tipos como `Boolean` ou `String` não são aceitos.
-
-**`defaultOrdering` não está sendo aplicado** — Verifique se o método usa o sufixo `Ordered`, `OrderedAndPaginated` ou `PaginatedAndOrdered`, e se tem `injectOrdering` configurado. Ambos têm prioridade sobre a ordenação padrão.
-
-**Sufixo `Distinct` não é reconhecido** — `Distinct` só é resolvido em prefixos de leitura (`findMany`, `findFirst`, `findBy`, `existsBy`, etc). Em métodos como `count`, `createMany`, `updateMany` ou `deleteMany` o sufixo é ignorado.
-
-**`saveList`/`patchList` com `db` inválido** — O campo `db` nesses métodos só aceita uma `DbTransaction` (o retorno de `prisma.$transaction`), não o client principal. Passar o `PrismaClient` diretamente causará comportamento inesperado.
+Para reportar problemas ou sugerir funcionalidades, abra uma **Issue**.

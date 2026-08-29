@@ -1,4 +1,4 @@
-import { VSRepoAdapter } from "../../../v2/VSRepoAdapter";
+import { VSRepoAdapter } from "../../VSRepoAdapter";
 import { VSLogLevel } from "../../internal/enums/vs-log-level.enum";
 import { KeysOfType } from "../utils/keys-of-type.type";
 import { Ordering } from "../utils/ordering.type";
