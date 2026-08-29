@@ -22,6 +22,7 @@ import { VSRepoValidator } from "../validators/vsrepo.validator";
 import { MergeWheresResolver } from "./merge-wheres.resolver";
 import merge from "deepmerge";
 import { VSRepoErrorType } from "../enums/vsrepo-errortype.enum";
+import { DEBUG_ARG_SYMBOL } from "../constants/debug-arg-symbol.constant";
 
 export class DynamicMethodsResolver<T, K> {
     constructor(
@@ -635,9 +636,8 @@ export class DynamicMethodsResolver<T, K> {
 
     private resolveVSRepoArgs(data: VSRepoResolveArgsData<T, K>): VSRepoArgs<T> {
         const {
-            instance,
+            instance: _,
             options,
-            wherePkValue,
             withoutSelect,
             withoutWhere,
             specificSelect,
@@ -658,10 +658,12 @@ export class DynamicMethodsResolver<T, K> {
         vsrepoArgs.options = { db: options.db ?? this.adapter.getDbClient() };
 
         if (!withoutWhere) {
-            vsrepoArgs.where = this.mergeWheresResolver.resolve(
-                options.see,
-                wherePkValue != undefined ? { [instance.pkName]: wherePkValue } : specificWhere,
-            );
+            vsrepoArgs.where =
+                // * Essa validação é so para o debug mode
+                specificWhere === (DEBUG_ARG_SYMBOL as any)
+                    ? // * 0 pois o whereIndex sempre vem no 0, se algum dia ele puder aparecer em outro lugar irá precisar corrigir isso
+                      ("args<0>" as any)
+                    : this.mergeWheresResolver.resolve(options.see, specificWhere);
         }
 
         if (!withoutSelect) {
@@ -736,14 +738,22 @@ export class DynamicMethodsResolver<T, K> {
                     if (currentWhereRslvd.autoVal !== undefined) {
                         current[context[i]!] = currentWhereRslvd.autoVal;
                         adjust++;
+
+                        continue;
                     }
+
+                    const arg =
+                        args[j - adjust] === DEBUG_ARG_SYMBOL
+                            ? `<args>[${j - adjust}]`
+                            : args[j - adjust];
+
                     // ? Avaliar necessidade dessa validação; era usada por compatibilidade direta com o prisma
-                    else if (currentWhereRslvd.betweenMode && args[j - adjust] !== undefined) {
-                        current[context[i]!] = { between: args[j - adjust] };
-                        // current[context[i]!]["gte"] = args[j - adjust][0];
-                        // current[context[i]!]["lte"] = args[j - adjust][1];
+                    if (currentWhereRslvd.betweenMode && arg !== undefined) {
+                        current[context[i]!] = { between: arg };
+                        // current[context[i]!]["gte"] = arg[0];
+                        // current[context[i]!]["lte"] = arg[1];
                     } else {
-                        current[context[i]!] = args[j - adjust];
+                        current[context[i]!] = arg;
                     }
                 }
             }
@@ -860,10 +870,10 @@ export class DynamicMethodsResolver<T, K> {
 
             // * If para evitar cálculo desnecessário
             if (this.logger.getLogLevel() === VSLogLevel.DEBUG) {
-                const argsSimulation: string[] = [];
+                const argsSimulation: (typeof DEBUG_ARG_SYMBOL)[] = [];
 
                 for (let i = 0; i <= dynamicMethodInfo.argsCount; i++) {
-                    argsSimulation.push(`<args>[${i}]`);
+                    argsSimulation.push(DEBUG_ARG_SYMBOL);
                 }
 
                 const vsrepoArgs = instance.$vsrepocache.get(originalKey)!(argsSimulation);

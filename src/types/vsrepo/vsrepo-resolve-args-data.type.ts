@@ -6,7 +6,6 @@ export interface VSRepoResolveArgsData<T, K> {
     instance: VSRepository<T, K>;
     options: MethodOptions<T>;
     withoutWhere?: boolean;
-    wherePkValue?: unknown;
     withoutSelect?: boolean;
     specificSelect?: object;
     specificWhere?: object;
