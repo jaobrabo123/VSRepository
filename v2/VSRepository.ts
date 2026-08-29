@@ -59,6 +59,15 @@ export abstract class VSRepository<
         this.logger = new VSLogger(
             optionsValidated.logLevel ?? VSLogLevel.WARN,
             this.constructor.name + "Logger",
+            optionsValidated.logSlowThresholdMs,
+        );
+        this.validator.setLogger(this.logger);
+
+        this.logger.logInfo(
+            `Initializing ${this.constructor.name} (pk: '${String(this.pkName)}'` +
+                (this.softRemoveKey ? `, softRemoveKey: '${String(this.softRemoveKey)}'` : "") +
+                (this.defaultOrdering ? `, defaultOrdering: ${JSON.stringify(this.defaultOrdering)}` : "") +
+                `)`,
         );
 
         const dynamicMethodsResolver = new DynamicMethodsResolver<Entity, PKType>(
@@ -69,13 +78,31 @@ export abstract class VSRepository<
             this.defaultOrdering,
         );
 
-        const start = this.logger.startPerformLog("resolve dynamic methods");
-        dynamicMethodsResolver.resolve(this);
-        this.logger.endPerformLog(start);
+        let dynamicMethodsCount = 0;
+        let queryMethodsCount = 0;
 
-        const startQuery = this.logger.startPerformLog("resolve query methods");
-        dynamicMethodsResolver.resolveQueries(this);
-        this.logger.endPerformLog(startQuery);
+        try {
+            const start = this.logger.startPerformLog("resolve dynamic methods");
+            dynamicMethodsCount = dynamicMethodsResolver.resolve(this);
+            this.logger.endPerformLog(start);
+
+            const startQuery = this.logger.startPerformLog("resolve query methods");
+            queryMethodsCount = dynamicMethodsResolver.resolveQueries(this);
+            this.logger.endPerformLog(startQuery);
+        } catch (err) {
+            this.logger.logError(`Failed to initialize ${this.constructor.name}`, err);
+            throw err;
+        }
+
+        this.logger.logInfo(
+            `${this.constructor.name} ready (${dynamicMethodsCount} dynamic method(s), ${queryMethodsCount} query method(s) resolved)`,
+        );
+    }
+
+    // * Loga o erro antes de lançar, pra guard clauses (mau uso da API) não passarem em silêncio
+    private fail(message: string, type: VSRepoErrorType): never {
+        this.logger.logError(`${this.constructor.name}: ${message}`);
+        throw new VSRepoError(message, type);
     }
 
     private wherePk(pk: PKType): VSRepoWhere<Entity> {
@@ -99,10 +126,18 @@ export abstract class VSRepository<
         optionsChecked.db ??= this.getDbClient();
 
         const start = this.logger.startPerformLog("run " + methodName);
-        const result = await fn(optionsChecked);
-        this.logger.endPerformLog(start);
 
-        return result;
+        try {
+            const result = await fn(optionsChecked);
+            this.logger.endPerformLog(start);
+
+            return result;
+        } catch (err) {
+            this.logger.endPerformLog(start);
+            this.logger.logError(`Failed to run '${methodName}' on ${this.constructor.name}`, err);
+
+            throw err;
+        }
     }
 
     async transaction<R, TX = OrmTypes["dbTransaction"]>(
@@ -110,7 +145,7 @@ export abstract class VSRepository<
         options?: VSRepoTransactionOptions,
     ): Promise<R> {
         if (typeof fn !== "function") {
-            throw new VSRepoError("'fn' must be a valid function", VSRepoErrorType.BASE);
+            this.fail("'fn' must be a valid function", VSRepoErrorType.BASE);
         }
 
         return this.adapter.runInTransaction(
@@ -149,7 +184,7 @@ export abstract class VSRepository<
 
     async getList(pks: PKType[], options?: MethodOptions<Entity, OrmTypes>): Promise<Entity[]> {
         if (!Array.isArray(pks)) {
-            throw new VSRepoError("'pks' must be a valid array", VSRepoErrorType.BASE);
+            this.fail("'pks' must be a valid array", VSRepoErrorType.BASE);
         }
 
         return this.execBaseMethod(
@@ -188,7 +223,7 @@ export abstract class VSRepository<
         options?: MethodOptions<Entity, OrmTypes> & { db?: OrmTypes["dbTransaction"] },
     ): Promise<Entity[]> {
         if (!Array.isArray(objs)) {
-            throw new VSRepoError("'objs' must be a valid array", VSRepoErrorType.BASE);
+            this.fail("'objs' must be a valid array", VSRepoErrorType.BASE);
         }
 
         return this.execBaseMethod(opt => this.adapter.saveMany(objs, opt), "saveList", options);
@@ -211,7 +246,7 @@ export abstract class VSRepository<
         options?: MethodOptions<Entity, OrmTypes>,
     ): Promise<CountResult> {
         if (!Array.isArray(pks)) {
-            throw new VSRepoError("'pks' must be a valid array", VSRepoErrorType.BASE);
+            this.fail("'pks' must be a valid array", VSRepoErrorType.BASE);
         }
 
         return this.execBaseMethod(
@@ -281,7 +316,7 @@ export abstract class VSRepository<
 
     async softRemove(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
         if (!this.softRemoveKey) {
-            throw new VSRepoError(
+            this.fail(
                 "this method can only be used if you have configured 'softRemoveKey' in this repository.",
                 VSRepoErrorType.BASE,
             );
@@ -306,13 +341,13 @@ export abstract class VSRepository<
         options?: MethodOptions<Entity, OrmTypes>,
     ): Promise<CountResult> {
         if (!this.softRemoveKey) {
-            throw new VSRepoError(
+            this.fail(
                 "this method can only be used if you have configured 'softRemoveKey' in this repository.",
                 VSRepoErrorType.BASE,
             );
         }
         if (!Array.isArray(pks)) {
-            throw new VSRepoError("'pks' must be a valid array", VSRepoErrorType.BASE);
+            this.fail("'pks' must be a valid array", VSRepoErrorType.BASE);
         }
 
         const key = this.softRemoveKey;
@@ -331,7 +366,7 @@ export abstract class VSRepository<
 
     async restore(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
         if (!this.softRemoveKey) {
-            throw new VSRepoError(
+            this.fail(
                 "this method can only be used if you have configured 'softRemoveKey' in this repository.",
                 VSRepoErrorType.BASE,
             );
@@ -356,13 +391,13 @@ export abstract class VSRepository<
         options?: MethodOptions<Entity, OrmTypes>,
     ): Promise<CountResult> {
         if (!this.softRemoveKey) {
-            throw new VSRepoError(
+            this.fail(
                 "this method can only be used if you have configured 'softRemoveKey' in this repository.",
                 VSRepoErrorType.BASE,
             );
         }
         if (!Array.isArray(pks)) {
-            throw new VSRepoError("'pks' must be a valid array", VSRepoErrorType.BASE);
+            this.fail("'pks' must be a valid array", VSRepoErrorType.BASE);
         }
 
         const key = this.softRemoveKey;

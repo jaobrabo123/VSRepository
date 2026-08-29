@@ -263,10 +263,10 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.otherParams.push("where");
             dynamicMethodInfo.argsCount += 1;
         } else {
-            throw new VSRepoError(
-                `Unknown dynamic method: ${dynamicMethod}.`,
-                VSRepoErrorType.RESOLVER,
-            );
+            const errorMessage = `Unknown dynamic method: ${dynamicMethod}.`;
+            this.logger.logError(errorMessage);
+
+            throw new VSRepoError(errorMessage, VSRepoErrorType.RESOLVER);
         }
 
         return dynamicMethodInfo;
@@ -774,15 +774,21 @@ export class DynamicMethodsResolver<T, K> {
         return specificWhere;
     }
 
-    resolve(instance: VSRepository<T, K, any>) {
+    resolve(instance: VSRepository<T, K, any>): number {
         const dynamicMethods: VSRepoMethod<T>[] =
             Reflect.getMetadata(DYNAMIC_METHODS_KEY, instance.constructor.prototype) ?? [];
 
-        this.logger.logDebug("Dynamic methods detected:", dynamicMethods);
+        this.logger.logDebug(
+            `Resolving ${dynamicMethods.length} dynamic method(s):`,
+            dynamicMethods,
+        );
 
         for (const method of dynamicMethods) {
             if (typeof method.propertyKey === "symbol") {
-                throw new VSRepoError(`The propertyKey must be a string`, VSRepoErrorType.RESOLVER);
+                const errorMessage = `The propertyKey must be a string`;
+                this.logger.logError(errorMessage);
+
+                throw new VSRepoError(errorMessage, VSRepoErrorType.RESOLVER);
             }
 
             const originalKey = method.propertyKey;
@@ -879,10 +885,10 @@ export class DynamicMethodsResolver<T, K> {
                         .concat(dynamicMethodInfo.otherParams)
                         .slice(args.length);
 
-                    throw new VSRepoError(
-                        `Missing parameters: ${missingParams.join(", ")}`,
-                        VSRepoErrorType.DYNAMIC,
-                    );
+                    const errorMessage = `Missing parameters: ${missingParams.join(", ")}`;
+                    this.logger.logError(`Cannot run '${originalKey}': ${errorMessage}`);
+
+                    throw new VSRepoError(errorMessage, VSRepoErrorType.DYNAMIC);
                 } else if (args.length > dynamicMethodInfo.argsCount) {
                     const optionsArg = args[args.length - 1];
                     methodOptions = this.validator.validateMethodOptions(optionsArg);
@@ -893,7 +899,9 @@ export class DynamicMethodsResolver<T, K> {
 
                 const vsrepoArgs = instance.$vsrepocache.get(originalKey)!(args, methodOptions);
 
-                const start = this.logger.startPerformLog("run " + dynamicMethodInfo.method);
+                const start = this.logger.startPerformLog(
+                    `run ${String(originalKey)} (-> ${dynamicMethodInfo.method})`,
+                );
 
                 try {
                     // * Todos os métodos do adapter seguem essa precedencia de parametros
@@ -914,18 +922,25 @@ export class DynamicMethodsResolver<T, K> {
                     return result;
                 } catch (err) {
                     // ? Deixar o catch para se quiser fazer algum tratamento antes de lançar o erro
+                    this.logger.endPerformLog(start);
+                    this.logger.logError(
+                        `Failed to run dynamic method '${String(originalKey)}' (-> ${dynamicMethodInfo.method})`,
+                        err,
+                    );
 
                     throw err;
                 }
             };
         }
+
+        return dynamicMethods.length;
     }
 
-    resolveQueries(instance: VSRepository<T, K, any>) {
+    resolveQueries(instance: VSRepository<T, K, any>): number {
         const queryMethods: VSRepoQuery[] =
             Reflect.getMetadata(QUERY_METHODS_KEY, instance.constructor.prototype) ?? [];
 
-        this.logger.logDebug("Query methods detected:", queryMethods);
+        this.logger.logDebug(`Resolving ${queryMethods.length} query method(s):`, queryMethods);
 
         for (const method of queryMethods) {
             const originalKey = method.propertyKey;
@@ -951,9 +966,17 @@ export class DynamicMethodsResolver<T, K> {
 
                     return result;
                 } catch (err) {
+                    this.logger.endPerformLog(start);
+                    this.logger.logError(
+                        `Failed to run query method '${String(originalKey)}'`,
+                        err,
+                    );
+
                     throw err;
                 }
             };
         }
+
+        return queryMethods.length;
     }
 }

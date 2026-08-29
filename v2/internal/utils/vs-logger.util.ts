@@ -1,41 +1,144 @@
 import { VSLogLevel } from "../enums/vs-log-level.enum";
 import { PerformData } from "../../types/utils/perform-data.type";
 
+/**
+ * ANSI escape codes used to colorize log output.
+ * Kept as raw codes (instead of a dependency like chalk) since colors here
+ * are a "nice to have" for local/dev usage, not a hard requirement.
+ */
+const ANSI = {
+    reset: "\x1b[0m",
+    bold: "\x1b[1m",
+    dim: "\x1b[2m",
+    gray: "\x1b[90m",
+    cyan: "\x1b[36m",
+    yellow: "\x1b[33m",
+    red: "\x1b[31m",
+    magenta: "\x1b[35m",
+} as const;
+
+const LEVEL_LABEL: Record<VSLogLevel, string> = {
+    [VSLogLevel.DEBUG]: "DEBUG",
+    [VSLogLevel.INFO]: "INFO",
+    [VSLogLevel.WARN]: "WARN",
+    [VSLogLevel.ERROR]: "ERROR",
+};
+
+const LEVEL_COLOR: Record<VSLogLevel, string> = {
+    [VSLogLevel.DEBUG]: ANSI.gray,
+    [VSLogLevel.INFO]: ANSI.cyan,
+    [VSLogLevel.WARN]: ANSI.yellow,
+    [VSLogLevel.ERROR]: ANSI.red,
+};
+
 export class VSLogger {
+    // * Acima disso, uma operação concluída é logada como WARN ao invés de DEBUG
+    private static readonly DEFAULT_SLOW_OPERATION_MS = 300;
+
+    private readonly useColors: boolean;
+
     constructor(
         private readonly logLevel: VSLogLevel,
         private readonly loggerName: string,
-    ) {}
+        private readonly slowOperationThresholdMs: number = VSLogger.DEFAULT_SLOW_OPERATION_MS,
+    ) {
+        this.useColors = !process.env.NO_COLOR && !!process.stdout?.isTTY;
+    }
 
     getLogLevel(): VSLogLevel {
         return this.logLevel;
     }
 
+    private color(text: string, ansiColor: string): string {
+        if (!this.useColors) return text;
+        return `${ansiColor}${text}${ANSI.reset}`;
+    }
+
+    // * Evita quebrar em BigInt (comum em counts/ids do Prisma) e referências circulares
     private stringfy(obj: any): string {
-        return JSON.stringify(obj, null, 2);
+        const seen = new WeakSet<object>();
+
+        return JSON.stringify(
+            obj,
+            (_key, value) => {
+                if (typeof value === "bigint") return `${value.toString()}n`;
+
+                if (value instanceof Error) {
+                    return { name: value.name, message: value.message, stack: value.stack };
+                }
+
+                if (typeof value === "object" && value !== null) {
+                    if (seen.has(value)) return "[Circular]";
+                    seen.add(value);
+                }
+
+                return value;
+            },
+            2,
+        );
+    }
+
+    private buildPrefix(level: VSLogLevel): string {
+        const timestamp = this.color(new Date().toISOString(), ANSI.dim);
+        const levelLabel = this.color(
+            `[${LEVEL_LABEL[level]}]`,
+            `${ANSI.bold}${LEVEL_COLOR[level]}`,
+        );
+        const name = this.color(`[${this.loggerName}]`, ANSI.magenta);
+
+        return `${timestamp} ${levelLabel} ${name}`;
     }
 
     private log(level: VSLogLevel, text: string, obj?: any): void {
         if (this.logLevel > level) return;
 
-        const args = [text];
-        if (obj) {
+        const args = [`${this.buildPrefix(level)} ${text}`];
+        if (obj !== undefined) {
             args.push("\n" + this.stringfy(obj));
         }
-        console.log(...args);
-    }
 
-    logWarn(text: string, obj?: any): void {
-        this.log(VSLogLevel.WARN, `[${this.loggerName}] WARN: ${text}`, obj);
+        if (level === VSLogLevel.ERROR) {
+            console.error(...args);
+        } else if (level === VSLogLevel.WARN) {
+            console.warn(...args);
+        } else {
+            console.log(...args);
+        }
     }
 
     logDebug(text: string, obj?: any): void {
-        this.log(VSLogLevel.DEBUG, `[${this.loggerName}] DEBUG: ${text}`, obj);
+        this.log(VSLogLevel.DEBUG, text, obj);
+    }
+
+    logInfo(text: string, obj?: any): void {
+        this.log(VSLogLevel.INFO, text, obj);
+    }
+
+    logWarn(text: string, obj?: any): void {
+        this.log(VSLogLevel.WARN, text, obj);
+    }
+
+    /**
+     * Loga um erro. Se `err` for uma instância de `Error`, apenas nome, mensagem,
+     * stack e cause são logados (evita despejar propriedades internas desnecessárias).
+     */
+    logError(text: string, err?: unknown): void {
+        if (err instanceof Error) {
+            this.log(VSLogLevel.ERROR, text, {
+                name: err.name,
+                message: err.message,
+                stack: err.stack,
+                cause: (err as { cause?: unknown }).cause,
+            });
+            return;
+        }
+
+        this.log(VSLogLevel.ERROR, text, err);
     }
 
     startPerformLog(operation: string): PerformData | undefined {
-        if (this.logLevel > VSLogLevel.DEBUG) return;
-
+        // * O timestamp é sempre capturado (é barato) para permitir detectar operações
+        // * lentas mesmo fora do DEBUG; a linha "Starting to X..." em si só aparece em DEBUG.
         this.logDebug(`Starting to ${operation}...`);
 
         return {
@@ -48,8 +151,16 @@ export class VSLogger {
         if (!data) return;
 
         const end = performance.now();
-        const timeTook = (end - data.start).toFixed(2);
+        const timeTook = end - data.start;
+        const timeTookLabel = timeTook.toFixed(2);
 
-        this.logDebug(`Took ${timeTook}ms to ${data.operation}`);
+        if (timeTook >= this.slowOperationThresholdMs) {
+            this.logWarn(
+                `Took ${timeTookLabel}ms to ${data.operation} (slower than the ${this.slowOperationThresholdMs}ms threshold)`,
+            );
+            return;
+        }
+
+        this.logDebug(`Took ${timeTookLabel}ms to ${data.operation}`);
     }
 }

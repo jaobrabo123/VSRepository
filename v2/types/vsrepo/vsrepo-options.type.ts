@@ -11,5 +11,10 @@ export type VSRepoOptions<T, K> = {
     pkName: KeysOfType<T, K>;
     softRemoveKey?: keyof T;
     logLevel?: VSLogLevel;
+    /**
+     * Duration (in ms) above which a finished operation is logged as WARN
+     * instead of DEBUG, flagging potentially slow queries. Defaults to 300ms.
+     */
+    logSlowThresholdMs?: number;
     defaultOrdering?: Ordering<T>;
 };

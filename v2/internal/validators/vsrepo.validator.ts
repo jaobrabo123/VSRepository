@@ -11,8 +11,30 @@ import { TransactionIsolationLevel } from "../enums/transaction-isolation-level.
 import { VSRepoOrmTypes } from "../../types/vsrepo/vsrepo-orm-types.type";
 import { Pagination } from "../../types/utils/pagination.type";
 import { Ordering } from "../../types/utils/ordering.type";
+import { VSLogger } from "../utils/vs-logger.util";
 
 export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
+    // * Setado depois pelo VSRepository, pois no momento em que validateConstructorOptions
+    // * roda (validação das próprias options do construtor, incluindo o logLevel) o logger
+    // * ainda não existe.
+    private logger?: VSLogger;
+
+    setLogger(logger: VSLogger): void {
+        this.logger = logger;
+    }
+
+    private failValidation(
+        issue: z.core.$ZodIssue | undefined,
+        type: VSRepoErrorType,
+    ): never {
+        const path = issue?.path.length ? issue.path.join(".") : "options";
+        const message = `${path}: ${issue?.message}`;
+
+        this.logger?.logError(`Validation failed (${type}): ${message}`);
+
+        throw new VSRepoError(message, type);
+    }
+
     private readonly constructorOptionsSchema = z.object({
         // * Usando any ao invés de instanceof para não ter erro de referencia
         adapter: z.any(),
@@ -25,6 +47,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
             .optional(),
         softRemoveKey: z.string().optional(),
         logLevel: z.enum(VSLogLevel).optional(),
+        logSlowThresholdMs: z.number().positive().optional(),
         defaultOrdering: orderingSchema.optional(),
     });
 
@@ -32,9 +55,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         const optionsParsed = this.constructorOptionsSchema.safeParse(options);
 
         if (!optionsParsed.success) {
-            const firstIssue = optionsParsed.error.issues[0];
-            const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
-            throw new VSRepoError(`${path}: ${firstIssue?.message}`, VSRepoErrorType.VALIDATOR);
+            this.failValidation(optionsParsed.error.issues[0], VSRepoErrorType.VALIDATOR);
         }
 
         return optionsParsed.data as unknown as VSRepoOptions<T, K>;
@@ -51,9 +72,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         const optionsParsed = this.methodOptionsSchema.safeParse(options ?? {});
 
         if (!optionsParsed.success) {
-            const firstIssue = optionsParsed.error.issues[0];
-            const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
-            throw new VSRepoError(`${path}: ${firstIssue?.message}`, VSRepoErrorType.VALIDATOR);
+            this.failValidation(optionsParsed.error.issues[0], VSRepoErrorType.VALIDATOR);
         }
 
         return optionsParsed.data as unknown as MethodOptions<T>;
@@ -73,9 +92,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         const optionsParsed = this.getAllMethodOptionsSchema.safeParse(options ?? {});
 
         if (!optionsParsed.success) {
-            const firstIssue = optionsParsed.error.issues[0];
-            const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
-            throw new VSRepoError(`${path}: ${firstIssue?.message}`, VSRepoErrorType.VALIDATOR);
+            this.failValidation(optionsParsed.error.issues[0], VSRepoErrorType.VALIDATOR);
         }
 
         return optionsParsed.data as unknown as MethodOptions<T>;
@@ -90,9 +107,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         const argParsed = this.queryArgSchema.safeParse(arg ?? {});
 
         if (!argParsed.success) {
-            const firstIssue = argParsed.error.issues[0];
-            const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
-            throw new VSRepoError(`${path}: ${firstIssue?.message}`, VSRepoErrorType.VALIDATOR);
+            this.failValidation(argParsed.error.issues[0], VSRepoErrorType.VALIDATOR);
         }
 
         return argParsed.data;
@@ -107,9 +122,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         const optionsParsed = this.transactionOptionsSchema.safeParse(options ?? {});
 
         if (!optionsParsed.success) {
-            const firstIssue = optionsParsed.error.issues[0];
-            const path = firstIssue?.path.length ? firstIssue.path.join(".") : "options";
-            throw new VSRepoError(`${path}: ${firstIssue?.message}`, VSRepoErrorType.VALIDATOR);
+            this.failValidation(optionsParsed.error.issues[0], VSRepoErrorType.VALIDATOR);
         }
 
         return optionsParsed.data;
