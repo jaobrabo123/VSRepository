@@ -662,7 +662,7 @@ export class DynamicMethodsResolver<T, K> {
                 // * Essa validação é so para o debug mode
                 specificWhere === (DEBUG_ARG_SYMBOL as any)
                     ? // * 0 pois o whereIndex sempre vem no 0, se algum dia ele puder aparecer em outro lugar irá precisar corrigir isso
-                      ("args<0>" as any)
+                      ("<args>[0]" as any)
                     : this.mergeWheresResolver.resolve(options.see, specificWhere);
         }
 
