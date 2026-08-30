@@ -47,6 +47,7 @@ O VSRepository permite criar repositories fortemente tipados com:
   - [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct)
   - [Options do decorador](#options-do-decorador)
 - [Query methods (SQL raw)](#query-methods-sql-raw)
+  - [Queries raw pontuais com `query()`](#queries-raw-pontuais-com-query)
 - [Transações](#transações)
 - [Tipos utilitários](#tipos-utilitários)
 - [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)
@@ -221,6 +222,7 @@ Disponíveis automaticamente em toda subclasse de `VSRepository`:
 | `has(pk, options?)` | Verifica se um registro existe, retornando `boolean`. |
 | `transaction(fn, options?)` | Executa `fn` dentro de uma transação nativa do ORM. |
 | `getDbClient()` | Retorna a instância do client do ORM usada fora de transações. |
+| `query<T>(query, options?)` | Executa uma instrução SQL raw diretamente contra o banco. Veja [Queries raw pontuais com `query()`](#queries-raw-pontuais-com-query). |
 
 Todos os métodos acima aceitam um objeto `MethodOptions<Entity, OrmTypes>` como último argumento (`select`, `relations`, `see`, `db`).
 
@@ -484,6 +486,34 @@ class UserRepository extends VSRepository<User, string> {
 | `modifying` | `boolean` | `false` | Quando `true`, executa como `INSERT`/`UPDATE`/`DELETE` e o método resolve para o número de linhas afetadas. Quando `false`, executa como query de leitura e resolve para o tipo de retorno declarado. |
 
 Query methods aceitam `{ args, db? }` na chamada — `db` permite que participem de um bloco `transaction()`, assim como os métodos base e dinâmicos.
+
+### Queries raw pontuais com `query()`
+
+Para SQL raw pontual que não justifica declarar um `@QueryMethod` na classe do repository, chame `query()` diretamente — ele está disponível em toda instância de `VSRepository` e passa pela mesma implementação de `query()` do adapter por baixo dos panos:
+
+```typescript
+query<T = any>(query: string, options?: { args?: any[]; db?: any; modifying?: boolean }): Promise<T>;
+```
+
+```typescript
+const users = await userRepository.query<User[]>(
+    'SELECT * FROM "user" WHERE email = $1',
+    { args: ["maria@email.com"] },
+);
+
+const linhasAfetadas = await userRepository.query<number>(
+    'UPDATE "user" SET active = true WHERE id = $1',
+    { args: ["123"], modifying: true },
+);
+```
+
+| Option | Tipo | Padrão | Descrição |
+| --- | --- | --- | --- |
+| `args` | `any[]` | `undefined` | Parâmetros posicionais injetados nos placeholders `$1`, `$2`, ... Nunca interpole valores diretamente na string SQL. |
+| `db` | `any` | Client padrão do repository | Client ou transação do banco em que essa query deve rodar. |
+| `modifying` | `boolean` | `false` | Quando `true`, trata a instrução como `INSERT`/`UPDATE`/`DELETE`. |
+
+Assim como os métodos base, dinâmicos e query, `query()` aceita `db` em `options` para participar de um bloco `transaction()`.
 
 ---
 

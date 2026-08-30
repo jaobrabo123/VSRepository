@@ -18,6 +18,7 @@ import { VSRepoArgs } from "./types/vsrepo/vsrepo-args.type";
 import { DynamicMethodsResolver } from "./internal/resolvers/dynamic-methods.resolver";
 import { VSRepoError } from "./errors/VSRepoError";
 import { VSRepoErrorType } from "./internal/enums/vsrepo-errortype.enum";
+import { VSRepoQueryOptions } from "./types/vsrepo/vsrepo-query-options.type";
 
 /**
  * ORM-agnostic base repository, exposing a complete set of ready-to-use CRUD
@@ -196,6 +197,54 @@ export abstract class VSRepository<
     /** Returns the underlying ORM client instance used outside of transactions. */
     getDbClient<DB extends any = OrmTypes["dbClient"]>(): DB {
         return this.adapter.getDbClient();
+    }
+
+    /**
+     * Executes a raw query/statement directly against the underlying database.
+     *
+     * Use `$1`, `$2`, ... placeholders for values passed via `options.args` —
+     * never interpolate values directly into `query`, to avoid SQL injection.
+     * Set `options.modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements.
+     *
+     * @example
+     * ```typescript
+     * const users = await userRepository.query<User[]>(
+     *     'SELECT * FROM "user" WHERE email = $1',
+     *     { args: ["joao@email.com"] },
+     * );
+     *
+     * const affected = await userRepository.query<number>(
+     *     'UPDATE "user" SET active = true WHERE id = $1',
+     *     { args: ["123"], modifying: true },
+     * );
+     * ```
+     */
+    async query<T = any>(query: string, options?: VSRepoQueryOptions): Promise<T> {
+        if (typeof query !== "string") {
+            this.fail("'query' must be a valid string", VSRepoErrorType.BASE);
+        }
+
+        const optionsValidated = this.validator.validateQueryOptions(options);
+        optionsValidated.db ??= this.getDbClient();
+
+        const start = this.logger.startPerformLog("run query");
+
+        try {
+            const result = await this.adapter.query<T>(query, {
+                args: optionsValidated.args,
+                db: optionsValidated.db,
+                modifying: optionsValidated.modifying ?? false,
+            });
+
+            this.logger.endPerformLog(start);
+
+            return result;
+        } catch (err) {
+            this.logger.endPerformLog(start);
+            this.logger.logError(`Failed to run 'query' on ${this.constructor.name}`, err);
+
+            throw err;
+        }
     }
 
     /** Fetches a record by its primary key (PK). */

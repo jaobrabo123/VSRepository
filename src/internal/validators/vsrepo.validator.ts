@@ -15,6 +15,7 @@ import { VSLogger } from "../utils/vs-logger.util";
 import paginationSchema from "./schemas/pagination.schema";
 import whereSchema from "./schemas/where.schema";
 import { VSRepoWhere } from "../../types/vsrepo/vsrepo-where.type";
+import { VSRepoQueryOptions } from "../../types/vsrepo/vsrepo-query-options.type";
 
 export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
     // * Setado depois pelo VSRepository, pois no momento em que validateConstructorOptions
@@ -109,6 +110,22 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         }
 
         return parsed.output as QueryMethodArg<any>;
+    }
+
+    private queryOptionsSchema = v.object({
+        args: v.optional(v.array(v.any())),
+        db: v.optional(v.looseObject({})),
+        modifying: v.optional(v.boolean()),
+    });
+
+    validateQueryOptions(options?: unknown): VSRepoQueryOptions {
+        const parsed = v.safeParse(this.queryOptionsSchema, options ?? {});
+
+        if (!parsed.success) {
+            this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR);
+        }
+
+        return parsed.output as VSRepoQueryOptions;
     }
 
     private transactionOptionsSchema = v.object({

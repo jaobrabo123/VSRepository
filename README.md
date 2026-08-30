@@ -47,6 +47,7 @@ VSRepository lets you create strongly-typed repositories with:
   - [Ordering, pagination and distinct](#ordering-pagination-and-distinct)
   - [Decorator options](#decorator-options)
 - [Query methods (raw SQL)](#query-methods-raw-sql)
+  - [Ad-hoc raw queries with `query()`](#ad-hoc-raw-queries-with-query)
 - [Transactions](#transactions)
 - [Utility types](#utility-types)
 - [Writing your own adapter](#writing-your-own-adapter)
@@ -221,6 +222,7 @@ Available automatically on every `VSRepository` subclass:
 | `has(pk, options?)` | Checks whether a record exists, returning `boolean`. |
 | `transaction(fn, options?)` | Runs `fn` inside a native transaction of the underlying ORM. |
 | `getDbClient()` | Returns the underlying ORM client instance used outside of transactions. |
+| `query<T>(query, options?)` | Executes a raw SQL statement directly against the database. See [Ad-hoc raw queries with `query()`](#ad-hoc-raw-queries-with-query). |
 
 All of the above accept a `MethodOptions<Entity, OrmTypes>` object as their last argument (`select`, `relations`, `see`, `db`).
 
@@ -484,6 +486,34 @@ class UserRepository extends VSRepository<User, string> {
 | `modifying` | `boolean` | `false` | When `true`, runs as `INSERT`/`UPDATE`/`DELETE` and the method resolves to the number of affected rows. When `false`, runs as a read query and resolves to the declared return type. |
 
 Query methods accept `{ args, db? }` at the call site — `db` lets them participate in a `transaction()` block just like base and dynamic methods.
+
+### Ad-hoc raw queries with `query()`
+
+For one-off raw SQL that doesn't warrant declaring a `@QueryMethod` on the repository class, call `query()` directly — it's available on every `VSRepository` instance and goes through the same adapter's `query()` implementation under the hood:
+
+```typescript
+query<T = any>(query: string, options?: { args?: any[]; db?: any; modifying?: boolean }): Promise<T>;
+```
+
+```typescript
+const users = await userRepository.query<User[]>(
+    'SELECT * FROM "user" WHERE email = $1',
+    { args: ["maria@email.com"] },
+);
+
+const affectedRows = await userRepository.query<number>(
+    'UPDATE "user" SET active = true WHERE id = $1',
+    { args: ["123"], modifying: true },
+);
+```
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `args` | `any[]` | `undefined` | Positional parameters injected into `$1`, `$2`, ... placeholders. Never interpolate values directly into the SQL string. |
+| `db` | `any` | Repository's default client | Database client or transaction to run this query in. |
+| `modifying` | `boolean` | `false` | When `true`, treats the statement as `INSERT`/`UPDATE`/`DELETE`. |
+
+Just like base, dynamic and query methods, `query()` accepts `db` in `options` to participate in a `transaction()` block.
 
 ---
 
