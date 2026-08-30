@@ -15,5 +15,6 @@ export class VSRepoError extends Error {
         cause?: unknown,
     ) {
         super(`[VSRepository] Error: ${message}`, { cause });
+        this.name = "VSRepoError";
     }
 }
