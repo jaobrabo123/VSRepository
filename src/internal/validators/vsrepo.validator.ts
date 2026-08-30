@@ -13,6 +13,8 @@ import { Pagination } from "../../types/utils/pagination.type";
 import { Ordering } from "../../types/utils/ordering.type";
 import { VSLogger } from "../utils/vs-logger.util";
 import paginationSchema from "./schemas/pagination.schema";
+import whereSchema from "./schemas/where.schema";
+import { VSRepoWhere } from "../../types/vsrepo/vsrepo-where.type";
 
 export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
     // * Setado depois pelo VSRepository, pois no momento em que validateConstructorOptions
@@ -23,8 +25,14 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         this.logger = logger;
     }
 
-    private failValidation(issue: v.GenericIssue | undefined, type: VSRepoErrorType): never {
-        const path = issue?.path?.length ? issue.path.map(p => String(p.key)).join(".") : "options";
+    private failValidation(
+        issue: v.GenericIssue | undefined,
+        type: VSRepoErrorType,
+        fallbackPath = "options",
+    ): never {
+        const path = issue?.path?.length
+            ? issue.path.map(p => String(p.key)).join(".")
+            : fallbackPath;
         const message = `${path}: ${issue?.message ?? "validation failed"}`;
 
         this.logger?.logError(`Validation failed (${type}): ${message}`);
@@ -116,5 +124,35 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         }
 
         return parsed.output as VSRepoTransactionOptions;
+    }
+
+    validateOrdering(value: unknown): Ordering<T> {
+        const parsed = v.safeParse(orderingSchema, value);
+
+        if (!parsed.success) {
+            this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR, "ordering");
+        }
+
+        return parsed.output as Ordering<T>;
+    }
+
+    validatePagination(value: unknown): Pagination {
+        const parsed = v.safeParse(paginationSchema, value);
+
+        if (!parsed.success) {
+            this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR, "pagination");
+        }
+
+        return parsed.output as Pagination;
+    }
+
+    validateWhere(value: unknown): VSRepoWhere<T> {
+        const parsed = v.safeParse(whereSchema, value);
+
+        if (!parsed.success) {
+            this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR, "where");
+        }
+
+        return parsed.output as VSRepoWhere<T>;
     }
 }

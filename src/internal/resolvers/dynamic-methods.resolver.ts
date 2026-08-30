@@ -33,6 +33,24 @@ export class DynamicMethodsResolver<T, K> {
         private readonly defaultOrdering?: Ordering<T>,
     ) {}
 
+    private validateIndexedArg<R>(
+        args: any[],
+        positionIndex: number,
+        validate: (value: unknown) => R,
+        parseDebugToString = true,
+    ): R {
+        const value = args.at(positionIndex);
+        if (value === DEBUG_ARG_SYMBOL) {
+            return (
+                parseDebugToString
+                    ? `<args>[${positionIndex < 0 ? args.length + positionIndex : positionIndex}]`
+                    : value
+            ) as R;
+        }
+
+        return validate(value);
+    }
+
     private resolveDynamicMethodInfo(dynamicMethod: string) {
         const dynamicMethodInfo: DynamicMethodInfo = {
             onlyBaseWheres: false,
@@ -831,11 +849,19 @@ export class DynamicMethodsResolver<T, K> {
                     ignoreConflicts: dynamicMethodCustomization.ignoreConflicts,
                     ordering:
                         dynamicMethodCustomization.orderPosition !== undefined
-                            ? args.at(dynamicMethodCustomization.orderPosition)
+                            ? this.validateIndexedArg(
+                                  args,
+                                  dynamicMethodCustomization.orderPosition,
+                                  value => this.validator.validateOrdering(value),
+                              )
                             : (dynamicMethodCustomization.injectOrdering ?? this.defaultOrdering),
                     pagination:
                         dynamicMethodCustomization.paginationPosition !== undefined
-                            ? args.at(dynamicMethodCustomization.paginationPosition)
+                            ? this.validateIndexedArg(
+                                  args,
+                                  dynamicMethodCustomization.paginationPosition,
+                                  value => this.validator.validatePagination(value),
+                              )
                             : undefined,
                     dataPayload:
                         dynamicMethodInfo.dataIndex !== undefined
@@ -861,7 +887,12 @@ export class DynamicMethodsResolver<T, K> {
                 } else if (dynamicMethodInfo.onlyBaseWheres) {
                     vsrepoResolveArgsData.specificWhere =
                         dynamicMethodInfo.whereIndex !== undefined
-                            ? args.at(dynamicMethodInfo.whereIndex)
+                            ? this.validateIndexedArg(
+                                  args,
+                                  dynamicMethodInfo.whereIndex,
+                                  value => this.validator.validateWhere(value),
+                                  false,
+                              )
                             : {};
                 }
 
