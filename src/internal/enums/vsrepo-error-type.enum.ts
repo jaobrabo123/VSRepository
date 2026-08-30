@@ -14,4 +14,6 @@ export enum VSRepoErrorType {
     VALIDATOR = "VALIDATOR",
     /** Invalid usage of a base method (`get`, `save`, `remove`, etc). */
     BASE = "BASE",
+    /** Failure raised by a `VSRepoAdapter` while talking to the underlying ORM/database. */
+    ADAPTER = "ADAPTER",
 }

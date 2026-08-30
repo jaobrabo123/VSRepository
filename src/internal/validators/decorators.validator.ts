@@ -3,7 +3,7 @@ import { DynamicMethodOptions } from "../../types/decorators/dynamic-method-opti
 import { VSRepoError } from "../../errors/VSRepoError";
 import orderingSchema from "./schemas/ordering.schema";
 import { QueryMethodOptions } from "../../types/decorators/query-method-options.type";
-import { VSRepoErrorType } from "../enums/vsrepo-errortype.enum";
+import { VSRepoErrorType } from "../enums/vsrepo-error-type.enum";
 
 export class DecoratorsValidator {
     private static readonly dynamicMethodOptionsSchema = v.object({

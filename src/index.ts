@@ -4,15 +4,17 @@ import "reflect-metadata";
 export { VSRepository } from "./VSRepository.js";
 export { VSRepoAdapter } from "./VSRepoAdapter.js";
 export { VSRepoError } from "./errors/VSRepoError.js";
+export { VSRepoAdapterError } from "./errors/VSRepoAdapterError.js";
 
 // Decorators
 export { DynamicMethod } from "./decorators/dynamic-method.decorator.js";
 export { QueryMethod } from "./decorators/query-method.decorator.js";
 
 // Public enums
-export { VSRepoErrorType } from "./internal/enums/vsrepo-errortype.enum.js";
+export { VSRepoErrorType } from "./internal/enums/vsrepo-error-type.enum.js";
 export { VSLogLevel } from "./internal/enums/vs-log-level.enum.js";
 export { TransactionIsolationLevel } from "./internal/enums/transaction-isolation-level.enum.js";
+export { AdapterErrorCode } from "./internal/enums/adapter-error-code.enum.js";
 
 // Public types
 export type { VSRepoOptions } from "./types/vsrepo/vsrepo-options.type.js";

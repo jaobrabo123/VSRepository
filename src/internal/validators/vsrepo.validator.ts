@@ -5,7 +5,7 @@ import { VSRepoError } from "../../errors/VSRepoError";
 import orderingSchema from "./schemas/ordering.schema";
 import { MethodOptions } from "../../types/utils/methods-options.type";
 import { QueryMethodArg } from "../../types/utils/query-method-arg.type";
-import { VSRepoErrorType } from "../enums/vsrepo-errortype.enum";
+import { VSRepoErrorType } from "../enums/vsrepo-error-type.enum";
 import { VSRepoTransactionOptions } from "../../types/vsrepo/vsrepo-transaction-options.type";
 import { TransactionIsolationLevel } from "../enums/transaction-isolation-level.enum";
 import { VSRepoOrmTypes } from "../../types/vsrepo/vsrepo-orm-types.type";
@@ -62,7 +62,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
     }
 
     private readonly methodOptionsSchema = v.object({
-        db: v.optional(v.looseObject({})),
+        db: v.optional(v.any()),
         see: v.optional(v.picklist(["active", "removed", "all"])),
         relations: v.optional(v.looseObject({})),
         select: v.optional(v.looseObject({})),
@@ -99,7 +99,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
 
     private queryArgSchema = v.object({
         args: v.optional(v.array(v.any())),
-        db: v.optional(v.looseObject({})),
+        db: v.optional(v.any()),
     });
 
     validateQueryMethodArg(arg?: unknown): QueryMethodArg<any> {
@@ -114,7 +114,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
 
     private queryOptionsSchema = v.object({
         args: v.optional(v.array(v.any())),
-        db: v.optional(v.looseObject({})),
+        db: v.optional(v.any()),
         modifying: v.optional(v.boolean()),
     });
 

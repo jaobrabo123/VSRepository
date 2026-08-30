@@ -21,7 +21,7 @@ import { VSLogger } from "../utils/vs-logger.util";
 import { VSRepoValidator } from "../validators/vsrepo.validator";
 import { MergeWheresResolver } from "./merge-wheres.resolver";
 import merge from "deepmerge";
-import { VSRepoErrorType } from "../enums/vsrepo-errortype.enum";
+import { VSRepoErrorType } from "../enums/vsrepo-error-type.enum";
 import { DEBUG_ARG_SYMBOL } from "../constants/debug-arg-symbol.constant";
 
 export class DynamicMethodsResolver<T, K> {

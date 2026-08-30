@@ -17,7 +17,7 @@ import { VSRepoValidator } from "./internal/validators/vsrepo.validator";
 import { VSRepoArgs } from "./types/vsrepo/vsrepo-args.type";
 import { DynamicMethodsResolver } from "./internal/resolvers/dynamic-methods.resolver";
 import { VSRepoError } from "./errors/VSRepoError";
-import { VSRepoErrorType } from "./internal/enums/vsrepo-errortype.enum";
+import { VSRepoErrorType } from "./internal/enums/vsrepo-error-type.enum";
 import { VSRepoQueryOptions } from "./types/vsrepo/vsrepo-query-options.type";
 
 /**

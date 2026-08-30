@@ -1,6 +1,6 @@
 import { VSRepoError } from "../errors/VSRepoError";
 import { QUERY_METHODS_KEY } from "../internal/constants/query-methods-key.constant";
-import { VSRepoErrorType } from "../internal/enums/vsrepo-errortype.enum";
+import { VSRepoErrorType } from "../internal/enums/vsrepo-error-type.enum";
 import { DecoratorsValidator } from "../internal/validators/decorators.validator";
 import { QueryMethodOptions } from "../types/decorators/query-method-options.type";
 import { VSRepoQuery } from "../types/vsrepo/vsrepo-query.type";
