@@ -273,7 +273,30 @@ const userWithAddress = await userRepository.get(id, {
 
 - `select` mirrors the entity's shape: scalar fields take a `boolean`; relation fields take a `boolean` or a nested `select`.
 - `relations` eagerly loads related records; each relation field takes a `boolean` or a nested `relations` object.
-- `select` and `relations` are mutually independent options — combine them as needed for each call.
+- Whether `select` and `relations` can be combined depends on the adapter (see below).
+
+> ⚠️ **Adapter-dependent behavior for `relations`:**
+>
+> The core only forwards `MethodOptions.select` and `MethodOptions.relations` to the adapter — each adapter decides how to translate them to the underlying ORM:
+>
+> - **TypeORM (`@vsrepo/typeorm-adapter`)** — `relations` is **required** to load any relation, even when you only want a nested projection via `select`. TypeORM will not JOIN/emit the relation unless it is listed in `relations`:
+>   ```typescript
+>   // TypeORM: select alone is NOT enough
+>   await userRepository.get(id, {
+>     select: { id: true, address: { city: true } },
+>     relations: { address: true }, // ← required in TypeORM
+>   });
+>   ```
+> - **Prisma 7 (`@vsrepo/prisma7-adapter` / `VSRepoPrisma7Adapter`)** — `relations` is converted to Prisma `include` (`parsePrismaInclude`). **If `select` is present, `relations` is ignored** because Prisma does not allow `select` + `include` in the same query:
+>   ```typescript
+>   // Prisma7: relations is ignored when select exists
+>   await userRepository.get(id, {
+>     select: { id: true, name: true },
+>     relations: { address: true }, // ← ignored, include = undefined
+>   });
+>   ```
+>
+> Custom adapters may map `relations` differently — consult the adapter's documentation for the exact semantics.
 
 ---
 
