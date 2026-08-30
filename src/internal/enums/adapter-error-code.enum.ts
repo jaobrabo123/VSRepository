@@ -143,6 +143,9 @@ export enum AdapterErrorCode {
      */
     NOT_SUPPORTED = "NOT_SUPPORTED",
 
+    /** */
+    INVALID_ADAPTER_CONFIG = "INVALID_ADAPTER_CONFIG",
+
     /**
      * An internal adapter bug or an unrecoverable state occurred. Should rarely
      * be used; prefer a more specific code.
