@@ -219,7 +219,7 @@ export abstract class VSRepository<
      * );
      * ```
      */
-    async query<T = any>(query: string, options?: VSRepoQueryOptions): Promise<T> {
+    async query<T = any>(query: string, options?: VSRepoQueryOptions<OrmTypes>): Promise<T> {
         if (typeof query !== "string") {
             this.fail("'query' must be a valid string", VSRepoErrorType.BASE);
         }
