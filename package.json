@@ -26,8 +26,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "clean": "node -e \"fs.rmSync('dist',{recursive:true})\"",
-    "build": "node -e \"fs.rmSync('dist',{recursive:true})\" && tsc -p tsconfig.build.json",
+    "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\"",
+    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
     "prepack": "pnpm build",
     "typecheck": "tsc --noEmit -p tsconfig.build.json",
     "test": "pnpm typecheck"

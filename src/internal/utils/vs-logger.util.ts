@@ -54,9 +54,9 @@ export class VSLogger {
         return `${ansiColor}${text}${ANSI.reset}`;
     }
 
-    // * Evita quebrar em BigInt (comum em counts/ids do Prisma) e referências circulares
+    // * Evita quebrar em BigInt (comum em counts/ids do Prisma)
     private stringfy(obj: any): string {
-        const seen = new WeakSet<object>();
+        // const seen = new WeakSet<object>();
 
         return JSON.stringify(
             obj,
@@ -67,10 +67,10 @@ export class VSLogger {
                     return { name: value.name, message: value.message, stack: value.stack };
                 }
 
-                if (typeof value === "object" && value !== null) {
-                    if (seen.has(value)) return "[Circular]";
-                    seen.add(value);
-                }
+                // if (typeof value === "object" && value !== null) {
+                //     if (seen.has(value)) return "[Circular]";
+                //     seen.add(value);
+                // }
 
                 return value;
             },
