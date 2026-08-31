@@ -40,19 +40,19 @@ O VSRepository permite criar repositories fortemente tipados com:
 - [Soft-delete](#soft-delete)
 - [`select` e `relations`](#select-e-relations)
 - [Métodos dinâmicos](#métodos-dinâmicos)
-  - [Prefixos disponíveis](#prefixos-disponíveis)
-  - [Filtros de campo](#filtros-de-campo)
-  - [Operadores lógicos](#operadores-lógicos)
-  - [Filtros de relação](#filtros-de-relação)
-  - [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct)
-  - [Options do decorador](#options-do-decorador)
+    - [Prefixos disponíveis](#prefixos-disponíveis)
+    - [Filtros de campo](#filtros-de-campo)
+    - [Operadores lógicos](#operadores-lógicos)
+    - [Filtros de relação](#filtros-de-relação)
+    - [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct)
+    - [Options do decorador](#options-do-decorador)
 - [Query methods (SQL raw)](#query-methods-sql-raw)
-  - [Queries raw pontuais com `query()`](#queries-raw-pontuais-com-query)
+    - [Queries raw pontuais com `query()`](#queries-raw-pontuais-com-query)
 - [Transações](#transações)
 - [Tipos utilitários](#tipos-utilitários)
 - [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)
 - [Tratamento de erros](#tratamento-de-erros)
-  - [`VSRepoAdapterError` e `AdapterErrorCode`](#vsrepoadaptererror-e-adaptererrorcode)
+    - [`VSRepoAdapterError` e `AdapterErrorCode`](#vsrepoadaptererror-e-adaptererrorcode)
 - [Logging](#logging)
 - [Desenvolvimento](#desenvolvimento)
 - [Requisitos](#requisitos)
@@ -64,22 +64,22 @@ O VSRepository permite criar repositories fortemente tipados com:
 
 Se você vem do código/docs da [v1](./v1), aqui está o resumo. Veja cada seção linkada para detalhes.
 
-| Área | v1 | v2 |
-| --- | --- | --- |
-| Acesso ao banco | Fala diretamente com o **Prisma**, embutido no pacote core | Fala com um **`VSRepoAdapter`**; o suporte a cada ORM é distribuído em pacotes separados (`@vsrepo/prisma7-adapter`, `@vsrepo/typeorm-adapter`, ...) em vez de vir embutido no pacote core `vsrepo` |
-| Definindo um repository | `setupVSRepo<T, M>()({...}).build(prisma)` funcional, **ou** uma classe `DynamicRepository` | Uma única API **baseada em classes**: `extends VSRepository<Entity, PKType, OrmTypes>` |
-| Métodos dinâmicos | Objeto de config `methods: { findByEmail: { map: true } }` | Decorador `@DynamicMethod()` em um campo `declare` |
-| Projeções de dados | `selectModels` + `defaultSelectModel` nomeados e reutilizáveis | `select`/`relations` ad-hoc passados em cada chamada (sem modelos nomeados) |
-| Eager loading | `include`/`includeModels` (específico do Prisma) | Option `relations` agnóstica de ORM |
-| Filtros globais | `requiredWhere` (qualquer filtro arbitrário, sempre aplicado) | **Removido**; Agora aceita apenas `softRemoveKey` + `see: "active" \| "removed" \| "all"` |
-| Sufixo de filtro case-insensitive | `Insensitive` | `IgnoreCase` |
-| Ordenação inline no nome do método | Não suportado (`order` tinha que ser passado como argumento via `Ordered`/`Paginated`) | Cadeias `OrderBy<Campo>Asc`/`OrderBy<Campo>Desc` embutidas diretamente no nome do método |
-| Tratamento de duplicatas no `createMany` | Sufixo `SkipDuplicates` | Sufixo `IgnoreConflicts` |
-| `aggregate` / `groupBy` | Suportado (passthrough nativo do Prisma) | **Ainda não implementado** |
-| Tipos de erro | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | Uma classe base `VSRepoError` com um campo `type: VSRepoErrorType` (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`), além de uma subclasse `VSRepoAdapterError` que carrega um `AdapterErrorCode` e o erro original do ORM |
-| Log de debug | Boolean `showWorking: true` | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` para avisos de queries lentas |
-| CLI `vsrepo generate` (etapa de geração de tipos) | Obrigatória antes de usar | Não faz parte do núcleo da v2 — os tipos vêm diretamente das suas entidades/tipos do ORM |
-| Extras de CRUD | `patchList`, `options.select`/`options.include` raw | `select`/`relations` já são o padrão (sempre "raw"); `patch`/`merge` mantêm a mesma semântica |
+| Área                                              | v1                                                                                                              | v2                                                                                                                                                                                                                                             |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Acesso ao banco                                   | Fala diretamente com o **Prisma**, embutido no pacote core                                                      | Fala com um **`VSRepoAdapter`**; o suporte a cada ORM é distribuído em pacotes separados (`@vsrepo/prisma7-adapter`, `@vsrepo/typeorm-adapter`, ...) em vez de vir embutido no pacote core `vsrepo`                                            |
+| Definindo um repository                           | `setupVSRepo<T, M>()({...}).build(prisma)` funcional, **ou** uma classe `DynamicRepository`                     | Uma única API **baseada em classes**: `extends VSRepository<Entity, PKType, OrmTypes>`                                                                                                                                                         |
+| Métodos dinâmicos                                 | Objeto de config `methods: { findByEmail: { map: true } }`                                                      | Decorador `@DynamicMethod()` em um campo `declare`                                                                                                                                                                                             |
+| Projeções de dados                                | `selectModels` + `defaultSelectModel` nomeados e reutilizáveis                                                  | `select`/`relations` ad-hoc passados em cada chamada (sem modelos nomeados)                                                                                                                                                                    |
+| Eager loading                                     | `include`/`includeModels` (específico do Prisma)                                                                | Option `relations` agnóstica de ORM                                                                                                                                                                                                            |
+| Filtros globais                                   | `requiredWhere` (qualquer filtro arbitrário, sempre aplicado)                                                   | **Removido**; Agora aceita apenas `softRemoveKey` + `see: "active" \| "removed" \| "all"`                                                                                                                                                      |
+| Sufixo de filtro case-insensitive                 | `Insensitive`                                                                                                   | `IgnoreCase`                                                                                                                                                                                                                                   |
+| Ordenação inline no nome do método                | Não suportado (`order` tinha que ser passado como argumento via `Ordered`/`Paginated`)                          | Cadeias `OrderBy<Campo>Asc`/`OrderBy<Campo>Desc` embutidas diretamente no nome do método                                                                                                                                                       |
+| Tratamento de duplicatas no `createMany`          | Sufixo `SkipDuplicates`                                                                                         | Sufixo `IgnoreConflicts`                                                                                                                                                                                                                       |
+| `aggregate` / `groupBy`                           | Suportado (passthrough nativo do Prisma)                                                                        | **Ainda não implementado**                                                                                                                                                                                                                     |
+| Tipos de erro                                     | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | Uma classe base `VSRepoError` com um campo `type: VSRepoErrorType` (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`), além de uma subclasse `VSRepoAdapterError` que carrega um `AdapterErrorCode` e o erro original do ORM |
+| Log de debug                                      | Boolean `showWorking: true`                                                                                     | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` para avisos de queries lentas                                                                                                                                    |
+| CLI `vsrepo generate` (etapa de geração de tipos) | Obrigatória antes de usar                                                                                       | Não faz parte do núcleo da v2 — os tipos vêm diretamente das suas entidades/tipos do ORM                                                                                                                                                       |
+| Extras de CRUD                                    | `patchList`, `options.select`/`options.include` raw                                                             | `select`/`relations` já são o padrão (sempre "raw"); `patch`/`merge` mantêm a mesma semântica                                                                                                                                                  |
 
 ---
 
@@ -94,11 +94,11 @@ O VSRepository v2 é **agnóstico de ORM por design**. O pacote core (`vsrepo`) 
 
 Nenhum desses pacotes de adapter foi publicado no npm ainda — o contrato do `VSRepoAdapter` foi validado contra protótipos de referência durante o desenvolvimento do core, e esses protótipos não são mais distribuídos nesta branch. O Prisma 7 é o mais adiantado: o desenvolvimento ativo vive em uma implementação dedicada e completa (ver abaixo).
 
-| Adapter | Status |
-| --- | --- |
+| Adapter                                                                                  | Status                                                                                                                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Prisma 7 ([`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter)) | 🟢 **Desenvolvimento ativo, implementação completa** — ainda não publicado no npm, mas implementa todo o contrato de `VSRepoAdapter` (CRUD, relations, transactions, `merge`, logging) com testes; veja o README desse repositório pras instruções de vendoring. |
-| TypeORM (`@vsrepo/typeorm-adapter`) | 🔴 **Ainda não implementado.** Só foi escrito um parser de referência da cláusula `where` (`parseVSRepoWhere`) para validar o design; é o ponto de partida planejado do futuro pacote `@vsrepo/typeorm-adapter`. |
-| Adapters customizados | 🟢 Totalmente suportados hoje — implemente você mesmo a classe abstrata [`VSRepoAdapter`](#escrevendo-seu-próprio-adapter) para qualquer ORM/banco que precisar, no seu próprio projeto ou pacote, seguindo o mesmo formato esperado dos `@vsrepo/*-adapter`. |
+| TypeORM (`@vsrepo/typeorm-adapter`)                                                      | 🔴 **Ainda não implementado.** Só foi escrito um parser de referência da cláusula `where` (`parseVSRepoWhere`) para validar o design; é o ponto de partida planejado do futuro pacote `@vsrepo/typeorm-adapter`.                                                 |
+| Adapters customizados                                                                    | 🟢 Totalmente suportados hoje — implemente você mesmo a classe abstrata [`VSRepoAdapter`](#escrevendo-seu-próprio-adapter) para qualquer ORM/banco que precisar, no seu próprio projeto ou pacote, seguindo o mesmo formato esperado dos `@vsrepo/*-adapter`.    |
 
 Resumindo: a classe de repository, os decoradores `@DynamicMethod`/`@QueryMethod`, o engine de parsing de nomes, o tratamento de erros e o logging já funcionam de ponta a ponta — o que ainda está sendo construído é a integração concreta com cada ORM, que será distribuída como pacotes `@vsrepo/*-adapter` separados, e não como parte do pacote core `vsrepo`. Trate esta branch como um preview da arquitetura da v2, e não como um substituto imediato para a v1.
 
@@ -190,14 +190,14 @@ await userRepository.remove(usuario.id);
 
 `VSRepoOptions<T, K>`, passado para o `super(...)` dentro do construtor do seu repository:
 
-| Option | Tipo | Descrição |
-| --- | --- | --- |
-| `adapter` | `VSRepoAdapter<T>` | **Obrigatório.** A instância do adapter que traduz as chamadas do repository em chamadas contra o ORM/banco por trás dele. |
-| `pkName` | `keyof T` | **Obrigatório.** Nome do campo que representa a primary key da entidade. |
-| `softRemoveKey` | `keyof T` | Opcional. Quando definido, habilita `softRemove`, `softRemoveList`, `restore` e `restoreList`. |
-| `defaultOrdering` | `Ordering<T>` | Opcional. Ordenação padrão aplicada automaticamente em queries que aceitam `order`, a menos que seja sobrescrita em uma chamada específica. |
-| `logLevel` | `VSLogLevel` | Opcional. Severidade mínima impressa pelo logger interno. Padrão: `VSLogLevel.WARN`. |
-| `logSlowThresholdMs` | `number` | Opcional. Duração (ms) acima da qual uma operação concluída é logada como `WARN` em vez de `DEBUG`. Padrão: 300ms. |
+| Option               | Tipo               | Descrição                                                                                                                                   |
+| -------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `adapter`            | `VSRepoAdapter<T>` | **Obrigatório.** A instância do adapter que traduz as chamadas do repository em chamadas contra o ORM/banco por trás dele.                  |
+| `pkName`             | `keyof T`          | **Obrigatório.** Nome do campo que representa a primary key da entidade.                                                                    |
+| `softRemoveKey`      | `keyof T`          | Opcional. Quando definido, habilita `softRemove`, `softRemoveList`, `restore` e `restoreList`.                                              |
+| `defaultOrdering`    | `Ordering<T>`      | Opcional. Ordenação padrão aplicada automaticamente em queries que aceitam `order`, a menos que seja sobrescrita em uma chamada específica. |
+| `logLevel`           | `VSLogLevel`       | Opcional. Severidade mínima impressa pelo logger interno. Padrão: `VSLogLevel.WARN`.                                                        |
+| `logSlowThresholdMs` | `number`           | Opcional. Duração (ms) acima da qual uma operação concluída é logada como `WARN` em vez de `DEBUG`. Padrão: 300ms.                          |
 
 ---
 
@@ -205,22 +205,22 @@ await userRepository.remove(usuario.id);
 
 Disponíveis automaticamente em toda subclasse de `VSRepository`:
 
-| Método | Descrição |
-| --- | --- |
-| `get(pk, options?)` | Busca um registro pela primary key. |
-| `getOrThrow(pk, options?)` | Busca um registro pela primary key, lançando erro se não encontrar. |
-| `getList(pks, options?)` | Busca vários registros por uma lista de primary keys. |
-| `getAll(options?)` | Busca todos os registros; aceita `pagination` e `order` em `options`. |
-| `save(obj, options?)` | Cria ou atualiza (upsert) um único registro. |
-| `saveList(objs, options?)` | Cria ou atualiza (upsert) vários registros em uma única chamada. |
-| `patch(pk, obj, options?)` | Atualiza parcialmente um registro pela primary key. |
-| `merge(pk, obj, options?)` | Busca um registro e o retorna mesclado (deep-merge), em memória, com o objeto informado — **não** persiste nada. |
-| `remove(pk, options?)` | Remove um registro pela primary key. |
-| `removeList(pks, options?)` | Remove vários registros pela primary key, retornando `{ count }`. |
-| `total(options?)` | Retorna o total de registros. |
-| `has(pk, options?)` | Verifica se um registro existe, retornando `boolean`. |
-| `transaction(fn, options?)` | Executa `fn` dentro de uma transação nativa do ORM. |
-| `getDbClient()` | Retorna a instância do client do ORM usada fora de transações. |
+| Método                      | Descrição                                                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `get(pk, options?)`         | Busca um registro pela primary key.                                                                                                   |
+| `getOrThrow(pk, options?)`  | Busca um registro pela primary key, lançando erro se não encontrar.                                                                   |
+| `getList(pks, options?)`    | Busca vários registros por uma lista de primary keys.                                                                                 |
+| `getAll(options?)`          | Busca todos os registros; aceita `pagination` e `order` em `options`.                                                                 |
+| `save(obj, options?)`       | Cria ou atualiza (upsert) um único registro.                                                                                          |
+| `saveList(objs, options?)`  | Cria ou atualiza (upsert) vários registros em uma única chamada.                                                                      |
+| `patch(pk, obj, options?)`  | Atualiza parcialmente um registro pela primary key.                                                                                   |
+| `merge(pk, obj, options?)`  | Busca um registro e o retorna mesclado (deep-merge), em memória, com o objeto informado — **não** persiste nada.                      |
+| `remove(pk, options?)`      | Remove um registro pela primary key.                                                                                                  |
+| `removeList(pks, options?)` | Remove vários registros pela primary key, retornando `{ count }`.                                                                     |
+| `total(options?)`           | Retorna o total de registros.                                                                                                         |
+| `has(pk, options?)`         | Verifica se um registro existe, retornando `boolean`.                                                                                 |
+| `transaction(fn, options?)` | Executa `fn` dentro de uma transação nativa do ORM.                                                                                   |
+| `getDbClient()`             | Retorna a instância do client do ORM usada fora de transações.                                                                        |
 | `query<T>(query, options?)` | Executa uma instrução SQL raw diretamente contra o banco. Veja [Queries raw pontuais com `query()`](#queries-raw-pontuais-com-query). |
 
 Todos os métodos acima aceitam um objeto `MethodOptions<Entity, OrmTypes>` como último argumento (`select`, `relations`, `see`, `db`).
@@ -241,19 +241,19 @@ super({
 
 Isso libera quatro métodos extras:
 
-| Método | Efeito |
-| --- | --- |
-| `softRemove(pk, options?)` | Define `deletedAt` para a data atual. |
+| Método                          | Efeito                                  |
+| ------------------------------- | --------------------------------------- |
+| `softRemove(pk, options?)`      | Define `deletedAt` para a data atual.   |
 | `softRemoveList(pks, options?)` | O mesmo, em lote — retorna `{ count }`. |
-| `restore(pk, options?)` | Volta `deletedAt` para `null`. |
-| `restoreList(pks, options?)` | O mesmo, em lote — retorna `{ count }`. |
+| `restore(pk, options?)`         | Volta `deletedAt` para `null`.          |
+| `restoreList(pks, options?)`    | O mesmo, em lote — retorna `{ count }`. |
 
 Todo o restante dos métodos aceita uma option `see` que controla a visibilidade de registros com soft-delete:
 
 ```typescript
-await userRepository.getAll({ see: "active" });  // padrão — apenas registros não removidos
+await userRepository.getAll({ see: "active" }); // padrão — apenas registros não removidos
 await userRepository.getAll({ see: "removed" }); // apenas registros com soft-delete
-await userRepository.getAll({ see: "all" });      // todos, ignorando o soft-delete
+await userRepository.getAll({ see: "all" }); // todos, ignorando o soft-delete
 ```
 
 ---
@@ -281,21 +281,21 @@ const usuarioComEndereco = await userRepository.get(id, {
 > O core apenas repassa `MethodOptions.select` e `MethodOptions.relations` ao adapter — cada adapter decide como traduzi-los para o ORM subjacente:
 >
 > - **TypeORM (`@vsrepo/typeorm-adapter`)** — `relations` é **obrigatório** para carregar qualquer relação, mesmo quando você quer apenas uma projeção aninhada via `select`. O TypeORM não fará JOIN/carregar a relação a menos que ela esteja listada em `relations`:
->   ```typescript
->   // TypeORM: apenas select NÃO é suficiente
->   await userRepository.get(id, {
->     select: { id: true, address: { city: true } },
->     relations: { address: true }, // ← obrigatório no TypeORM
->   });
->   ```
+>     ```typescript
+>     // TypeORM: apenas select NÃO é suficiente
+>     await userRepository.get(id, {
+>         select: { id: true, address: { city: true } },
+>         relations: { address: true }, // ← obrigatório no TypeORM
+>     });
+>     ```
 > - **Prisma 7 (`@vsrepo/prisma7-adapter` / `VSRepoPrisma7Adapter`)** — `relations` é convertido para `include` do Prisma (`parsePrismaInclude`). **Se `select` estiver presente, `relations` é ignorado** porque o Prisma não permite `select` + `include` na mesma query:
->   ```typescript
->   // Prisma7: relations é ignorado quando select existe
->   await userRepository.get(id, {
->     select: { id: true, name: true },
->     relations: { address: true }, // ← ignorado, include = undefined
->   });
->   ```
+>     ```typescript
+>     // Prisma7: relations é ignorado quando select existe
+>     await userRepository.get(id, {
+>         select: { id: true, name: true },
+>         relations: { address: true }, // ← ignorado, include = undefined
+>     });
+>     ```
 >
 > Adapters customizados podem mapear `relations` de forma diferente — consulte a documentação do adapter para a semântica exata.
 
@@ -316,44 +316,58 @@ class UserRepository extends VSRepository<User, string> {
     @DynamicMethod()
     declare updateById: (id: string, data: Partial<User>) => Promise<User>;
 
+    // Baseado em where: VSRepoWhere<T> como primeiro parâmetro, pagination penúltimo, MethodOptions por último
     @DynamicMethod()
-    declare findByNameIgnoreCaseOrAgeBetweenOrderByCreatedAtAscPaginated:
-        (name: string, age: [number, number], pagination: { limit?: number; offset?: number }) => Promise<User[]>;
+    declare findWherePaginated: (
+        where: VSRepoWhere<User>,
+        pagination: Pagination,
+        options?: MethodOptions<User>,
+    ) => Promise<User[]>;
+
+    // OrderedAndPaginated: filtros de campo, depois order, depois pagination, depois MethodOptions
+    @DynamicMethod()
+    declare findByNameIgnoreCaseOrAgeBetweenOrderByCreatedAtAscPaginated: (
+        name: string,
+        age: [number, number],
+        order: Ordering<User>,
+        pagination: Pagination,
+        options?: MethodOptions<User>,
+    ) => Promise<User[]>;
 }
 ```
 
 ### Prefixos disponíveis
 
-| Prefixo | Método do adapter | Observações |
-| --- | --- | --- |
-| `findBy` | `findMany` | Filtros de campo seguem o prefixo. |
-| `findOneBy` | `findOne` | Filtros de campo seguem o prefixo; resultado único. |
-| `findOneOrThrowBy` | `findOneOrThrow` | Lança erro se não encontrar. |
-| `findOneOrThrow` | `findOneOrThrow` | Sem filtros de campo; aplica só soft-delete/`see`. |
-| `findOneOrThrowWhere` | `findOneOrThrow` | Recebe um objeto `where` explícito como argumento. |
-| `findWhere` | `findMany` | Recebe um objeto `where` explícito como argumento. |
-| `findOneWhere` | `findOne` | Recebe um objeto `where` explícito como argumento. |
-| `countBy` | `count` | Filtros de campo seguem o prefixo. |
-| `countWhere` | `count` | Recebe um objeto `where` explícito como argumento. |
-| `count` | `count` | Sem filtros de campo. |
-| `existsBy` | `exists` | Retorna `boolean`. |
-| `existsWhere` | `exists` | Recebe um objeto `where` explícito como argumento. |
-| `create` | `create` | Recebe `data` como argumento. |
-| `createMany` | `createMany` | Recebe `data[]` como argumento; suporta `IgnoreConflicts`. |
-| `updateBy` | `update` | Filtros de campo + `data` como argumento. |
-| `updateWhere` | `update` | `where` explícito + `data` como argumentos. |
-| `updateManyBy` | `updateMany` | Filtros de campo + `data`. |
-| `updateManyWhere` | `updateMany` | `where` explícito + `data`. |
-| `updateManyReturningBy` | `updateManyReturning` | Filtros de campo + `data`; retorna os registros atualizados. |
-| `updateManyReturningWhere` | `updateManyReturning` | `where` explícito + `data`; retorna os registros atualizados. |
-| `upsertBy` | `upsert` | Filtros de campo + payloads `create`/`update`. |
-| `upsertWhere` | `upsert` | `where` explícito + payloads `create`/`update`. |
-| `deleteBy` | `delete` | Filtros de campo seguem o prefixo. |
-| `deleteWhere` | `delete` | Objeto `where` explícito como argumento. |
-| `deleteManyBy` | `deleteMany` | Filtros de campo seguem o prefixo. |
-| `deleteManyWhere` | `deleteMany` | Objeto `where` explícito como argumento. |
-| `deleteManyReturningBy` | `deleteManyReturning` | Filtros de campo seguem o prefixo; retorna os registros removidos. |
-| `deleteManyReturningWhere` | `deleteManyReturning` | Objeto `where` explícito; retorna os registros removidos. |
+| Prefixo                    | Método do adapter     | Observações                                                                                          |
+| -------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------- |
+| `findBy`                   | `findMany`            | Filtros de campo seguem o prefixo.                                                                   |
+| `findOneBy`                | `findOne`             | Filtros de campo seguem o prefixo; resultado único.                                                  |
+| `findOneOrThrowBy`         | `findOneOrThrow`      | Lança erro se não encontrar.                                                                         |
+| `findOneOrThrow`           | `findOneOrThrow`      | Sem filtros de campo; aplica só soft-delete/`see`.                                                   |
+| `findOneOrThrowWhere`      | `findOneOrThrow`      | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                                  |
+| `findWhere`                | `findMany`            | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                                  |
+| `findOneWhere`             | `findOne`             | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                                  |
+| `countBy`                  | `count`               | Filtros de campo seguem o prefixo.                                                                   |
+| `countWhere`               | `count`               | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                                  |
+| `count`                    | `count`               | Sem filtros de campo.                                                                                |
+| `existsBy`                 | `exists`              | Retorna `boolean`.                                                                                   |
+| `existsWhere`              | `exists`              | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                                  |
+| `create`                   | `create`              | Recebe `data` como argumento.                                                                        |
+| `createMany`               | `createMany`          | Recebe `data[]` como argumento; suporta `IgnoreConflicts`.                                           |
+| `updateBy`                 | `update`              | Filtros de campo + `data` como argumento.                                                            |
+| `updateWhere`              | `update`              | Recebe um `VSRepoWhere<T>` como primeiro argumento, depois `data`.                                   |
+| `updateManyBy`             | `updateMany`          | Filtros de campo + `data`.                                                                           |
+| `updateManyWhere`          | `updateMany`          | Recebe um `VSRepoWhere<T>` como primeiro argumento, depois `data`.                                   |
+| `updateManyReturningBy`    | `updateManyReturning` | Filtros de campo + `data`; retorna os registros atualizados.                                         |
+| `updateManyReturningWhere` | `updateManyReturning` | Recebe um `VSRepoWhere<T>` como primeiro argumento, depois `data`; retorna os registros atualizados. |
+| `upsertBy`                 | `upsert`              | Filtros de campo + payloads `create`/`update`.                                                       |
+| `upsertWhere`              | `upsert`              | Recebe um `VSRepoWhere<T>` como primeiro argumento, depois os payloads `create`/`update`.            |
+| `deleteBy`                 | `delete`              | Filtros de campo seguem o prefixo.                                                                   |
+| `deleteWhere`              | `delete`              | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                                  |
+| `deleteManyBy`             | `deleteMany`          | Filtros de campo seguem o prefixo.                                                                   |
+| `deleteManyWhere`          | `deleteMany`          | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                                  |
+| `deleteManyReturningBy`    | `deleteManyReturning` | Filtros de campo seguem o prefixo; retorna os registros removidos.                                   |
+| `deleteManyReturningWhere` | `deleteManyReturning` | Recebe um `VSRepoWhere<T>` como primeiro argumento; retorna os registros removidos.                  |
 
 > `aggregate` e `groupBy` **ainda não estão implementados** na v2 (existiam na v1). Está planejado, mas não disponível no momento.
 
@@ -361,30 +375,30 @@ class UserRepository extends VSRepository<User, string> {
 
 Aplicados como sufixos ao nome do campo dentro do método (mesma ideia da v1, com um sufixo renomeado):
 
-| Sufixo | Significado | Argumento |
-| --- | --- | --- |
-| *(sem sufixo)* | igualdade (`=`) | sim |
-| `Not` | negação | sim |
-| `In` | está em | sim (array) |
-| `NotIn` | não está em | sim (array) |
-| `Contains` | contém substring | sim |
-| `NotContains` | não contém substring | sim |
-| `StartsWith` | começa com | sim |
-| `NotStartsWith` | não começa com | sim |
-| `EndsWith` | termina com | sim |
-| `NotEndsWith` | não termina com | sim |
-| `GreaterThan` | `>` | sim |
-| `GreaterThanEqual` | `>=` | sim |
-| `LessThan` | `<` | sim |
-| `LessThanEqual` | `<=` | sim |
-| `Between` | intervalo inclusivo | sim (tupla `[min, max]`) |
-| `NotBetween` | fora de um intervalo inclusivo | sim (tupla `[min, max]`) |
-| `IsNull` | campo é `null` | não |
-| `IsNotNull` | campo não é `null` | não |
-| `IsTrue` | campo é `true` | não |
-| `IsFalse` | campo é `false` | não |
-| `IgnoreCase` | combinador case-insensitive para filtros de texto | não *(renomeado do `Insensitive` da v1)* |
-| `Optional` | **explícita** o argumento do campo como opcional — ele já é opcional por padrão, então esse sufixo é facultativo e serve apenas para deixar isso explícito | — |
+| Sufixo             | Significado                                                                                                                                                | Argumento                                |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| _(sem sufixo)_     | igualdade (`=`)                                                                                                                                            | sim                                      |
+| `Not`              | negação                                                                                                                                                    | sim                                      |
+| `In`               | está em                                                                                                                                                    | sim (array)                              |
+| `NotIn`            | não está em                                                                                                                                                | sim (array)                              |
+| `Contains`         | contém substring                                                                                                                                           | sim                                      |
+| `NotContains`      | não contém substring                                                                                                                                       | sim                                      |
+| `StartsWith`       | começa com                                                                                                                                                 | sim                                      |
+| `NotStartsWith`    | não começa com                                                                                                                                             | sim                                      |
+| `EndsWith`         | termina com                                                                                                                                                | sim                                      |
+| `NotEndsWith`      | não termina com                                                                                                                                            | sim                                      |
+| `GreaterThan`      | `>`                                                                                                                                                        | sim                                      |
+| `GreaterThanEqual` | `>=`                                                                                                                                                       | sim                                      |
+| `LessThan`         | `<`                                                                                                                                                        | sim                                      |
+| `LessThanEqual`    | `<=`                                                                                                                                                       | sim                                      |
+| `Between`          | intervalo inclusivo                                                                                                                                        | sim (tupla `[min, max]`)                 |
+| `NotBetween`       | fora de um intervalo inclusivo                                                                                                                             | sim (tupla `[min, max]`)                 |
+| `IsNull`           | campo é `null`                                                                                                                                             | não                                      |
+| `IsNotNull`        | campo não é `null`                                                                                                                                         | não                                      |
+| `IsTrue`           | campo é `true`                                                                                                                                             | não                                      |
+| `IsFalse`          | campo é `false`                                                                                                                                            | não                                      |
+| `IgnoreCase`       | combinador case-insensitive para filtros de texto                                                                                                          | não _(renomeado do `Insensitive` da v1)_ |
+| `Optional`         | **explícita** o argumento do campo como opcional — ele já é opcional por padrão, então esse sufixo é facultativo e serve apenas para deixar isso explícito | —                                        |
 
 ```typescript
 @DynamicMethod()
@@ -396,11 +410,11 @@ declare findByAgeBetween: (age: [number, number]) => Promise<User[]>;
 
 ### Operadores lógicos
 
-| Operador | Uso no nome | Exemplo |
-| --- | --- | --- |
-| `And` | entre dois campos | `findOneByIdAndEmail` |
-| `Or` | entre dois campos | `findByNameOrEmail` |
-| `AND` | separa um bloco final em `AND` | `findByEmailOrNameANDActiveStatusAndAgeGreaterThan` |
+| Operador | Uso no nome                    | Exemplo                                             |
+| -------- | ------------------------------ | --------------------------------------------------- |
+| `And`    | entre dois campos              | `findOneByIdAndEmail`                               |
+| `Or`     | entre dois campos              | `findByNameOrEmail`                                 |
+| `AND`    | separa um bloco final em `AND` | `findByEmailOrNameANDActiveStatusAndAgeGreaterThan` |
 
 Regras do `AND` (em capslock), iguais às da v1: só é permitido **um** `AND` por nome de método; todo campo conectado por `And` depois dele é aninhado dentro de `AND: []`; `Or` não pode aparecer depois de um `AND`.
 
@@ -408,18 +422,18 @@ Regras do `AND` (em capslock), iguais às da v1: só é permitido **um** `AND` p
 
 Filtram por campos de entidades relacionadas. Internamente, mapeiam para os operadores `_some`/`_every`/`_none`/`_with`/`_without` de `VSRepoWhere` (veja [`select` e `relations`](#select-e-relations) para o equivalente de eager loading).
 
-| Sufixo | Significado | Restrição |
-| --- | --- | --- |
-| `Some` | pelo menos um registro relacionado corresponde | apenas relações to-many |
-| `SomeField` | filtra dentro dos registros relacionados | apenas relações to-many |
-| `Every` | todo registro relacionado corresponde | apenas relações to-many (precisa de `Field` para ser um filtro efetivo) |
-| `EveryField` | filtra dentro dos registros relacionados | apenas relações to-many |
-| `None` | nenhum registro relacionado corresponde | apenas relações to-many |
-| `NoneField` | filtra dentro dos registros relacionados | apenas relações to-many |
-| `With` | o registro relacionado existe | apenas relações to-one |
-| `WithField` | filtra um campo dentro do registro relacionado | apenas relações to-one |
-| `Without` | o registro relacionado não existe | apenas relações to-one |
-| `WithoutField` | filtro negado em um campo do registro relacionado | apenas relações to-one |
+| Sufixo         | Significado                                       | Restrição                                                               |
+| -------------- | ------------------------------------------------- | ----------------------------------------------------------------------- |
+| `Some`         | pelo menos um registro relacionado corresponde    | apenas relações to-many                                                 |
+| `SomeField`    | filtra dentro dos registros relacionados          | apenas relações to-many                                                 |
+| `Every`        | todo registro relacionado corresponde             | apenas relações to-many (precisa de `Field` para ser um filtro efetivo) |
+| `EveryField`   | filtra dentro dos registros relacionados          | apenas relações to-many                                                 |
+| `None`         | nenhum registro relacionado corresponde           | apenas relações to-many                                                 |
+| `NoneField`    | filtra dentro dos registros relacionados          | apenas relações to-many                                                 |
+| `With`         | o registro relacionado existe                     | apenas relações to-one                                                  |
+| `WithField`    | filtra um campo dentro do registro relacionado    | apenas relações to-one                                                  |
+| `Without`      | o registro relacionado não existe                 | apenas relações to-one                                                  |
+| `WithoutField` | filtro negado em um campo do registro relacionado | apenas relações to-one                                                  |
 
 ```typescript
 @DynamicMethod()
@@ -431,20 +445,28 @@ declare findByProductsSome: () => Promise<User[]>;
 
 ### Ordenação, paginação e distinct
 
-| Sufixo | Efeito |
-| --- | --- |
-| `Paginated` | injeta um argumento `pagination` (`{ limit?, offset? }`) no final da chamada. |
-| `Ordered` | injeta um argumento `order` no final da chamada. |
-| `OrderedAndPaginated` | injeta `order`, depois `pagination`. |
-| `PaginatedAndOrdered` | injeta `pagination`, depois `order`. |
+| Sufixo                                     | Efeito                                                                                                                                                                         |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Paginated`                                | Injeta um argumento `pagination` (`{ limit?, offset? }`) como **penúltimo** parâmetro (antes do `MethodOptions` opcional).                                                     |
+| `Ordered`                                  | Injeta um argumento `order: Ordering<T>` como **penúltimo** parâmetro (antes do `MethodOptions` opcional).                                                                     |
+| `OrderedAndPaginated`                      | Injeta `order` como antepenúltimo, depois `pagination` como penúltimo — ambos antes do `MethodOptions`.                                                                        |
+| `PaginatedAndOrdered`                      | Injeta `pagination` como antepenúltimo, depois `order` como penúltimo — ambos antes do `MethodOptions`.                                                                        |
 | `OrderBy<Campo>Asc` / `OrderBy<Campo>Desc` | **Novo na v2.** Embute uma ordenação fixa diretamente no nome do método — encadeie campos com `And` (ex.: `OrderByCreatedAtAscAndNameDesc`). Não precisa de argumento `order`. |
-| `Distinct<Campo>And<Campo>...` | Embute campos `distinct` fixos diretamente no nome do método (só válido em métodos da família `findBy`/`findWhere`). |
-| `IgnoreConflicts` | No `createMany`, ignora registros que violariam uma constraint única, em vez de lançar erro. *(Renomeado do `SkipDuplicates` da v1.)* |
+| `Distinct<Campo>And<Campo>...`             | Embute campos `distinct` fixos diretamente no nome do método (só válido em métodos da família `findBy`/`findWhere`).                                                           |
+| `IgnoreConflicts`                          | No `createMany`, ignora registros que violariam uma constraint única, em vez de lançar erro. _(Renomeado do `SkipDuplicates` da v1.)_                                          |
+
+> ⚠️ **Ordem dos parâmetros:** `pagination` e `order` sempre vêm **antes** do último argumento opcional `MethodOptions<T>`. Quando `order` e `pagination` estão presentes juntos, a ordem relativa entre eles segue o nome do sufixo (`OrderedAndPaginated` → order, pagination; `PaginatedAndOrdered` → pagination, order).
 
 ```typescript
+// Paginated: pagination é o penúltimo parâmetro (antes do MethodOptions)
 @DynamicMethod()
 declare findByActiveOrderByCreatedAtDescPaginated:
-    (active: boolean, pagination: { limit?: number; offset?: number }) => Promise<User[]>;
+    (active: boolean, pagination: Pagination, options?: MethodOptions<User>) => Promise<User[]>;
+
+// OrderedAndPaginated: order, depois pagination, depois MethodOptions
+@DynamicMethod()
+declare findByNameContainsInsensitiveOrderedAndPaginated:
+    (name: string, order: Ordering<User>, pagination: Pagination, options?: MethodOptions<User>) => Promise<User[]>;
 
 @DynamicMethod()
 declare createManyIgnoreConflicts: (data: Partial<User>[]) => Promise<{ count: number }>;
@@ -464,10 +486,10 @@ declare createManyIgnoreConflicts: (data: Partial<User>[]) => Promise<{ count: n
 
 `@DynamicMethod<T>(options?)` aceita:
 
-| Option | Tipo | Descrição |
-| --- | --- | --- |
-| `proxyTo` | `string` | Redireciona a lógica do método para outro padrão de método dinâmico válido — útil para nomes que não seguem a convenção de nomenclatura. |
-| `injectOrdering` | `Ordering<T>` | Ordenação fixa injetada automaticamente, sobrescrevendo o `defaultOrdering` do repository. |
+| Option           | Tipo          | Descrição                                                                                                                                |
+| ---------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `proxyTo`        | `string`      | Redireciona a lógica do método para outro padrão de método dinâmico válido — útil para nomes que não seguem a convenção de nomenclatura. |
+| `injectOrdering` | `Ordering<T>` | Ordenação fixa injetada automaticamente, sobrescrevendo o `defaultOrdering` do repository.                                               |
 
 ```typescript
 @DynamicMethod<User>({ injectOrdering: { createdAt: "desc" } })
@@ -490,8 +512,8 @@ class UserRepository extends VSRepository<User, string> {
 }
 ```
 
-| Option | Tipo | Padrão | Descrição |
-| --- | --- | --- | --- |
+| Option      | Tipo      | Padrão  | Descrição                                                                                                                                                                                             |
+| ----------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `modifying` | `boolean` | `false` | Quando `true`, executa como `INSERT`/`UPDATE`/`DELETE` e o método resolve para o número de linhas afetadas. Quando `false`, executa como query de leitura e resolve para o tipo de retorno declarado. |
 
 Query methods aceitam `{ args, db? }` na chamada — `db` permite que participem de um bloco `transaction()`, assim como os métodos base e dinâmicos.
@@ -505,10 +527,9 @@ query<T = any>(query: string, options?: { args?: any[]; db?: any; modifying?: bo
 ```
 
 ```typescript
-const users = await userRepository.query<User[]>(
-    'SELECT * FROM "user" WHERE email = $1',
-    { args: ["maria@email.com"] },
-);
+const users = await userRepository.query<User[]>('SELECT * FROM "user" WHERE email = $1', {
+    args: ["maria@email.com"],
+});
 
 const linhasAfetadas = await userRepository.query<number>(
     'UPDATE "user" SET active = true WHERE id = $1',
@@ -516,11 +537,11 @@ const linhasAfetadas = await userRepository.query<number>(
 );
 ```
 
-| Option | Tipo | Padrão | Descrição |
-| --- | --- | --- | --- |
-| `args` | `any[]` | `undefined` | Parâmetros posicionais injetados nos placeholders `$1`, `$2`, ... Nunca interpole valores diretamente na string SQL. |
-| `db` | `any` | Client padrão do repository | Client ou transação do banco em que essa query deve rodar. |
-| `modifying` | `boolean` | `false` | Quando `true`, trata a instrução como `INSERT`/`UPDATE`/`DELETE`. |
+| Option      | Tipo      | Padrão                      | Descrição                                                                                                            |
+| ----------- | --------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `args`      | `any[]`   | `undefined`                 | Parâmetros posicionais injetados nos placeholders `$1`, `$2`, ... Nunca interpole valores diretamente na string SQL. |
+| `db`        | `any`     | Client padrão do repository | Client ou transação do banco em que essa query deve rodar.                                                           |
+| `modifying` | `boolean` | `false`                     | Quando `true`, trata a instrução como `INSERT`/`UPDATE`/`DELETE`.                                                    |
 
 Assim como os métodos base, dinâmicos e query, `query()` aceita `db` em `options` para participar de um bloco `transaction()`.
 
@@ -565,20 +586,22 @@ import type {
     QueryMethodArg,
     KeysOfType,
     Primitive,
+    VSRepoWhere,
 } from "vsrepo";
 ```
 
-| Tipo | Descrição | Usado por |
-| --- | --- | --- |
-| `MethodOptions<T, K>` | Options aceitas como último argumento por todo método base e dinâmico: `select`, `relations`, `see`, `db`. | [Métodos base](#métodos-base). |
-| `Pagination` | `{ limit?, offset? }` aceito por `getAll` e pelos métodos dinâmicos com `Paginated`. | [Métodos base](#métodos-base), [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct). |
-| `Ordering<T>` / `OrderByField<T>` / `SortDirection` | Formato de ordenação aceito por `getAll`, `defaultOrdering` e `injectOrdering`, e pelos métodos dinâmicos com `Ordered`. Pode ser um único objeto ou um array encadeado; objetos aninhados ordenam relações to-one. | [Options do construtor](#options-do-construtor), [Options do decorador](#options-do-decorador). |
-| `SeeMode` | `"active" \| "removed" \| "all"` — controla a visibilidade de registros com soft-delete. | [Soft-delete](#soft-delete). |
-| `DeepPartial<T>` | Torna todas as propriedades de `T` opcionais recursivamente, incluindo objetos aninhados e elementos de array. | `save`, `saveList`, `patch`, `merge`, e todo método de escrita do `VSRepoAdapter`. |
-| `CountResult` | `{ count: number }` — o formato retornado por operações em lote. | `removeList`, `softRemoveList`, `restoreList`, `createManyIgnoreConflicts`. |
-| `QueryMethodArg<T>` | `{ args?: T, db? }` — parâmetros posicionais do SQL (`$1`, `$2`, ...) e cliente de transação para o `@QueryMethod`. | [Query methods (SQL raw)](#query-methods-sql-raw). |
-| `KeysOfType<T, K>` | Extrai as chaves de `T` cujo tipo de valor é atribuível a `K`. | Restringe `pkName`, em [Options do construtor](#options-do-construtor), aos campos da entidade compatíveis com o tipo de chave primária configurado. |
-| `Primitive` | União de tipos escalares (`string \| number \| boolean \| bigint \| symbol \| undefined \| null \| Date`) tratados como valores-folha — e não relações — ao percorrer o formato de uma entidade. | Usado por `Ordering<T>` para distinguir campos escalares de campos de relação. |
+| Tipo                                                | Descrição                                                                                                                                                                                                           | Usado por                                                                                                                                                           |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MethodOptions<T, K>`                               | Options aceitas como último argumento por todo método base e dinâmico: `select`, `relations`, `see`, `db`.                                                                                                          | [Métodos base](#métodos-base), [Métodos Dinâmicos](#métodos-dinâmicos).                                                                                             |
+| `Pagination`                                        | `{ limit?, offset? }` aceito por `getAll` e pelos métodos dinâmicos com `Paginated`.                                                                                                                                | [Métodos base](#métodos-base), [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct).                                                                  |
+| `Ordering<T>` / `OrderByField<T>` / `SortDirection` | Formato de ordenação aceito por `getAll`, `defaultOrdering` e `injectOrdering`, e pelos métodos dinâmicos com `Ordered`. Pode ser um único objeto ou um array encadeado; objetos aninhados ordenam relações to-one. | [Options do construtor](#options-do-construtor), [Options do decorador](#options-do-decorador), [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct). |
+| `SeeMode`                                           | `"active" \| "removed" \| "all"` — controla a visibilidade de registros com soft-delete.                                                                                                                            | [Soft-delete](#soft-delete).                                                                                                                                        |
+| `DeepPartial<T>`                                    | Torna todas as propriedades de `T` opcionais recursivamente, incluindo objetos aninhados e elementos de array.                                                                                                      | `save`, `saveList`, `patch`, `merge`, e todo método de escrita do `VSRepoAdapter`.                                                                                  |
+| `CountResult`                                       | `{ count: number }` — o formato retornado por operações em lote.                                                                                                                                                    | `removeList`, `softRemoveList`, `restoreList`, `createManyIgnoreConflicts`.                                                                                         |
+| `QueryMethodArg<T>`                                 | `{ args?: T, db? }` — parâmetros posicionais do SQL (`$1`, `$2`, ...) e cliente de transação para o `@QueryMethod`.                                                                                                 | [Query methods (SQL raw)](#query-methods-sql-raw).                                                                                                                  |
+| `KeysOfType<T, K>`                                  | Extrai as chaves de `T` cujo tipo de valor é atribuível a `K`.                                                                                                                                                      | Restringe `pkName`, em [Options do construtor](#options-do-construtor), aos campos da entidade compatíveis com o tipo de chave primária configurado.                |
+| `Primitive`                                         | União de tipos escalares (`string \| number \| boolean \| bigint \| symbol \| undefined \| null \| Date`) tratados como valores-folha — e não relações — ao percorrer o formato de uma entidade.                    | Usado por `Ordering<T>` para distinguir campos escalares de campos de relação.                                                                                      |
+| `VSRepoWhere<T>`                                    | Tipo de filtro agnóstico de ORM aceito pelos métodos dinâmicos `*Where` (ex.: `findWhere`, `findOneWhere`, `updateWhere`). Suporta filtros de campo, operadores lógicos (`AND`/`OR`/`NOT`) e filtros de relação.    | [Prefixos `findWhere`, `findOneWhere` e demais `*Where`](#prefixos-disponíveis).                                                                                    |
 
 ### `DeepPartial<T>`
 
@@ -622,26 +645,62 @@ Como o núcleo é agnóstico de ORM e é distribuído sem um adapter embutido, a
 
 ```typescript
 export abstract class VSRepoAdapter<T> {
-    abstract runInTransaction<R>(fn: (tx: any) => Promise<R>, options?: VSRepoTransactionOptions): Promise<R>;
+    abstract runInTransaction<R>(
+        fn: (tx: any) => Promise<R>,
+        options?: VSRepoTransactionOptions,
+    ): Promise<R>;
     abstract getDbClient(): any;
     abstract query<T = any>(query: string, options?: AdapterQueryOptions): Promise<T>;
     abstract findOne(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T | null>;
     abstract findOneOrThrow(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T>;
-    abstract findMany(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T> & { distinct?: (keyof T)[] }): Promise<T[]>;
+    abstract findMany(
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T> & { distinct?: (keyof T)[] },
+    ): Promise<T[]>;
     abstract save(obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;
     abstract saveMany(objs: DeepPartial<T>[], options?: AdapterMethodOptions<T>): Promise<T[]>;
     abstract create(objs: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;
-    abstract createMany(objs: DeepPartial<T>[], options?: AdapterMethodOptions<T> & { ignoreConflicts?: boolean }): Promise<CountResult>;
+    abstract createMany(
+        objs: DeepPartial<T>[],
+        options?: AdapterMethodOptions<T> & { ignoreConflicts?: boolean },
+    ): Promise<CountResult>;
     abstract delete(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T>;
-    abstract deleteMany(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<CountResult>;
-    abstract deleteManyReturning(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T[]>;
-    abstract update(where: VSRepoWhere<T>, obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;
-    abstract updateMany(where: VSRepoWhere<T>, obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<CountResult>;
-    abstract updateManyReturning(where: VSRepoWhere<T>, obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T[]>;
+    abstract deleteMany(
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<CountResult>;
+    abstract deleteManyReturning(
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T[]>;
+    abstract update(
+        where: VSRepoWhere<T>,
+        obj: DeepPartial<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+    abstract updateMany(
+        where: VSRepoWhere<T>,
+        obj: DeepPartial<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<CountResult>;
+    abstract updateManyReturning(
+        where: VSRepoWhere<T>,
+        obj: DeepPartial<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T[]>;
     abstract count(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<number>;
     abstract exists(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<boolean>;
-    abstract merge<K>(where: VSRepoWhere<T>, obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<K & T>;
-    abstract upsert(where: VSRepoWhere<T>, create: DeepPartial<T>, update: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;
+    abstract merge<K>(
+        where: VSRepoWhere<T>,
+        obj: DeepPartial<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<K & T>;
+    abstract upsert(
+        where: VSRepoWhere<T>,
+        create: DeepPartial<T>,
+        update: DeepPartial<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
 }
 ```
 
@@ -665,14 +724,14 @@ try {
 }
 ```
 
-| `VSRepoErrorType` | Quando é lançado |
-| --- | --- |
-| `DECORATOR` | Argumentos inválidos foram passados para `@DynamicMethod` ou `@QueryMethod`. |
-| `RESOLVER` | A biblioteca falhou ao resolver a configuração de um método dinâmico/de query em um método chamável (ex.: um nome de método desconhecido). |
-| `DYNAMIC` | Um método dinâmico já resolvido falhou em tempo de execução (ex.: argumentos faltando). |
-| `VALIDATOR` | Options ou argumentos de método inválidos foram detectados durante a validação. |
-| `BASE` | Uso inválido de um método base (`get`, `save`, `remove`, etc). |
-| `ADAPTER` | Um `VSRepoAdapter` falhou ao falar com o ORM/banco subjacente — sempre é lançado como `VSRepoAdapterError`. |
+| `VSRepoErrorType` | Quando é lançado                                                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DECORATOR`       | Argumentos inválidos foram passados para `@DynamicMethod` ou `@QueryMethod`.                                                               |
+| `RESOLVER`        | A biblioteca falhou ao resolver a configuração de um método dinâmico/de query em um método chamável (ex.: um nome de método desconhecido). |
+| `DYNAMIC`         | Um método dinâmico já resolvido falhou em tempo de execução (ex.: argumentos faltando).                                                    |
+| `VALIDATOR`       | Options ou argumentos de método inválidos foram detectados durante a validação.                                                            |
+| `BASE`            | Uso inválido de um método base (`get`, `save`, `remove`, etc).                                                                             |
+| `ADAPTER`         | Um `VSRepoAdapter` falhou ao falar com o ORM/banco subjacente — sempre é lançado como `VSRepoAdapterError`.                                |
 
 ### `VSRepoAdapterError` e `AdapterErrorCode`
 
@@ -694,13 +753,13 @@ try {
 }
 ```
 
-| Propriedade | Tipo | Descrição |
-| --- | --- | --- |
-| `code` | `AdapterErrorCode` | Código estável e agnóstico que classifica a falha. |
-| `originalError` | `unknown` | O erro bruto (ou `null`/`undefined`) lançado pelo driver do ORM/banco subjacente. |
-| `message` | `string` | Descrição legível da falha do adapter. |
-| `type` | `VSRepoErrorType` | Sempre `VSRepoErrorType.ADAPTER`. |
-| `cause` | `unknown` | Causa raiz opcional da qual o erro foi encadeado. |
+| Propriedade     | Tipo               | Descrição                                                                         |
+| --------------- | ------------------ | --------------------------------------------------------------------------------- |
+| `code`          | `AdapterErrorCode` | Código estável e agnóstico que classifica a falha.                                |
+| `originalError` | `unknown`          | O erro bruto (ou `null`/`undefined`) lançado pelo driver do ORM/banco subjacente. |
+| `message`       | `string`           | Descrição legível da falha do adapter.                                            |
+| `type`          | `VSRepoErrorType`  | Sempre `VSRepoErrorType.ADAPTER`.                                                 |
+| `cause`         | `unknown`          | Causa raiz opcional da qual o erro foi encadeado.                                 |
 
 As implementações de adapter o constroem diretamente ao mapear uma falha do ORM:
 
@@ -724,45 +783,45 @@ import { AdapterErrorCode } from "vsrepo";
 console.log(AdapterErrorCode.UNIQUE_CONSTRAINT_VIOLATION); // "UNIQUE_CONSTRAINT_VIOLATION"
 ```
 
-| Código | Significado |
-| --- | --- |
-| `UNKNOWN` | Erro não classificado/desconhecido; o fallback quando nenhum código mais específico corresponde. |
-| `MISSING_DB_CLIENT` | Cliente de banco (ou pool de conexões) não fornecido ou que não pôde ser resolvido. |
-| `CONNECTION_FAILED` | Não foi possível alcançar/conectar ao banco, ou uma conexão estabelecida foi perdida/terminada. |
-| `CONNECTION_POOL_EXHAUSTED` | Pool de conexões esgotado/depletado — nenhuma conexão disponível, todas ocupadas ou o limite foi atingido. |
-| `TIMEOUT` | O banco não respondeu a tempo; uma query excedeu o timeout permitido. |
-| `UNIQUE_CONSTRAINT_VIOLATION` | Violação de constraint unique (chave duplicada). Ex.: Postgres/SQLite `23505`, MySQL `1062`. |
-| `FOREIGN_KEY_VIOLATION` | Violação de constraint de foreign key (linha referenciada não existe). |
-| `NOT_NULL_VIOLATION` | Violação de constraint NOT NULL. |
-| `CHECK_VIOLATION` | Violação de constraint CHECK. |
-| `CONSTRAINT_VIOLATION` | Violação geral de integridade/constraint não coberta por um código mais específico. |
-| `NOT_FOUND` | Registro solicitado não encontrado (ex.: uma operação tipo `findOneOrThrow`). |
-| `INVALID_DATA` | Valor de campo inválido para o tipo/tamanho, ou um valor obrigatório ausente. |
-| `VALUE_TOO_LONG` | Valor fornecido excede o limite de tamanho da coluna/campo. |
-| `CONVERSION_ERROR` | Um valor não pôde ser convertido/convertido para o tipo alvo. Ex.: Postgres `22P02`, MySQL `1366`. |
-| `INVALID_QUERY` | A query/stored procedure SQL está malformada ou é inválida. |
-| `TABLE_OR_COLUMN_NOT_FOUND` | A tabela/coluna/relação referenciada não existe. |
-| `DEADLOCK` | Operação abortada por timeout de lock ou deadlock entre transações concorrentes. |
-| `LOCK_TIMEOUT` | Não foi possível adquirir um lock de banco obrigatório a tempo. |
-| `LOCKED` | O registro está travado e não pode ser modificado. |
-| `ACCESS_DENIED` | O usuário/role atual não tem permissão para a operação. |
-| `INVALID_CREDENTIALS` | Credenciais de conexão inválidas (host/usuário/senha). |
-| `ROW_NOT_ALLOWED` | O usuário autenticado não é dono do registro / a segurança em nível de linha rejeitou. |
-| `MODEL_NOT_FOUND` | Entidade/modelo ou tabela não definida/mapeada no ORM, ou o adapter não tem os metadados do modelo. |
-| `FIELD_NOT_FOUND` | Nome de campo/coluna nos dados ou no `where` não existe na entidade/modelo. |
-| `TRANSACTION_CLOSED` | Transação usada depois de commit/rollback. |
-| `TRANSACTION_ALREADY_STARTED` | Uma transação aninhada não pôde ser aberta (ex.: chamadas `transaction()` aninhadas). |
-| `TRANSACTION_CONFLICT` | Uma transação falhou ao commitar e foi desfeita. |
-| `TRANSACTION_NOT_STARTED` | Nenhuma transação ativa quando uma era obrigatória. |
-| `CONNECTION_CLOSED` | Conexão fechada/terminada enquanto uma transação ou query estava em andamento. |
-| `INVALID_PARTIAL` | `merge`/`upsert`/`update` recebeu um objeto parcial inválido ou faltando chaves obrigatórias. |
-| `NOT_SUPPORTED` | Feature/operação não suportada solicitada ao adapter (ex.: `query()` bruto não suportado). |
-| `INVALID_ADAPTER_CONFIG` | Configuração do adapter inválida ou incompleta (options obrigatórias ausentes, ou com tipo/valor inválido). |
-| `INTERNAL` | Bug interno do adapter ou estado irrecuperável; deve raramente ser usado — prefira um código mais específico. |
+| Código                        | Significado                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `UNKNOWN`                     | Erro não classificado/desconhecido; o fallback quando nenhum código mais específico corresponde.              |
+| `MISSING_DB_CLIENT`           | Cliente de banco (ou pool de conexões) não fornecido ou que não pôde ser resolvido.                           |
+| `CONNECTION_FAILED`           | Não foi possível alcançar/conectar ao banco, ou uma conexão estabelecida foi perdida/terminada.               |
+| `CONNECTION_POOL_EXHAUSTED`   | Pool de conexões esgotado/depletado — nenhuma conexão disponível, todas ocupadas ou o limite foi atingido.    |
+| `TIMEOUT`                     | O banco não respondeu a tempo; uma query excedeu o timeout permitido.                                         |
+| `UNIQUE_CONSTRAINT_VIOLATION` | Violação de constraint unique (chave duplicada). Ex.: Postgres/SQLite `23505`, MySQL `1062`.                  |
+| `FOREIGN_KEY_VIOLATION`       | Violação de constraint de foreign key (linha referenciada não existe).                                        |
+| `NOT_NULL_VIOLATION`          | Violação de constraint NOT NULL.                                                                              |
+| `CHECK_VIOLATION`             | Violação de constraint CHECK.                                                                                 |
+| `CONSTRAINT_VIOLATION`        | Violação geral de integridade/constraint não coberta por um código mais específico.                           |
+| `NOT_FOUND`                   | Registro solicitado não encontrado (ex.: uma operação tipo `findOneOrThrow`).                                 |
+| `INVALID_DATA`                | Valor de campo inválido para o tipo/tamanho, ou um valor obrigatório ausente.                                 |
+| `VALUE_TOO_LONG`              | Valor fornecido excede o limite de tamanho da coluna/campo.                                                   |
+| `CONVERSION_ERROR`            | Um valor não pôde ser convertido/convertido para o tipo alvo. Ex.: Postgres `22P02`, MySQL `1366`.            |
+| `INVALID_QUERY`               | A query/stored procedure SQL está malformada ou é inválida.                                                   |
+| `TABLE_OR_COLUMN_NOT_FOUND`   | A tabela/coluna/relação referenciada não existe.                                                              |
+| `DEADLOCK`                    | Operação abortada por timeout de lock ou deadlock entre transações concorrentes.                              |
+| `LOCK_TIMEOUT`                | Não foi possível adquirir um lock de banco obrigatório a tempo.                                               |
+| `LOCKED`                      | O registro está travado e não pode ser modificado.                                                            |
+| `ACCESS_DENIED`               | O usuário/role atual não tem permissão para a operação.                                                       |
+| `INVALID_CREDENTIALS`         | Credenciais de conexão inválidas (host/usuário/senha).                                                        |
+| `ROW_NOT_ALLOWED`             | O usuário autenticado não é dono do registro / a segurança em nível de linha rejeitou.                        |
+| `MODEL_NOT_FOUND`             | Entidade/modelo ou tabela não definida/mapeada no ORM, ou o adapter não tem os metadados do modelo.           |
+| `FIELD_NOT_FOUND`             | Nome de campo/coluna nos dados ou no `where` não existe na entidade/modelo.                                   |
+| `TRANSACTION_CLOSED`          | Transação usada depois de commit/rollback.                                                                    |
+| `TRANSACTION_ALREADY_STARTED` | Uma transação aninhada não pôde ser aberta (ex.: chamadas `transaction()` aninhadas).                         |
+| `TRANSACTION_CONFLICT`        | Uma transação falhou ao commitar e foi desfeita.                                                              |
+| `TRANSACTION_NOT_STARTED`     | Nenhuma transação ativa quando uma era obrigatória.                                                           |
+| `CONNECTION_CLOSED`           | Conexão fechada/terminada enquanto uma transação ou query estava em andamento.                                |
+| `INVALID_PARTIAL`             | `merge`/`upsert`/`update` recebeu um objeto parcial inválido ou faltando chaves obrigatórias.                 |
+| `NOT_SUPPORTED`               | Feature/operação não suportada solicitada ao adapter (ex.: `query()` bruto não suportado).                    |
+| `INVALID_ADAPTER_CONFIG`      | Configuração do adapter inválida ou incompleta (options obrigatórias ausentes, ou com tipo/valor inválido).   |
+| `INTERNAL`                    | Bug interno do adapter ou estado irrecuperável; deve raramente ser usado — prefira um código mais específico. |
 
 #### `VSRepoError` vs. erros brutos do ORM
 
-Erros de uso/configuração fora do adapter lançam o `VSRepoError` base. Falhas lançadas *pelo ORM subjacente* enquanto um método do adapter roda são **encapsuladas** em `VSRepoAdapterError` (classificadas por um `AdapterErrorCode`, com o erro original preservado em `originalError`) em vez de se propagarem cruas — é isso que torna quem chama independente do formato de erro de qualquer ORM específico.
+Erros de uso/configuração fora do adapter lançam o `VSRepoError` base. Falhas lançadas _pelo ORM subjacente_ enquanto um método do adapter roda são **encapsuladas** em `VSRepoAdapterError` (classificadas por um `AdapterErrorCode`, com o erro original preservado em `originalError`) em vez de se propagarem cruas — é isso que torna quem chama independente do formato de erro de qualquer ORM específico.
 
 ---
 
@@ -781,12 +840,12 @@ super({
 });
 ```
 
-| Nível | Significado |
-| --- | --- |
-| `DEBUG` | Detalhes internos verbosos, incluindo toda query resolvida — muito útil para debugar métodos dinâmicos. |
-| `INFO` | Eventos de alto nível do ciclo de vida, como a inicialização do repository. |
-| `WARN` (padrão) | Problemas recuperáveis e operações lentas (veja `logSlowThresholdMs`, padrão de 300ms). |
-| `ERROR` | Falhas lançadas durante a execução de uma operação. |
+| Nível           | Significado                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| `DEBUG`         | Detalhes internos verbosos, incluindo toda query resolvida — muito útil para debugar métodos dinâmicos. |
+| `INFO`          | Eventos de alto nível do ciclo de vida, como a inicialização do repository.                             |
+| `WARN` (padrão) | Problemas recuperáveis e operações lentas (veja `logSlowThresholdMs`, padrão de 300ms).                 |
+| `ERROR`         | Falhas lançadas durante a execução de uma operação.                                                     |
 
 ---
 
@@ -826,9 +885,9 @@ Observações:
 
 ```json
 {
-  "compilerOptions": {
-    "experimentalDecorators": true
-  }
+    "compilerOptions": {
+        "experimentalDecorators": true
+    }
 }
 ```
 
