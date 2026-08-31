@@ -1008,10 +1008,10 @@ export class DynamicMethodsResolver<T, K> {
                     return result;
                 } catch (err) {
                     this.logger.endPerformLog(start);
-                    this.logger.logError(
-                        `Failed to run query method '${String(originalKey)}'`,
-                        err,
-                    );
+                    // this.logger.logError(
+                    //     `Failed to run query method '${String(originalKey)}'`,
+                    //     err,
+                    // );
 
                     throw err;
                 }

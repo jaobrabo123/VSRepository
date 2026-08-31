@@ -170,7 +170,7 @@ export abstract class VSRepository<
             return result;
         } catch (err) {
             this.logger.endPerformLog(start);
-            this.logger.logError(`Failed to run '${methodName}' on ${this.constructor.name}`, err);
+            // this.logger.logError(`Failed to run '${methodName}' on ${this.constructor.name}`, err);
 
             throw err;
         }
@@ -241,7 +241,7 @@ export abstract class VSRepository<
             return result;
         } catch (err) {
             this.logger.endPerformLog(start);
-            this.logger.logError(`Failed to run 'query' on ${this.constructor.name}`, err);
+            // this.logger.logError(`Failed to run 'query' on ${this.constructor.name}`, err);
 
             throw err;
         }
