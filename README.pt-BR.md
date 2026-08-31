@@ -76,7 +76,7 @@ Se você vem do código/docs da [v1](./v1), aqui está o resumo. Veja cada seç�
 | Ordenação inline no nome do método | Não suportado (`order` tinha que ser passado como argumento via `Ordered`/`Paginated`) | Cadeias `OrderBy<Campo>Asc`/`OrderBy<Campo>Desc` embutidas diretamente no nome do método |
 | Tratamento de duplicatas no `createMany` | Sufixo `SkipDuplicates` | Sufixo `IgnoreConflicts` |
 | `aggregate` / `groupBy` | Suportado (passthrough nativo do Prisma) | **Ainda não implementado** |
-| Tipos de erro | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | Uma única classe `VSRepoError` com um campo `type: VSRepoErrorType` (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`) |
+| Tipos de erro | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | Uma classe base `VSRepoError` com um campo `type: VSRepoErrorType` (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`), além de uma subclasse `VSRepoAdapterError` que carrega um `AdapterErrorCode` e o erro original do ORM |
 | Log de debug | Boolean `showWorking: true` | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` para avisos de queries lentas |
 | CLI `vsrepo generate` (etapa de geração de tipos) | Obrigatória antes de usar | Não faz parte do núcleo da v2 — os tipos vêm diretamente das suas entidades/tipos do ORM |
 | Extras de CRUD | `patchList`, `options.select`/`options.include` raw | `select`/`relations` já são o padrão (sempre "raw"); `patch`/`merge` mantêm a mesma semântica |
@@ -92,12 +92,12 @@ O VSRepository v2 é **agnóstico de ORM por design**. O pacote core (`vsrepo`) 
 - `@vsrepo/typeorm-adapter`
 - `@vsrepo/drizzle-adapter`
 
-Nenhum desses pacotes de adapter foi publicado no npm ainda. O que existe nesta branch, dentro de `src/adapters/`, são majoritariamente **protótipos/implementações de referência** usados para desenhar e validar o contrato do `VSRepoAdapter` enquanto o core estava sendo construído — não são os adapters reais e distribuíveis. A exceção é o Prisma 7: o desenvolvimento ativo já migrou desta branch para uma implementação dedicada e completa (ver abaixo).
+Nenhum desses pacotes de adapter foi publicado no npm ainda — o contrato do `VSRepoAdapter` foi validado contra protótipos de referência durante o desenvolvimento do core, e esses protótipos não são mais distribuídos nesta branch. O Prisma 7 é o mais adiantado: o desenvolvimento ativo vive em uma implementação dedicada e completa (ver abaixo).
 
 | Adapter | Status |
 | --- | --- |
-| Prisma 7 ([`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter)) | 🟢 **Desenvolvimento ativo, implementação completa** — também ainda não publicado no npm, mas implementa todo o contrato de `VSRepoAdapter` (CRUD, relations, transactions, `merge`, logging) com testes; veja o README desse repositório pras instruções de vendoring. A cópia que ainda está neste repositório em `src/adapters/prisma7` é um protótipo antigo e abandonado (`findOne` implementado, todo o resto lança `"Method not implemented."`) mantido só como referência histórica — não use. |
-| TypeORM (`src/adapters/typeorm.adapter.ts`) | 🟡 **Protótipo de referência.** Só existe o parser da cláusula `where` (`parseVSRepoWhere`) até agora; ele **ainda não** implementa o contrato completo de `VSRepoAdapter`. É o ponto de partida do futuro pacote `@vsrepo/typeorm-adapter`. |
+| Prisma 7 ([`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter)) | 🟢 **Desenvolvimento ativo, implementação completa** — ainda não publicado no npm, mas implementa todo o contrato de `VSRepoAdapter` (CRUD, relations, transactions, `merge`, logging) com testes; veja o README desse repositório pras instruções de vendoring. |
+| TypeORM (`@vsrepo/typeorm-adapter`) | 🔴 **Ainda não implementado.** Só foi escrito um parser de referência da cláusula `where` (`parseVSRepoWhere`) para validar o design; é o ponto de partida planejado do futuro pacote `@vsrepo/typeorm-adapter`. |
 | Adapters customizados | 🟢 Totalmente suportados hoje — implemente você mesmo a classe abstrata [`VSRepoAdapter`](#escrevendo-seu-próprio-adapter) para qualquer ORM/banco que precisar, no seu próprio projeto ou pacote, seguindo o mesmo formato esperado dos `@vsrepo/*-adapter`. |
 
 Resumindo: a classe de repository, os decoradores `@DynamicMethod`/`@QueryMethod`, o engine de parsing de nomes, o tratamento de erros e o logging já funcionam de ponta a ponta — o que ainda está sendo construído é a integração concreta com cada ORM, que será distribuída como pacotes `@vsrepo/*-adapter` separados, e não como parte do pacote core `vsrepo`. Trate esta branch como um preview da arquitetura da v2, e não como um substituto imediato para a v1.
@@ -112,7 +112,7 @@ Quando lançada, a v2 será instalada como o pacote core mais um pacote de adapt
 npm i vsrepo @vsrepo/prisma7-adapter
 ```
 
-> Nem o `vsrepo` v2 nem nenhum pacote `@vsrepo/*-adapter` foram publicados no npm ainda. O core já pode ser compilado e empacotado a partir desta branch (`pnpm build` + `npm pack` + `npm install ../caminho/vsrepo-<versão>.tgz`) e o seu `package.json` reflete a API da v2. O que ainda falta para um release publicado de verdade são os pacotes `@vsrepo/*-adapter` e o publish em si. Até lá, se quiser usar a v2 hoje no Prisma 7, faça vendoring do [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) (veja o README dele), que está em desenvolvimento ativo; pra qualquer outro ORM, instale o core a partir do tarball empacotado ou consuma da pasta `src/` e escreva seu próprio adapter (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) ou adapte um dos protótipos em `src/adapters/`.
+> Nem o `vsrepo` v2 nem nenhum pacote `@vsrepo/*-adapter` foram publicados no npm ainda. O core já pode ser compilado e empacotado a partir desta branch (`pnpm build` + `npm pack` + `npm install ../caminho/vsrepo-<versão>.tgz`) e o seu `package.json` reflete a API da v2. O que ainda falta para um release publicado de verdade são os pacotes `@vsrepo/*-adapter` e o publish em si. Até lá, se quiser usar a v2 hoje no Prisma 7, faça vendoring do [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) (veja o README dele), que está em desenvolvimento ativo; pra qualquer outro ORM, instale o core a partir do tarball empacotado ou consuma da pasta `src/` e escreva seu próprio adapter (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)).
 
 ---
 
@@ -163,7 +163,7 @@ class UserRepository extends VSRepository<User, string> {
 export default new UserRepository();
 ```
 
-> A API do core (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums e tipos) é importada do entry point único `vsrepo`. O adapter concreto vem de um pacote **separado** (`@vsrepo/*-adapter`). Até que esses pacotes de adapter sejam publicados, no Prisma 7 faça vendoring do [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) de verdade (o construtor dele recebe um objeto de config — `tableName`, `pkName`, `relations`/`logLevel` opcionais — como no exemplo acima); pra qualquer outro ORM, implemente o contrato `VSRepoAdapter` você mesmo (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) ou adapte um dos protótipos de referência em `src/adapters/`.
+> A API do core (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums e tipos) é importada do entry point único `vsrepo`. O adapter concreto vem de um pacote **separado** (`@vsrepo/*-adapter`). Até que esses pacotes de adapter sejam publicados, no Prisma 7 faça vendoring do [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) de verdade (o construtor dele recebe um objeto de config — `tableName`, `pkName`, `relations`/`logLevel` opcionais — como no exemplo acima); pra qualquer outro ORM, implemente o contrato `VSRepoAdapter` você mesmo (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)).
 
 ### Usando o repository
 
@@ -384,7 +384,7 @@ Aplicados como sufixos ao nome do campo dentro do método (mesma ideia da v1, co
 | `IsTrue` | campo é `true` | não |
 | `IsFalse` | campo é `false` | não |
 | `IgnoreCase` | combinador case-insensitive para filtros de texto | não *(renomeado do `Insensitive` da v1)* |
-| `Optional` | torna o argumento do campo opcional (pode ser `undefined`) | — |
+| `Optional` | **explícita** o argumento do campo como opcional — ele já é opcional por padrão, então esse sufixo é facultativo e serve apenas para deixar isso explícito | — |
 
 ```typescript
 @DynamicMethod()
@@ -449,6 +449,16 @@ declare findByActiveOrderByCreatedAtDescPaginated:
 @DynamicMethod()
 declare createManyIgnoreConflicts: (data: Partial<User>[]) => Promise<{ count: number }>;
 ```
+
+> ⚠️ **Precedência entre `Distinct` e `OrderBy`:** quando os dois são usados no mesmo nome de método, **`Distinct` deve vir antes de `OrderBy`**:
+>
+> ```typescript
+> @DynamicMethod()
+> declare findByActiveDistinctNameOrderByCreatedAtDesc:
+>     (active: boolean) => Promise<User[]>;
+> ```
+>
+> Colocar `OrderBy` antes de `Distinct` (ex.: `findByActiveOrderByCreatedAtDescDistinctName`) não é um padrão válido e não será interpretado como esperado.
 
 ### Options do decorador
 
@@ -635,7 +645,7 @@ export abstract class VSRepoAdapter<T> {
 }
 ```
 
-O `VSRepository` nunca fala diretamente com o ORM — ele só chama esses métodos com um `VSRepoWhere<T>` e um `AdapterMethodOptions<T>` já resolvidos. Uma vez que um adapter implemente esse contrato, todo método base, método dinâmico e query method passa a funcionar com ele automaticamente. Pra uma implementação completa e funcional, veja o repositório externo [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter); `src/adapters/prisma7/prisma7.adapter.ts` neste repositório é um protótipo antigo e abandonado, e `src/adapters/typeorm.adapter.ts` ainda é só um parser de referência da cláusula `where`.
+O `VSRepository` nunca fala diretamente com o ORM — ele só chama esses métodos com um `VSRepoWhere<T>` e um `AdapterMethodOptions<T>` já resolvidos. Uma vez que um adapter implemente esse contrato, todo método base, método dinâmico e query method passa a funcionar com ele automaticamente. Pra uma implementação completa e funcional, veja o repositório externo [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter).
 
 ---
 
@@ -804,7 +814,7 @@ npm install ../caminho/vsrepo-1.4.0.tgz
 Observações:
 
 - `pnpm build` executa `tsc -p tsconfig.build.json`, que gera o JS compilado e as declarações de tipo em `dist/` com `rootDir: src`.
-- O pacote publicado contém **apenas** a pasta `dist/` além dos READMEs e da `LICENSE` (veja `files` no `package.json`). Fontes, testes, a pasta `v1/`, `generated/` e os protótipos `src/adapters/**` **não** são enviados — os adapters viverão em seus próprios pacotes `@vsrepo/*-adapter`.
+- O pacote publicado contém **apenas** a pasta `dist/` além dos READMEs e da `LICENSE` (veja `files` no `package.json`). Fontes, testes, a pasta `v1/` e `generated/` **não** são enviados — os adapters viverão em seus próprios pacotes `@vsrepo/*-adapter`.
 - O core é ORM-agnóstico e não tem dependência peer de `@prisma/client`.
 
 ---
@@ -823,7 +833,7 @@ Observações:
 ```
 
 - `reflect-metadata` (já incluso como dependência, importado internamente — você não precisa importá-lo você mesmo)
-- Pelo menos um `VSRepoAdapter` funcional para o seu banco — nenhum pacote `@vsrepo/*-adapter` foi publicado ainda, então por enquanto isso significa escrever o seu próprio ou adaptar um dos protótipos de referência em `src/adapters/` (veja [Status dos adapters](#status-dos-adapters))
+- Pelo menos um `VSRepoAdapter` funcional para o seu banco — nenhum pacote `@vsrepo/*-adapter` foi publicado ainda, então por enquanto isso significa escrever o seu próprio (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) ou fazer vendoring do ativo [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) no Prisma 7 (veja [Status dos adapters](#status-dos-adapters))
 
 ---
 

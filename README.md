@@ -76,7 +76,7 @@ If you're coming from the [v1](./v1) code/docs, here's the short version. See ea
 | Inline ordering in method name | Not supported (`order` had to be passed as an argument via `Ordered`/`Paginated`) | `OrderBy<Field>Asc`/`OrderBy<Field>Desc` chains baked directly into the method name |
 | Duplicate handling on `createMany` | `SkipDuplicates` suffix | `IgnoreConflicts` suffix |
 | `aggregate` / `groupBy` | Supported (Prisma-native passthrough) | **Not implemented yet** |
-| Error types | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | A single `VSRepoError` class with a `type: VSRepoErrorType` field (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`) |
+| Error types | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | A base `VSRepoError` class with a `type: VSRepoErrorType` field (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`), plus a `VSRepoAdapterError` subclass carrying an `AdapterErrorCode` and the original ORM error |
 | Debug logging | `showWorking: true` boolean | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` for slow-query warnings |
 | `vsrepo generate` CLI (type generation step) | Required before use | Not part of the v2 core — types come directly from your entity/ORM types |
 | CRUD extras | `patchList`, raw `options.select`/`options.include` | `select`/`relations` are the default (always "raw"); `patch`/`merge` keep the same semantics |
@@ -92,12 +92,12 @@ VSRepository v2 is **ORM-agnostic by design**. The core package (`vsrepo`) only 
 - `@vsrepo/typeorm-adapter`
 - `@vsrepo/drizzle-adapter`
 
-None of these adapter packages have been published to npm yet. What you'll find in this branch, under `src/adapters/`, are mostly **prototypes/reference implementations** used to design and validate the `VSRepoAdapter` contract while the core was being built — not the real, distributable adapters. The one exception is Prisma 7: active development already moved out of this branch into a dedicated, full implementation (see below).
+None of these adapter packages have been published to npm yet — the `VSRepoAdapter` contract was validated against reference prototypes during the core's development, and those prototypes are no longer shipped in this branch. Prisma 7 is the furthest along: active development lives in a dedicated, full implementation (see below).
 
 | Adapter | Status |
 | --- | --- |
-| Prisma 7 ([`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter)) | 🟢 **Actively developed, full implementation** — not published to npm yet either, but implements the entire `VSRepoAdapter` contract (CRUD, relations, transactions, `merge`, logging) with tests; see that repo's README for vendoring instructions. The copy still sitting in this repo at `src/adapters/prisma7` is an earlier, abandoned prototype (`findOne` implemented, every other method throws `"Method not implemented."`) kept only for historical reference — don't use it. |
-| TypeORM (`src/adapters/typeorm.adapter.ts`) | 🟡 **Reference prototype.** Only the `where`-clause parser (`parseVSRepoWhere`) exists so far; it does **not** yet implement the full `VSRepoAdapter` contract. This is the starting point for the future `@vsrepo/typeorm-adapter` package. |
+| Prisma 7 ([`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter)) | 🟢 **Actively developed, full implementation** — not published to npm yet, but implements the entire `VSRepoAdapter` contract (CRUD, relations, transactions, `merge`, logging) with tests; see that repo's README for vendoring instructions. |
+| TypeORM (`@vsrepo/typeorm-adapter`) | 🔴 **Not implemented yet.** Only a reference `where`-clause parser (`parseVSRepoWhere`) was written to validate the design; it's the planned starting point for the future `@vsrepo/typeorm-adapter` package. |
 | Custom adapters | 🟢 Fully supported today — implement the [`VSRepoAdapter`](#writing-your-own-adapter) abstract class yourself for any ORM/database you need, in your own project or package, following the same shape as `@vsrepo/*-adapter` is expected to have. |
 
 In short: the repository class, the `@DynamicMethod`/`@QueryMethod` decorators, the name-parsing engine, error handling and logging are all working end-to-end — what's still being built out is the concrete ORM integration, which will ship as separate `@vsrepo/*-adapter` packages rather than as part of the core `vsrepo` package. Treat this branch as a preview of the v2 architecture rather than a drop-in replacement for v1 today.
@@ -112,7 +112,7 @@ Once released, v2 will be installed as the core package plus one adapter package
 npm i vsrepo @vsrepo/prisma7-adapter
 ```
 
-> Neither `vsrepo` v2 nor any `@vsrepo/*-adapter` package has been published to npm yet. The core is already buildable and packable from this branch (`pnpm build` + `npm pack` + `npm install ../path/to/vsrepo-<version>.tgz`) and its `package.json` reflects the v2 API. What's still missing for a real published release are the `@vsrepo/*-adapter` packages and the actual npm publish. Until then, if you want to use v2 today on Prisma 7, vendor the actively-developed [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) (see its README); for any other ORM, install the core from the packed tarball or consume it from the `src/` folder and write your own adapter (see [Writing your own adapter](#writing-your-own-adapter)) or adapt one of the prototypes in `src/adapters/`.
+> Neither `vsrepo` v2 nor any `@vsrepo/*-adapter` package has been published to npm yet. The core is already buildable and packable from this branch (`pnpm build` + `npm pack` + `npm install ../path/to/vsrepo-<version>.tgz`) and its `package.json` reflects the v2 API. What's still missing for a real published release are the `@vsrepo/*-adapter` packages and the actual npm publish. Until then, if you want to use v2 today on Prisma 7, vendor the actively-developed [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) (see its README); for any other ORM, install the core from the packed tarball or consume it from the `src/` folder and write your own adapter (see [Writing your own adapter](#writing-your-own-adapter)).
 
 ---
 
@@ -163,7 +163,7 @@ class UserRepository extends VSRepository<User, string> {
 export default new UserRepository();
 ```
 
-> The core API (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums and types) is imported from the single `vsrepo` entry point. The concrete adapter comes from a **separate** package (`@vsrepo/*-adapter`). Until those adapter packages are published, on Prisma 7 vendor the real [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) (its constructor takes a config object — `tableName`, `pkName`, optional `relations`/`logLevel` — as shown above); for any other ORM, implement the `VSRepoAdapter` contract yourself (see [Writing your own adapter](#writing-your-own-adapter)) or adapt one of the reference prototypes in `src/adapters/`.
+> The core API (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums and types) is imported from the single `vsrepo` entry point. The concrete adapter comes from a **separate** package (`@vsrepo/*-adapter`). Until those adapter packages are published, on Prisma 7 vendor the real [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) (its constructor takes a config object — `tableName`, `pkName`, optional `relations`/`logLevel` — as shown above); for any other ORM, implement the `VSRepoAdapter` contract yourself (see [Writing your own adapter](#writing-your-own-adapter)).
 
 ### Using the repository
 
@@ -384,7 +384,7 @@ Applied as suffixes to the field name inside the method (same idea as v1, one re
 | `IsTrue` | field is `true` | no |
 | `IsFalse` | field is `false` | no |
 | `IgnoreCase` | case-insensitive combinator for text filters | no *(renamed from v1's `Insensitive`)* |
-| `Optional` | makes the field's argument optional (may be `undefined`) | — |
+| `Optional` | **explicitly** marks the field's argument as optional — it's already optional by default, so this suffix is itself optional and only used to make it explicit | — |
 
 ```typescript
 @DynamicMethod()
@@ -449,6 +449,16 @@ declare findByActiveOrderByCreatedAtDescPaginated:
 @DynamicMethod()
 declare createManyIgnoreConflicts: (data: Partial<User>[]) => Promise<{ count: number }>;
 ```
+
+> ⚠️ **Precedence between `Distinct` and `OrderBy`:** when both are used in the same method name, **`Distinct` must come before `OrderBy`**:
+>
+> ```typescript
+> @DynamicMethod()
+> declare findByActiveDistinctNameOrderByCreatedAtDesc:
+>     (active: boolean) => Promise<User[]>;
+> ```
+>
+> Putting `OrderBy` before `Distinct` (e.g. `findByActiveOrderByCreatedAtDescDistinctName`) is not a valid pattern and won't be parsed as expected.
 
 ### Decorator options
 
@@ -635,7 +645,7 @@ export abstract class VSRepoAdapter<T> {
 }
 ```
 
-`VSRepository` never talks to the ORM directly — it only calls these methods with an already-resolved `VSRepoWhere<T>` and `AdapterMethodOptions<T>`. Once an adapter implements this contract, every base method, dynamic method, and query method works against it automatically. For a full, working implementation, see the external [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) repo; `src/adapters/prisma7/prisma7.adapter.ts` in this repo is an abandoned early prototype, and `src/adapters/typeorm.adapter.ts` is still only a reference `where`-clause parser.
+`VSRepository` never talks to the ORM directly — it only calls these methods with an already-resolved `VSRepoWhere<T>` and `AdapterMethodOptions<T>`. Once an adapter implements this contract, every base method, dynamic method, and query method works against it automatically. For a full, working implementation, see the external [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) repo.
 
 ---
 
@@ -804,7 +814,7 @@ npm install ../path/to/vsrepo-1.4.0.tgz
 Notes:
 
 - `pnpm build` runs `tsc -p tsconfig.build.json`, which outputs the compiled JS and generated type declarations into `dist/` with `rootDir: src`.
-- The published package contains **only** the `dist/` folder plus the READMEs and `LICENSE` (see `files` in `package.json`). Source, tests, the `v1/` folder, `generated/` and the `src/adapters/**` prototypes are **not** shipped — the adapters will live in their own `@vsrepo/*-adapter` packages.
+- The published package contains **only** the `dist/` folder plus the READMEs and `LICENSE` (see `files` in `package.json`). Source, tests, the `v1/` folder and `generated/` are **not** shipped — the adapters will live in their own `@vsrepo/*-adapter` packages.
 - The core is ORM-agnostic and has no `@prisma/client` peer dependency.
 
 ---
@@ -823,7 +833,7 @@ Notes:
 ```
 
 - `reflect-metadata` (bundled as a dependency, imported internally — you don't need to import it yourself)
-- At least one working `VSRepoAdapter` for your database — no `@vsrepo/*-adapter` package has been published yet, so for now this means writing your own or adapting one of the reference prototypes in `src/adapters/` (see [Adapter status](#adapter-status))
+- At least one working `VSRepoAdapter` for your database — no `@vsrepo/*-adapter` package has been published yet, so for now this means writing your own (see [Writing your own adapter](#writing-your-own-adapter)) or vendoring the active [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) on Prisma 7 (see [Adapter status](#adapter-status))
 
 ---
 

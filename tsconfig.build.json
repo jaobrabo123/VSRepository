@@ -10,10 +10,8 @@
     "sourceMap": false
   },
   // Apenas o nucleo (core) ORM-agnostico e empacotado. O `src/test.ts` e um
-  // script manual de smoke test que depende do Prisma gerado localmente, e os
-  // adapters (`src/adapters/**`) sao prototipos que serao publicados como
-  // pacotes separados `@vsrepo/*-adapter` (ver README). Por isso ambos ficam
-  // fora do build do pacote core.
-  "include": ["src/**/*"],
-  "exclude": ["src/test.ts", "src/adapters/**"]
+  // script manual de smoke test que depende do Prisma gerado localmente e fica
+  // fora do build do pacote core. Os adapters serao publicados como pacotes
+  // separados `@vsrepo/*-adapter` (ver README).
+  "include": ["src/**/*"]
 }
