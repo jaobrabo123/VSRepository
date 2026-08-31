@@ -24,7 +24,7 @@ export class VSRepoAdapterError extends VSRepoError {
         public readonly originalError: unknown,
         cause?: unknown,
     ) {
-        super(`[VSRepoAdapter] Error: ${message}`, VSRepoErrorType.ADAPTER, cause);
+        super(message, VSRepoErrorType.ADAPTER, cause);
         this.name = "VSRepoAdapterError";
     }
 }

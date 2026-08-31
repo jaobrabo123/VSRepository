@@ -128,7 +128,7 @@ export class VSLogger {
                 name: err.name,
                 message: err.message,
                 stack: err.stack,
-                cause: (err as { cause?: unknown }).cause,
+                cause: err.cause,
             });
             return;
         }

@@ -1,6 +1,6 @@
 {
   "name": "vsrepo",
-  "version": "1.4.0",
+  "version": "2.0.0",
   "description": "ORM-agnostic repository pattern library with full TypeScript support and automatic type inference.",
   "homepage": "https://github.com/jaobrabo123/VSRepository#readme",
   "repository": {
