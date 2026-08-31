@@ -52,6 +52,7 @@ O VSRepository permite criar repositories fortemente tipados com:
 - [Tipos utilitários](#tipos-utilitários)
 - [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)
 - [Tratamento de erros](#tratamento-de-erros)
+  - [`VSRepoAdapterError` e `AdapterErrorCode`](#vsrepoadaptererror-e-adaptererrorcode)
 - [Logging](#logging)
 - [Desenvolvimento](#desenvolvimento)
 - [Requisitos](#requisitos)
@@ -70,13 +71,11 @@ Se você vem do código/docs da [v1](./v1), aqui está o resumo. Veja cada seç�
 | Métodos dinâmicos | Objeto de config `methods: { findByEmail: { map: true } }` | Decorador `@DynamicMethod()` em um campo `declare` |
 | Projeções de dados | `selectModels` + `defaultSelectModel` nomeados e reutilizáveis | `select`/`relations` ad-hoc passados em cada chamada (sem modelos nomeados) |
 | Eager loading | `include`/`includeModels` (específico do Prisma) | Option `relations` agnóstica de ORM |
-| Filtros globais | `requiredWhere` (qualquer filtro arbitrário, sempre aplicado) | `softRemoveKey` + `see: "active" \| "removed" \| "all"` (apenas soft-delete, não é mais um filtro genérico) |
+| Filtros globais | `requiredWhere` (qualquer filtro arbitrário, sempre aplicado) | **Removido**; Agora aceita apenas `softRemoveKey` + `see: "active" \| "removed" \| "all"` |
 | Sufixo de filtro case-insensitive | `Insensitive` | `IgnoreCase` |
 | Ordenação inline no nome do método | Não suportado (`order` tinha que ser passado como argumento via `Ordered`/`Paginated`) | Cadeias `OrderBy<Campo>Asc`/`OrderBy<Campo>Desc` embutidas diretamente no nome do método |
 | Tratamento de duplicatas no `createMany` | Sufixo `SkipDuplicates` | Sufixo `IgnoreConflicts` |
-| Escape hatch de SQL raw | Não disponível | Decorador `@QueryMethod(sql, { modifying })`, com placeholders `$1`, `$2`, ... |
-| Upsert em lote | Não disponível | `saveList` |
-| `aggregate` / `groupBy` | Suportado (passthrough nativo do Prisma) | **Ainda não implementado** (planejado) |
+| `aggregate` / `groupBy` | Suportado (passthrough nativo do Prisma) | **Ainda não implementado** |
 | Tipos de erro | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | Uma única classe `VSRepoError` com um campo `type: VSRepoErrorType` (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`) |
 | Log de debug | Boolean `showWorking: true` | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` para avisos de queries lentas |
 | CLI `vsrepo generate` (etapa de geração de tipos) | Obrigatória antes de usar | Não faz parte do núcleo da v2 — os tipos vêm diretamente das suas entidades/tipos do ORM |
@@ -93,11 +92,11 @@ O VSRepository v2 é **agnóstico de ORM por design**. O pacote core (`vsrepo`) 
 - `@vsrepo/typeorm-adapter`
 - `@vsrepo/drizzle-adapter`
 
-Nenhum desses pacotes de adapter foi publicado ainda. O que existe nesta branch, dentro de `src/adapters/`, são **protótipos/implementações de referência** usados para desenhar e validar o contrato do `VSRepoAdapter` enquanto o core estava sendo construído — não são os adapters reais e distribuíveis:
+Nenhum desses pacotes de adapter foi publicado no npm ainda. O que existe nesta branch, dentro de `src/adapters/`, são majoritariamente **protótipos/implementações de referência** usados para desenhar e validar o contrato do `VSRepoAdapter` enquanto o core estava sendo construído — não são os adapters reais e distribuíveis. A exceção é o Prisma 7: o desenvolvimento ativo já migrou desta branch para uma implementação dedicada e completa (ver abaixo).
 
-| Protótipo | Status |
+| Adapter | Status |
 | --- | --- |
-| `VSRepoPrisma7Adapter` (`src/adapters/prisma7`) | 🟡 **Protótipo de referência.** `findOne` está implementado; todos os outros métodos (`findMany`, `save`, `update`, `delete`, `count`, `exists`, `query`, etc.) atualmente lançam `"Method not implemented."`. É o ponto de partida do futuro pacote `@vsrepo/prisma7-adapter`, não o pacote em si. |
+| Prisma 7 ([`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter)) | 🟢 **Desenvolvimento ativo, implementação completa** — também ainda não publicado no npm, mas implementa todo o contrato de `VSRepoAdapter` (CRUD, relations, transactions, `merge`, logging) com testes; veja o README desse repositório pras instruções de vendoring. A cópia que ainda está neste repositório em `src/adapters/prisma7` é um protótipo antigo e abandonado (`findOne` implementado, todo o resto lança `"Method not implemented."`) mantido só como referência histórica — não use. |
 | TypeORM (`src/adapters/typeorm.adapter.ts`) | 🟡 **Protótipo de referência.** Só existe o parser da cláusula `where` (`parseVSRepoWhere`) até agora; ele **ainda não** implementa o contrato completo de `VSRepoAdapter`. É o ponto de partida do futuro pacote `@vsrepo/typeorm-adapter`. |
 | Adapters customizados | 🟢 Totalmente suportados hoje — implemente você mesmo a classe abstrata [`VSRepoAdapter`](#escrevendo-seu-próprio-adapter) para qualquer ORM/banco que precisar, no seu próprio projeto ou pacote, seguindo o mesmo formato esperado dos `@vsrepo/*-adapter`. |
 
@@ -113,7 +112,7 @@ Quando lançada, a v2 será instalada como o pacote core mais um pacote de adapt
 npm i vsrepo @vsrepo/prisma7-adapter
 ```
 
-> Nem o `vsrepo` v2 nem nenhum pacote `@vsrepo/*-adapter` foram publicados no npm ainda. O core já pode ser compilado e empacotado a partir desta branch (`pnpm build` + `npm pack` + `npm install ../caminho/vsrepo-<versão>.tgz`) e o seu `package.json` reflete a API da v2. O que ainda falta para um release publicado de verdade são os pacotes `@vsrepo/*-adapter` e o publish em si. Até lá, se quiser usar a v2 hoje, instale o core a partir do tarball empacotado ou consuma da pasta `src/` e escreva seu próprio adapter (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) ou adapte um dos protótipos em `src/adapters/`.
+> Nem o `vsrepo` v2 nem nenhum pacote `@vsrepo/*-adapter` foram publicados no npm ainda. O core já pode ser compilado e empacotado a partir desta branch (`pnpm build` + `npm pack` + `npm install ../caminho/vsrepo-<versão>.tgz`) e o seu `package.json` reflete a API da v2. O que ainda falta para um release publicado de verdade são os pacotes `@vsrepo/*-adapter` e o publish em si. Até lá, se quiser usar a v2 hoje no Prisma 7, faça vendoring do [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) (veja o README dele), que está em desenvolvimento ativo; pra qualquer outro ORM, instale o core a partir do tarball empacotado ou consuma da pasta `src/` e escreva seu próprio adapter (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) ou adapte um dos protótipos em `src/adapters/`.
 
 ---
 
@@ -148,7 +147,7 @@ class UserRepository extends VSRepository<User, string> {
     constructor() {
         super({
             pkName: "id",
-            adapter: new VSRepoPrisma7Adapter<User>(prisma, "user"),
+            adapter: new VSRepoPrisma7Adapter<User>(prisma, { tableName: "user", pkName: "id" }),
             softRemoveKey: "deletedAt",
             defaultOrdering: { createdAt: "desc" },
         });
@@ -164,7 +163,7 @@ class UserRepository extends VSRepository<User, string> {
 export default new UserRepository();
 ```
 
-> A API do core (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums e tipos) é importada do entry point único `vsrepo`. O adapter concreto vem de um pacote **separado** (`@vsrepo/*-adapter`). Até que esses pacotes de adapter sejam publicados, implemente o contrato `VSRepoAdapter` você mesmo (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) ou adapte um dos protótipos de referência em `src/adapters/`.
+> A API do core (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums e tipos) é importada do entry point único `vsrepo`. O adapter concreto vem de um pacote **separado** (`@vsrepo/*-adapter`). Até que esses pacotes de adapter sejam publicados, no Prisma 7 faça vendoring do [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) de verdade (o construtor dele recebe um objeto de config — `tableName`, `pkName`, `relations`/`logLevel` opcionais — como no exemplo acima); pra qualquer outro ORM, implemente o contrato `VSRepoAdapter` você mesmo (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) ou adapte um dos protótipos de referência em `src/adapters/`.
 
 ### Usando o repository
 
@@ -215,7 +214,7 @@ Disponíveis automaticamente em toda subclasse de `VSRepository`:
 | `save(obj, options?)` | Cria ou atualiza (upsert) um único registro. |
 | `saveList(objs, options?)` | Cria ou atualiza (upsert) vários registros em uma única chamada. |
 | `patch(pk, obj, options?)` | Atualiza parcialmente um registro pela primary key. |
-| `merge(pk, obj, options?)` | Atualiza parcialmente um registro e o retorna mesclado (deep-merge) com o objeto informado. |
+| `merge(pk, obj, options?)` | Busca um registro e o retorna mesclado (deep-merge), em memória, com o objeto informado — **não** persiste nada. |
 | `remove(pk, options?)` | Remove um registro pela primary key. |
 | `removeList(pks, options?)` | Remove vários registros pela primary key, retornando `{ count }`. |
 | `total(options?)` | Retorna o total de registros. |
@@ -230,7 +229,7 @@ Todos os métodos acima aceitam um objeto `MethodOptions<Entity, OrmTypes>` como
 
 ## Soft-delete
 
-O soft-delete agora é um **conceito nativo de primeira classe**, em vez de algo que você tinha que modelar sozinho com `requiredWhere`. Configure `softRemoveKey` uma vez no repository:
+O soft-delete agora é um **conceito nativo de primeira classe**. Configure `softRemoveKey` uma vez no repository:
 
 ```typescript
 super({
@@ -318,7 +317,7 @@ class UserRepository extends VSRepository<User, string> {
     declare updateById: (id: string, data: Partial<User>) => Promise<User>;
 
     @DynamicMethod()
-    declare findByNameIgnoreCaseOrAgeBetweenANDActiveIsNullDistinctNameAndAgeOrderByCreatedAtAscAndUpdatedAtDescPaginated:
+    declare findByNameIgnoreCaseOrAgeBetweenOrderByCreatedAtAscPaginated:
         (name: string, age: [number, number], pagination: { limit?: number; offset?: number }) => Promise<User[]>;
 }
 ```
@@ -439,7 +438,7 @@ declare findByProductsSome: () => Promise<User[]>;
 | `OrderedAndPaginated` | injeta `order`, depois `pagination`. |
 | `PaginatedAndOrdered` | injeta `pagination`, depois `order`. |
 | `OrderBy<Campo>Asc` / `OrderBy<Campo>Desc` | **Novo na v2.** Embute uma ordenação fixa diretamente no nome do método — encadeie campos com `And` (ex.: `OrderByCreatedAtAscAndNameDesc`). Não precisa de argumento `order`. |
-| `Distinct<Campo>And<Campo>...` | **Novo na v2.** Embute campos `distinct` fixos diretamente no nome do método (só válido em métodos da família `findBy`/`findWhere`). |
+| `Distinct<Campo>And<Campo>...` | Embute campos `distinct` fixos diretamente no nome do método (só válido em métodos da família `findBy`/`findWhere`). |
 | `IgnoreConflicts` | No `createMany`, ignora registros que violariam uma constraint única, em vez de lançar erro. *(Renomeado do `SkipDuplicates` da v1.)* |
 
 ```typescript
@@ -541,7 +540,7 @@ Repositories diferentes podem compartilhar a mesma transação, desde que seus a
 
 ## Tipos utilitários
 
-Além dos tipos que descrevem o formato da entidade já vistos acima (`VSRepoSelect`, `VSRepoRelations`, `VSRepoWhere`), o VSRepository exporta um conjunto de tipos utilitários pequenos e focados em `src/types/utils/`. Eles aparecem ao longo de várias seções anteriores, mas aqui está uma referência consolidada. Todos fazem parte da API pública e podem ser importados diretamente:
+Além dos tipos que descrevem o formato da entidade já vistos acima (`VSRepoSelect`, `VSRepoRelations`, `VSRepoWhere`), o VSRepository exporta um conjunto de tipos utilitários. Eles aparecem ao longo de várias seções anteriores, mas aqui está uma referência consolidada. Todos fazem parte da API pública e podem ser importados diretamente:
 
 ```typescript
 import type {
@@ -636,13 +635,13 @@ export abstract class VSRepoAdapter<T> {
 }
 ```
 
-O `VSRepository` nunca fala diretamente com o ORM — ele só chama esses métodos com um `VSRepoWhere<T>` e um `AdapterMethodOptions<T>` já resolvidos. Uma vez que um adapter implemente esse contrato, todo método base, método dinâmico e query method passa a funcionar com ele automaticamente. Veja `src/adapters/prisma7/prisma7.adapter.ts` para uma implementação parcial de referência, e `src/adapters/typeorm.adapter.ts` para um parser de referência da cláusula `where`.
+O `VSRepository` nunca fala diretamente com o ORM — ele só chama esses métodos com um `VSRepoWhere<T>` e um `AdapterMethodOptions<T>` já resolvidos. Uma vez que um adapter implemente esse contrato, todo método base, método dinâmico e query method passa a funcionar com ele automaticamente. Pra uma implementação completa e funcional, veja o repositório externo [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter); `src/adapters/prisma7/prisma7.adapter.ts` neste repositório é um protótipo antigo e abandonado, e `src/adapters/typeorm.adapter.ts` ainda é só um parser de referência da cláusula `where`.
 
 ---
 
 ## Tratamento de erros
 
-A v2 simplifica a hierarquia de erros da v1: em vez de várias subclasses, existe uma única classe `VSRepoError` carregando um campo `type: VSRepoErrorType`.
+A v2 simplifica a hierarquia de erros da v1: em vez de várias subclasses, existe uma classe base `VSRepoError` carregando um campo `type: VSRepoErrorType`, além de uma subclasse dedicada `VSRepoAdapterError` (veja abaixo) para falhas vindas do ORM/banco subjacente.
 
 ```typescript
 import { VSRepoError } from "vsrepo/errors/VSRepoError";
@@ -663,8 +662,97 @@ try {
 | `DYNAMIC` | Um método dinâmico já resolvido falhou em tempo de execução (ex.: argumentos faltando). |
 | `VALIDATOR` | Options ou argumentos de método inválidos foram detectados durante a validação. |
 | `BASE` | Uso inválido de um método base (`get`, `save`, `remove`, etc). |
+| `ADAPTER` | Um `VSRepoAdapter` falhou ao falar com o ORM/banco subjacente — sempre é lançado como `VSRepoAdapterError`. |
 
-Erros lançados pelo próprio ORM por trás do adapter **não** são encapsulados em `VSRepoError` — eles se propagam como estão.
+### `VSRepoAdapterError` e `AdapterErrorCode`
+
+Quando um adapter fala com o ORM/banco subjacente e essa operação falha, o adapter encapsula a falha em um `VSRepoAdapterError` — uma subclasse de `VSRepoError` com `type: VSRepoErrorType.ADAPTER`. Ele carrega um `code: AdapterErrorCode` **estável e agnóstico de adapter** além do erro bruto lançado pelo ORM/driver, para que quem chama possa reagir às falhas sem depender do formato de erro de nenhum ORM específico:
+
+```typescript
+import { VSRepoAdapterError, AdapterErrorCode } from "vsrepo";
+
+try {
+    await userRepository.save({ name: "Maria" });
+} catch (error) {
+    if (error instanceof VSRepoAdapterError) {
+        console.error(`[${error.code}] ${error.message}`, error.originalError);
+
+        if (error.code === AdapterErrorCode.UNIQUE_CONSTRAINT_VIOLATION) {
+            // tratar chave duplicada, ex.: retornar uma mensagem amigável
+        }
+    }
+}
+```
+
+| Propriedade | Tipo | Descrição |
+| --- | --- | --- |
+| `code` | `AdapterErrorCode` | Código estável e agnóstico que classifica a falha. |
+| `originalError` | `unknown` | O erro bruto (ou `null`/`undefined`) lançado pelo driver do ORM/banco subjacente. |
+| `message` | `string` | Descrição legível da falha do adapter. |
+| `type` | `VSRepoErrorType` | Sempre `VSRepoErrorType.ADAPTER`. |
+| `cause` | `unknown` | Causa raiz opcional da qual o erro foi encadeado. |
+
+As implementações de adapter o constroem diretamente ao mapear uma falha do ORM:
+
+```typescript
+import { VSRepoAdapterError, AdapterErrorCode } from "vsrepo";
+
+throw new VSRepoAdapterError(
+    "falha ao criar o usuário",
+    AdapterErrorCode.UNIQUE_CONSTRAINT_VIOLATION,
+    originalError, // erro bruto do banco/driver
+);
+```
+
+#### `AdapterErrorCode`
+
+`AdapterErrorCode` é um enum de códigos granulares e agnósticos que um adapter pode lançar através de `VSRepoAdapterError`. Eles espelham as falhas mais comuns lançadas por ORMs e drivers de banco, para que erros de qualquer ORM possam ser mapeados para o mesmo código estável:
+
+```typescript
+import { AdapterErrorCode } from "vsrepo";
+
+console.log(AdapterErrorCode.UNIQUE_CONSTRAINT_VIOLATION); // "UNIQUE_CONSTRAINT_VIOLATION"
+```
+
+| Código | Significado |
+| --- | --- |
+| `UNKNOWN` | Erro não classificado/desconhecido; o fallback quando nenhum código mais específico corresponde. |
+| `MISSING_DB_CLIENT` | Cliente de banco (ou pool de conexões) não fornecido ou que não pôde ser resolvido. |
+| `CONNECTION_FAILED` | Não foi possível alcançar/conectar ao banco, ou uma conexão estabelecida foi perdida/terminada. |
+| `CONNECTION_POOL_EXHAUSTED` | Pool de conexões esgotado/depletado — nenhuma conexão disponível, todas ocupadas ou o limite foi atingido. |
+| `TIMEOUT` | O banco não respondeu a tempo; uma query excedeu o timeout permitido. |
+| `UNIQUE_CONSTRAINT_VIOLATION` | Violação de constraint unique (chave duplicada). Ex.: Postgres/SQLite `23505`, MySQL `1062`. |
+| `FOREIGN_KEY_VIOLATION` | Violação de constraint de foreign key (linha referenciada não existe). |
+| `NOT_NULL_VIOLATION` | Violação de constraint NOT NULL. |
+| `CHECK_VIOLATION` | Violação de constraint CHECK. |
+| `CONSTRAINT_VIOLATION` | Violação geral de integridade/constraint não coberta por um código mais específico. |
+| `NOT_FOUND` | Registro solicitado não encontrado (ex.: uma operação tipo `findOneOrThrow`). |
+| `INVALID_DATA` | Valor de campo inválido para o tipo/tamanho, ou um valor obrigatório ausente. |
+| `VALUE_TOO_LONG` | Valor fornecido excede o limite de tamanho da coluna/campo. |
+| `CONVERSION_ERROR` | Um valor não pôde ser convertido/convertido para o tipo alvo. Ex.: Postgres `22P02`, MySQL `1366`. |
+| `INVALID_QUERY` | A query/stored procedure SQL está malformada ou é inválida. |
+| `TABLE_OR_COLUMN_NOT_FOUND` | A tabela/coluna/relação referenciada não existe. |
+| `DEADLOCK` | Operação abortada por timeout de lock ou deadlock entre transações concorrentes. |
+| `LOCK_TIMEOUT` | Não foi possível adquirir um lock de banco obrigatório a tempo. |
+| `LOCKED` | O registro está travado e não pode ser modificado. |
+| `ACCESS_DENIED` | O usuário/role atual não tem permissão para a operação. |
+| `INVALID_CREDENTIALS` | Credenciais de conexão inválidas (host/usuário/senha). |
+| `ROW_NOT_ALLOWED` | O usuário autenticado não é dono do registro / a segurança em nível de linha rejeitou. |
+| `MODEL_NOT_FOUND` | Entidade/modelo ou tabela não definida/mapeada no ORM, ou o adapter não tem os metadados do modelo. |
+| `FIELD_NOT_FOUND` | Nome de campo/coluna nos dados ou no `where` não existe na entidade/modelo. |
+| `TRANSACTION_CLOSED` | Transação usada depois de commit/rollback. |
+| `TRANSACTION_ALREADY_STARTED` | Uma transação aninhada não pôde ser aberta (ex.: chamadas `transaction()` aninhadas). |
+| `TRANSACTION_CONFLICT` | Uma transação falhou ao commitar e foi desfeita. |
+| `TRANSACTION_NOT_STARTED` | Nenhuma transação ativa quando uma era obrigatória. |
+| `CONNECTION_CLOSED` | Conexão fechada/terminada enquanto uma transação ou query estava em andamento. |
+| `INVALID_PARTIAL` | `merge`/`upsert`/`update` recebeu um objeto parcial inválido ou faltando chaves obrigatórias. |
+| `NOT_SUPPORTED` | Feature/operação não suportada solicitada ao adapter (ex.: `query()` bruto não suportado). |
+| `INVALID_ADAPTER_CONFIG` | Configuração do adapter inválida ou incompleta (options obrigatórias ausentes, ou com tipo/valor inválido). |
+| `INTERNAL` | Bug interno do adapter ou estado irrecuperável; deve raramente ser usado — prefira um código mais específico. |
+
+#### `VSRepoError` vs. erros brutos do ORM
+
+Erros de uso/configuração fora do adapter lançam o `VSRepoError` base. Falhas lançadas *pelo ORM subjacente* enquanto um método do adapter roda são **encapsuladas** em `VSRepoAdapterError` (classificadas por um `AdapterErrorCode`, com o erro original preservado em `originalError`) em vez de se propagarem cruas — é isso que torna quem chama independente do formato de erro de qualquer ORM específico.
 
 ---
 

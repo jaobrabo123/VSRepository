@@ -114,7 +114,10 @@ export abstract class VSRepoAdapter<T> {
         options?: AdapterMethodOptions<T>,
     ): Promise<boolean>;
 
-    /** Updates a single record matching `where` and returns it deep-merged with the provided object. */
+    /**
+     * Fetches a single record matching `where` and returns it deep-merged, in
+     * memory, with the provided object — does **not** persist anything.
+     */
     public abstract merge<K>(
         where: VSRepoWhere<T>,
         obj: DeepPartial<T>,

@@ -143,7 +143,10 @@ export enum AdapterErrorCode {
      */
     NOT_SUPPORTED = "NOT_SUPPORTED",
 
-    /** */
+    /**
+     * The adapter configuration provided is invalid or incomplete (e.g. missing
+     * required options, or options with an invalid type/value).
+     */
     INVALID_ADAPTER_CONFIG = "INVALID_ADAPTER_CONFIG",
 
     /**

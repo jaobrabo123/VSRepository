@@ -379,7 +379,11 @@ export abstract class VSRepository<
         );
     }
 
-    /** Partially updates a record by PK and returns it deep-merged with the provided object. */
+    /**
+     * Fetches a record by PK and returns it deep-merged, in memory, with the
+     * provided object — does **not** persist anything (pass the result to
+     * `save`/`patch` yourself to write it).
+     */
     async merge<U extends DeepPartial<Entity>>(
         pk: PKType,
         obj: U,
