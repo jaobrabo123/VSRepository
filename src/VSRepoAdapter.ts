@@ -66,6 +66,12 @@ export abstract class VSRepoAdapter<T> {
         options?: AdapterMethodOptions<T> & { ignoreConflicts?: boolean },
     ): Promise<CountResult>;
 
+    /** Creates multiple records in a single operation, returning the created records. */
+    public abstract createManyReturning(
+        objs: DeepPartial<T>[],
+        options?: AdapterMethodOptions<T> & { ignoreConflicts?: boolean },
+    ): Promise<T[]>;
+
     /** Deletes a single record matching `where`. */
     public abstract delete(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T>;
 

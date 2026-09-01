@@ -141,6 +141,14 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.whereIndex = 0;
             dynamicMethodInfo.otherParams.push("where");
             dynamicMethodInfo.argsCount += 1;
+        } else if (dynamicMethod.startsWith("createManyReturning")) {
+            dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("createManyReturning", "");
+            dynamicMethodInfo.ignoreWhere = true;
+            dynamicMethodInfo.ignoreIgnoreConflicts = false;
+            dynamicMethodInfo.method = "createManyReturning";
+            dynamicMethodInfo.dataIndex = 0;
+            dynamicMethodInfo.otherParams.push("data");
+            dynamicMethodInfo.argsCount++;
         } else if (dynamicMethod.startsWith("createMany")) {
             dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("createMany", "");
             dynamicMethodInfo.ignoreWhere = true;
@@ -281,6 +289,12 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.whereIndex = 0;
             dynamicMethodInfo.otherParams.push("where");
             dynamicMethodInfo.argsCount += 1;
+        } else if (dynamicMethod.startsWith("findOne")) {
+            dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("findOne", "");
+            dynamicMethodInfo.ignoreOrderByAndPagination = false;
+            dynamicMethodInfo.ignoreWhere = true;
+            dynamicMethodInfo.onlyBaseWheres = true;
+            dynamicMethodInfo.method = "findOne";
         } else {
             const errorMessage = `Unknown dynamic method: ${dynamicMethod}.`;
             this.logger.logError(errorMessage);
