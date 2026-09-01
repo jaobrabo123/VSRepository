@@ -27,10 +27,13 @@
   },
   "scripts": {
     "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\"",
-    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "build": "pnpm run clean && tsc -p tsconfig.build.json",
     "prepack": "pnpm build",
     "typecheck": "tsc --noEmit -p tsconfig.build.json",
-    "test": "pnpm typecheck"
+    "test:typing": "tsc --noEmit -p test/tsconfig.json",
+    "test:implementation": "jest",
+    "test:implementation:watch": "jest --watch",
+    "test": "pnpm run test:typing && pnpm run test:implementation"
   },
   "keywords": [
     "prisma",
