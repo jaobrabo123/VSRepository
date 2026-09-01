@@ -309,6 +309,16 @@ describe("prefixos de leitura", () => {
         await repo.findOneWhere({ active: true });
         expect(fakeAdapter.findOne.mock.calls[0]?.[0]).toEqual({ active: true });
     });
+
+    it("'findOne' (sem sufixo) chama 'adapter.findOne' sem nenhum filtro — mesma ideia do 'findOneOrThrow' sem sufixo, mas pode retornar 'null'", async () => {
+        fakeAdapter.findOne.mockResolvedValueOnce(null);
+
+        await repo.findOne();
+
+        expect(fakeAdapter.findOne.mock.calls[0]?.[0]).toEqual({});
+        expect(fakeAdapter.findMany).not.toHaveBeenCalled();
+        expect(fakeAdapter.findOneOrThrow).not.toHaveBeenCalled();
+    });
 });
 
 describe("prefixos de agregação/existência", () => {
@@ -369,6 +379,30 @@ describe("prefixos de escrita — create", () => {
         await repo.createManyIgnoreConflicts(payload);
 
         expect(fakeAdapter.createMany.mock.calls[0]?.[1]).toEqual(
+            expect.objectContaining({ ignoreConflicts: true }),
+        );
+    });
+
+    it("'createManyReturning' chama 'adapter.createManyReturning' (não 'adapter.createMany') com a lista recebida", async () => {
+        const payload = [{ name: "a" }, { name: "b" }];
+        const created = [{ id: "1", name: "a" }, { id: "2", name: "b" }];
+        fakeAdapter.createManyReturning.mockResolvedValueOnce(created);
+
+        const result = await repo.createManyReturning(payload);
+
+        expect(fakeAdapter.createManyReturning.mock.calls[0]?.[0]).toBe(payload);
+        expect(fakeAdapter.createMany).not.toHaveBeenCalled();
+        expect(result).toBe(created);
+    });
+
+    it("'createManyReturningIgnoreConflicts' passa 'ignoreConflicts: true' nas options de 'adapter.createManyReturning'", async () => {
+        const payload = [{ name: "a" }];
+        fakeAdapter.createManyReturning.mockResolvedValueOnce([{ id: "1", name: "a" }]);
+
+        await repo.createManyReturningIgnoreConflicts(payload);
+
+        expect(fakeAdapter.createManyReturning.mock.calls[0]?.[0]).toBe(payload);
+        expect(fakeAdapter.createManyReturning.mock.calls[0]?.[1]).toEqual(
             expect.objectContaining({ ignoreConflicts: true }),
         );
     });

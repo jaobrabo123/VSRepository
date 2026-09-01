@@ -69,6 +69,7 @@ export class ParserRepository extends VSRepository<any, string> {
     @DynamicMethod() declare findOneOrThrow: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findWhere: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findOneWhere: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findOne: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare countByActive: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare countWhere: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare count: (...args: any[]) => Promise<any>;
@@ -77,6 +78,8 @@ export class ParserRepository extends VSRepository<any, string> {
     @DynamicMethod() declare create: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare createMany: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare createManyIgnoreConflicts: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare createManyReturning: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare createManyReturningIgnoreConflicts: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare updateByEmail: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare updateWhere: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare updateManyByActive: (...args: any[]) => Promise<any>;

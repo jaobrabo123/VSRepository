@@ -30,6 +30,7 @@ export function createFakeAdapter<T = any>(): jest.Mocked<VSRepoAdapter<T>> {
         saveMany: jest.fn(),
         create: jest.fn(),
         createMany: jest.fn(),
+        createManyReturning: jest.fn(),
         delete: jest.fn(),
         deleteMany: jest.fn(),
         deleteManyReturning: jest.fn(),
