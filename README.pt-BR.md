@@ -4,6 +4,7 @@
   <p style="margin-top: 12px;">
     <img src="https://img.shields.io/npm/v/vsrepo?style=flat-square" alt="npm version"/>
     <img src="https://img.shields.io/npm/l/vsrepo?style=flat-square" alt="npm license"/>
+    <img src="https://img.shields.io/npm/dt/vsrepo?style=flat-square" alt="npm downloads"/>
     <img src="https://img.shields.io/badge/inspired%20by-JpaRepository-E73121?style=flat-square" alt="inspired by JpaRepository"/>
   </p>
 </div>
@@ -79,7 +80,7 @@ Se você vem do código/docs da [v1](./v1), aqui está o resumo. Veja cada seç�
 | Tipos de erro                                     | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | Uma classe base `VSRepoError` com um campo `type: VSRepoErrorType` (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`), além de uma subclasse `VSRepoAdapterError` que carrega um `AdapterErrorCode` e o erro original do ORM |
 | Log de debug                                      | Boolean `showWorking: true`                                                                                     | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` para avisos de queries lentas                                                                                                                                    |
 | CLI `vsrepo generate` (etapa de geração de tipos) | Obrigatória antes de usar                                                                                       | Não faz parte do núcleo da v2 — os tipos vêm diretamente das suas entidades/tipos do ORM                                                                                                                                                       |
-| Extras de CRUD                                    | `patchList`, `options.select`/`options.include` raw                                                             | `select`/`relations` já são o padrão (sempre "raw"); `patch`/`merge` mantêm a mesma semântica                                                                                                                                                  |
+| Extras de CRUD                                    | `patchList`, `options.select`/`options.include` raw                                                             | `select`/`relations` já são o padrão (sempre "raw"); `patch`/`merge` mantêm a mesma semântica. **`patchList` foi removido** — para uma atualização parcial em lote, use um dynamic method `updateManyBy`/`updateManyWhere`                    |
 
 ---
 
@@ -165,6 +166,16 @@ export default new UserRepository();
 
 > A API do core (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums e tipos) é importada do entry point único `vsrepo`. O adapter concreto vem de um pacote **separado** (`@vsrepo/*-adapter`). Até que esses pacotes de adapter sejam publicados, no Prisma 7 faça vendoring do [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) de verdade (o construtor dele recebe um objeto de config — `tableName`, `pkName`, `relations`/`logLevel` opcionais — como no exemplo acima); pra qualquer outro ORM, implemente o contrato `VSRepoAdapter` você mesmo (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)).
 
+> **O terceiro generic (`OrmTypes`):** `VSRepository<Entity, PKType, OrmTypes>` aceita um terceiro type parameter opcional descrevendo os tipos de client/transaction do seu ORM, via `VSRepoOrmTypes` (`{ dbClient; dbTransaction }`). Ao fornecê-lo, `getDbClient()`, o callback de `transaction()` e a option `db` de todo método passam a ser tipados corretamente, em vez de `any`:
+> ```typescript
+> type PrismaOrmTypes = { dbClient: PrismaClient; dbTransaction: Prisma.TransactionClient };
+>
+> class UserRepository extends VSRepository<User, string, PrismaOrmTypes> {
+>     // getDbClient() agora retorna PrismaClient, e transaction(fn) tipa `tx` como Prisma.TransactionClient
+> }
+> ```
+> Se omitido, o padrão é `VSRepoOrmTypes` (`dbClient`/`dbTransaction` como `any`).
+
 ### Usando o repository
 
 ```typescript
@@ -223,7 +234,7 @@ Disponíveis automaticamente em toda subclasse de `VSRepository`:
 | `getDbClient()`             | Retorna a instância do client do ORM usada fora de transações.                                                                        |
 | `query<T>(query, options?)` | Executa uma instrução SQL raw diretamente contra o banco. Veja [Queries raw pontuais com `query()`](#queries-raw-pontuais-com-query). |
 
-Todos os métodos acima aceitam um objeto `MethodOptions<Entity, OrmTypes>` como último argumento (`select`, `relations`, `see`, `db`).
+Todos os métodos acima (exceto `transaction`, `query` e `getDbClient`, que recebem options proprias ou nenhuma) aceitam um objeto `MethodOptions<Entity, OrmTypes>` como último argumento (`select`, `relations`, `see`, `db`).
 
 ---
 
@@ -314,7 +325,7 @@ class UserRepository extends VSRepository<User, string> {
     declare findOneByEmail: (email: string) => Promise<User | null>;
 
     @DynamicMethod()
-    declare updateById: (id: string, data: Partial<User>) => Promise<User>;
+    declare updateById: (id: string, data: DeepPartial<User>) => Promise<User>;
 
     // Baseado em where: VSRepoWhere<T> como primeiro parâmetro, pagination penúltimo, MethodOptions por último
     @DynamicMethod()
@@ -465,11 +476,11 @@ declare findByActiveOrderByCreatedAtDescPaginated:
 
 // OrderedAndPaginated: order, depois pagination, depois MethodOptions
 @DynamicMethod()
-declare findByNameContainsInsensitiveOrderedAndPaginated:
+declare findByNameContainsIgnoreCaseOrderedAndPaginated:
     (name: string, order: Ordering<User>, pagination: Pagination, options?: MethodOptions<User>) => Promise<User[]>;
 
 @DynamicMethod()
-declare createManyIgnoreConflicts: (data: Partial<User>[]) => Promise<{ count: number }>;
+declare createManyIgnoreConflicts: (data: DeepPartial<User>[]) => Promise<{ count: number }>;
 ```
 
 > ⚠️ **Precedência entre `Distinct` e `OrderBy`:** quando os dois são usados no mesmo nome de método, **`Distinct` deve vir antes de `OrderBy`**:
@@ -567,6 +578,26 @@ await userRepository.transaction(async tx => {
 
 Repositories diferentes podem compartilhar a mesma transação, desde que seus adapters apontem para a mesma conexão do ORM por trás deles.
 
+`transaction()` aceita um `VSRepoTransactionOptions` opcional como segundo argumento:
+
+```typescript
+import { TransactionIsolationLevel } from "vsrepo";
+
+await userRepository.transaction(
+    async tx => {
+        await userRepository.save({ name: "Maria", email: "maria@email.com" }, { db: tx });
+    },
+    { isolationLevel: TransactionIsolationLevel.SERIALIZABLE, timeoutMs: 5000 },
+);
+```
+
+| Option           | Type                       | Descrição                                                                    |
+| ----------------- | -------------------------- | -------------------------------------------------------------------------------- |
+| `isolationLevel` | `TransactionIsolationLevel` | Nível de isolamento usado na transação. O padrão é o default do ORM por trás dela. |
+| `timeoutMs`       | `number`                    | Tempo máximo (em ms) que a transação pode rodar antes de ser abortada.     |
+
+`TransactionIsolationLevel` espelha os níveis de isolamento SQL padrão: `READ_UNCOMMITTED`, `READ_COMMITTED`, `REPEATABLE_READ`, `SERIALIZABLE`. O suporte a um determinado nível depende do adapter/ORM e do banco de dados por trás dele.
+
 ---
 
 ## Tipos utilitários
@@ -587,6 +618,9 @@ import type {
     KeysOfType,
     Primitive,
     VSRepoWhere,
+    VSRepoOrmTypes,
+    VSRepoTransactionOptions,
+    TransactionIsolationLevel,
 } from "vsrepo";
 ```
 
@@ -602,6 +636,9 @@ import type {
 | `KeysOfType<T, K>`                                  | Extrai as chaves de `T` cujo tipo de valor é atribuível a `K`.                                                                                                                                                      | Restringe `pkName`, em [Options do construtor](#options-do-construtor), aos campos da entidade compatíveis com o tipo de chave primária configurado.                |
 | `Primitive`                                         | União de tipos escalares (`string \| number \| boolean \| bigint \| symbol \| undefined \| null \| Date`) tratados como valores-folha — e não relações — ao percorrer o formato de uma entidade.                    | Usado por `Ordering<T>` para distinguir campos escalares de campos de relação.                                                                                      |
 | `VSRepoWhere<T>`                                    | Tipo de filtro agnóstico de ORM aceito pelos métodos dinâmicos `*Where` (ex.: `findWhere`, `findOneWhere`, `updateWhere`). Suporta filtros de campo, operadores lógicos (`AND`/`OR`/`NOT`) e filtros de relação.    | [Prefixos `findWhere`, `findOneWhere` e demais `*Where`](#prefixos-disponíveis).                                                                                    |
+| `VSRepoOrmTypes`                                    | `{ dbClient; dbTransaction }` — descreve os tipos de client/transaction do seu ORM. Passado como terceiro generic de `VSRepository<Entity, PKType, OrmTypes>` para tipar `getDbClient()`, `transaction()` e a option `db` em vez de `any`. | [Criando um repository](#criando-um-repository).                                                                                                                    |
+| `VSRepoTransactionOptions`                          | `{ isolationLevel?, timeoutMs? }` — options aceitas como segundo argumento de `transaction()`.                                                                                                                      | [Transações](#transações).                                                                                                                                          |
+| `TransactionIsolationLevel`                         | Enum dos níveis de isolamento SQL padrão (`READ_UNCOMMITTED`, `READ_COMMITTED`, `REPEATABLE_READ`, `SERIALIZABLE`) aceitos por `VSRepoTransactionOptions.isolationLevel`.                                          | [Transações](#transações).                                                                                                                                          |
 
 ### `DeepPartial<T>`
 
@@ -706,6 +743,41 @@ export abstract class VSRepoAdapter<T> {
 
 O `VSRepository` nunca fala diretamente com o ORM — ele só chama esses métodos com um `VSRepoWhere<T>` e um `AdapterMethodOptions<T>` já resolvidos. Uma vez que um adapter implemente esse contrato, todo método base, método dinâmico e query method passa a funcionar com ele automaticamente. Pra uma implementação completa e funcional, veja o repositório externo [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter).
 
+### Logging a partir do seu adapter
+
+O `vsrepo` exporta a mesma classe `VSLogger` usada internamente pelo core, então seu adapter pode logar no mesmo formato/estilo (timestamps, labels de nível coloridos, avisos de operação lenta) em vez de implementar o seu próprio:
+
+```typescript
+import { VSLogger, VSLogLevel } from "vsrepo";
+
+export class MyOrmAdapter<T> extends VSRepoAdapter<T> {
+    private readonly logger = new VSLogger(VSLogLevel.WARN, "MyOrmAdapterLogger");
+
+    async findOne(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>) {
+        const start = this.logger.startPerformLog("adapter findOne");
+        try {
+            // ... fala com o ORM ...
+            this.logger.endPerformLog(start);
+            return result;
+        } catch (err) {
+            this.logger.endPerformLog(start);
+            this.logger.logError("adapter findOne falhou", err);
+            throw err;
+        }
+    }
+}
+```
+
+| Método                             | Descrição                                                                                      |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `new VSLogger(logLevel, name, slowThresholdMs?)` | Cria um logger; `name` prefixa cada linha, `slowThresholdMs` tem default 300.                    |
+| `logDebug/logInfo/logWarn(text, obj?)` | Loga no nível dado se `logLevel` permitir; `obj` é anexado como JSON formatado.       |
+| `logError(text, err?)`              | Loga em `ERROR`; se `err` for uma `Error`, só `name`/`message`/`stack`/`cause` são logados.        |
+| `startPerformLog(operation)` / `endPerformLog(data)` | Envolve um trecho de código para logar sua duração, escalando pra `WARN` se ultrapassar `slowThresholdMs`. |
+| `getLogLevel()`                     | Retorna o `VSLogLevel` configurado do logger.                                                     |
+
+Isso é puramente uma conveniência para autores de adapters — nada no core exige que seu adapter o utilize.
+
 ---
 
 ## Tratamento de erros
@@ -713,7 +785,7 @@ O `VSRepository` nunca fala diretamente com o ORM — ele só chama esses métod
 A v2 simplifica a hierarquia de erros da v1: em vez de várias subclasses, existe uma classe base `VSRepoError` carregando um campo `type: VSRepoErrorType`, além de uma subclasse dedicada `VSRepoAdapterError` (veja abaixo) para falhas vindas do ORM/banco subjacente.
 
 ```typescript
-import { VSRepoError } from "vsrepo/errors/VSRepoError";
+import { VSRepoError } from "vsrepo";
 
 try {
     await userRepository.get(id);
@@ -830,7 +902,7 @@ Erros de uso/configuração fora do adapter lançam o `VSRepoError` base. Falhas
 Todo repository tem um logger interno, configurado via `logLevel` e `logSlowThresholdMs` nas options do construtor:
 
 ```typescript
-import { VSLogLevel } from "vsrepo/internal/enums/vs-log-level.enum";
+import { VSLogLevel } from "vsrepo";
 
 super({
     pkName: "id",

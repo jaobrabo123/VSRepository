@@ -4,6 +4,7 @@
   <p style="margin-top: 12px;">
     <img src="https://img.shields.io/npm/v/vsrepo?style=flat-square" alt="npm version"/>
     <img src="https://img.shields.io/npm/l/vsrepo?style=flat-square" alt="npm license"/>
+    <img src="https://img.shields.io/npm/dt/vsrepo?style=flat-square" alt="npm downloads"/>
     <img src="https://img.shields.io/badge/inspired%20by-JpaRepository-E73121?style=flat-square" alt="inspired by JpaRepository"/>
   </p>
 </div>
@@ -79,7 +80,7 @@ If you're coming from the [v1](./v1) code/docs, here's the short version. See ea
 | Error types                                  | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | A base `VSRepoError` class with a `type: VSRepoErrorType` field (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`), plus a `VSRepoAdapterError` subclass carrying an `AdapterErrorCode` and the original ORM error |
 | Debug logging                                | `showWorking: true` boolean                                                                                     | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` for slow-query warnings                                                                                                                                |
 | `vsrepo generate` CLI (type generation step) | Required before use                                                                                             | Not part of the v2 core — types come directly from your entity/ORM types                                                                                                                                                             |
-| CRUD extras                                  | `patchList`, raw `options.select`/`options.include`                                                             | `select`/`relations` are the default (always "raw"); `patch`/`merge` keep the same semantics                                                                                                                                         |
+| CRUD extras                                  | `patchList`, raw `options.select`/`options.include`                                                             | `select`/`relations` are the default (always "raw"); `patch`/`merge` keep the same semantics. **`patchList` was removed** — for a batch partial update, use a `updateManyBy`/`updateManyWhere` dynamic method instead                |
 
 ---
 
@@ -165,6 +166,16 @@ export default new UserRepository();
 
 > The core API (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums and types) is imported from the single `vsrepo` entry point. The concrete adapter comes from a **separate** package (`@vsrepo/*-adapter`). Until those adapter packages are published, on Prisma 7 vendor the real [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) (its constructor takes a config object — `tableName`, `pkName`, optional `relations`/`logLevel` — as shown above); for any other ORM, implement the `VSRepoAdapter` contract yourself (see [Writing your own adapter](#writing-your-own-adapter)).
 
+> **The third generic parameter (`OrmTypes`):** `VSRepository<Entity, PKType, OrmTypes>` accepts an optional third type parameter describing your ORM's client/transaction types, via `VSRepoOrmTypes` (`{ dbClient; dbTransaction }`). Supplying it gives you a correctly-typed `getDbClient()`, `transaction()` callback, and `db` option on every method, instead of `any`:
+> ```typescript
+> type PrismaOrmTypes = { dbClient: PrismaClient; dbTransaction: Prisma.TransactionClient };
+>
+> class UserRepository extends VSRepository<User, string, PrismaOrmTypes> {
+>     // getDbClient() now returns PrismaClient, and transaction(fn) types `tx` as Prisma.TransactionClient
+> }
+> ```
+> If omitted, it defaults to `VSRepoOrmTypes` (`dbClient`/`dbTransaction` both `any`).
+
 ### Using the repository
 
 ```typescript
@@ -223,7 +234,7 @@ Available automatically on every `VSRepository` subclass:
 | `getDbClient()`             | Returns the underlying ORM client instance used outside of transactions.                                                             |
 | `query<T>(query, options?)` | Executes a raw SQL statement directly against the database. See [Ad-hoc raw queries with `query()`](#ad-hoc-raw-queries-with-query). |
 
-All of the above accept a `MethodOptions<Entity, OrmTypes>` object as their last argument (`select`, `relations`, `see`, `db`).
+All of the above (except `transaction`, `query`, and `getDbClient`, which accept their own options or none at all) accept a `MethodOptions<Entity, OrmTypes>` object as their last argument (`select`, `relations`, `see`, `db`).
 
 ---
 
@@ -314,7 +325,7 @@ class UserRepository extends VSRepository<User, string> {
     declare findOneByEmail: (email: string) => Promise<User | null>;
 
     @DynamicMethod()
-    declare updateById: (id: string, data: Partial<User>) => Promise<User>;
+    declare updateById: (id: string, data: DeepPartial<User>) => Promise<User>;
 
     // Where-based: VSRepoWhere<T> as the first param, pagination penultimate, MethodOptions last
     @DynamicMethod()
@@ -465,11 +476,11 @@ declare findByActiveOrderByCreatedAtDescPaginated:
 
 // OrderedAndPaginated: order, then pagination, then MethodOptions
 @DynamicMethod()
-declare findByNameContainsInsensitiveOrderedAndPaginated:
+declare findByNameContainsIgnoreCaseOrderedAndPaginated:
     (name: string, order: Ordering<User>, pagination: Pagination, options?: MethodOptions<User>) => Promise<User[]>;
 
 @DynamicMethod()
-declare createManyIgnoreConflicts: (data: Partial<User>[]) => Promise<{ count: number }>;
+declare createManyIgnoreConflicts: (data: DeepPartial<User>[]) => Promise<{ count: number }>;
 ```
 
 > ⚠️ **Precedence between `Distinct` and `OrderBy`:** when both are used in the same method name, **`Distinct` must come before `OrderBy`**:
@@ -564,6 +575,26 @@ await userRepository.transaction(async tx => {
 
 Different repositories can share the same transaction as long as their adapters point to the same underlying ORM connection.
 
+`transaction()` accepts an optional `VSRepoTransactionOptions` as its second argument:
+
+```typescript
+import { TransactionIsolationLevel } from "vsrepo";
+
+await userRepository.transaction(
+    async tx => {
+        await userRepository.save({ name: "Maria", email: "maria@email.com" }, { db: tx });
+    },
+    { isolationLevel: TransactionIsolationLevel.SERIALIZABLE, timeoutMs: 5000 },
+);
+```
+
+| Option           | Type                       | Description                                                                    |
+| ----------------- | -------------------------- | -------------------------------------------------------------------------------- |
+| `isolationLevel` | `TransactionIsolationLevel` | Isolation level to use for the transaction. Defaults to the underlying ORM's default. |
+| `timeoutMs`       | `number`                    | Maximum time (in ms) the transaction is allowed to run before being aborted.     |
+
+`TransactionIsolationLevel` mirrors the standard SQL isolation levels: `READ_UNCOMMITTED`, `READ_COMMITTED`, `REPEATABLE_READ`, `SERIALIZABLE`. Support for a given level depends on the adapter/underlying ORM and database.
+
 ---
 
 ## Utility types
@@ -584,6 +615,9 @@ import type {
     KeysOfType,
     Primitive,
     VSRepoWhere,
+    VSRepoOrmTypes,
+    VSRepoTransactionOptions,
+    TransactionIsolationLevel,
 } from "vsrepo";
 ```
 
@@ -599,6 +633,9 @@ import type {
 | `KeysOfType<T, K>`                                  | Extracts the keys of `T` whose value type is assignable to `K`.                                                                                                                                      | Constrains `pkName` in [Constructor options](#constructor-options) to fields of the entity matching the configured primary-key type.                          |
 | `Primitive`                                         | Union of scalar types (`string \| number \| boolean \| bigint \| symbol \| undefined \| null \| Date`) treated as leaves — not relations — when walking an entity's shape.                           | Used by `Ordering<T>` to tell scalar fields apart from relation fields.                                                                                       |
 | `VSRepoWhere<T>`                                    | ORM-agnostic filter type accepted by `*Where` dynamic methods (e.g. `findWhere`, `findOneWhere`, `updateWhere`). Supports field filters, logical operators (`AND`/`OR`/`NOT`), and relation filters. | [`findWhere`, `findOneWhere` and other `*Where` prefixes](#available-prefixes).                                                                               |
+| `VSRepoOrmTypes`                                    | `{ dbClient; dbTransaction }` — describes your ORM's client/transaction types. Passed as the third generic to `VSRepository<Entity, PKType, OrmTypes>` to type `getDbClient()`, `transaction()` and the `db` option instead of `any`. | [Creating a repository](#creating-a-repository).                                                                                                              |
+| `VSRepoTransactionOptions`                          | `{ isolationLevel?, timeoutMs? }` — options accepted as the second argument of `transaction()`.                                                                                                      | [Transactions](#transactions).                                                                                                                                |
+| `TransactionIsolationLevel`                         | Enum of standard SQL isolation levels (`READ_UNCOMMITTED`, `READ_COMMITTED`, `REPEATABLE_READ`, `SERIALIZABLE`) accepted by `VSRepoTransactionOptions.isolationLevel`.                              | [Transactions](#transactions).                                                                                                                                |
 
 ### `DeepPartial<T>`
 
@@ -703,6 +740,41 @@ export abstract class VSRepoAdapter<T> {
 
 `VSRepository` never talks to the ORM directly — it only calls these methods with an already-resolved `VSRepoWhere<T>` and `AdapterMethodOptions<T>`. Once an adapter implements this contract, every base method, dynamic method, and query method works against it automatically. For a full, working implementation, see the external [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) repo.
 
+### Logging from your adapter
+
+`vsrepo` exports the same `VSLogger` class the core uses internally, so your adapter can log in the same format/style (timestamps, colored level labels, slow-operation warnings) instead of rolling its own:
+
+```typescript
+import { VSLogger, VSLogLevel } from "vsrepo";
+
+export class MyOrmAdapter<T> extends VSRepoAdapter<T> {
+    private readonly logger = new VSLogger(VSLogLevel.WARN, "MyOrmAdapterLogger");
+
+    async findOne(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>) {
+        const start = this.logger.startPerformLog("adapter findOne");
+        try {
+            // ... talk to the ORM ...
+            this.logger.endPerformLog(start);
+            return result;
+        } catch (err) {
+            this.logger.endPerformLog(start);
+            this.logger.logError("adapter findOne failed", err);
+            throw err;
+        }
+    }
+}
+```
+
+| Method                             | Description                                                                                      |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `new VSLogger(logLevel, name, slowThresholdMs?)` | Creates a logger; `name` prefixes every line, `slowThresholdMs` defaults to 300.                    |
+| `logDebug/logInfo/logWarn(text, obj?)` | Logs at the given level if `logLevel` allows it; `obj` is appended as pretty-printed JSON.       |
+| `logError(text, err?)`              | Logs at `ERROR`; if `err` is an `Error`, only `name`/`message`/`stack`/`cause` are logged.        |
+| `startPerformLog(operation)` / `endPerformLog(data)` | Bracket a block to log its duration, escalating to `WARN` if it exceeds `slowThresholdMs`. |
+| `getLogLevel()`                     | Returns the logger's configured `VSLogLevel`.                                                     |
+
+This is purely a convenience for adapter authors — nothing in the core requires your adapter to use it.
+
 ---
 
 ## Error handling
@@ -710,7 +782,7 @@ export abstract class VSRepoAdapter<T> {
 v2 simplifies the error hierarchy from v1: instead of several subclasses, there's a base `VSRepoError` class carrying a `type: VSRepoErrorType`, plus a dedicated `VSRepoAdapterError` subclass (see below) for failures coming from the underlying ORM/database.
 
 ```typescript
-import { VSRepoError } from "vsrepo/errors/VSRepoError";
+import { VSRepoError } from "vsrepo";
 
 try {
     await userRepository.get(id);
@@ -827,7 +899,7 @@ Non-adapter usage/config mistakes throw the base `VSRepoError`. Failures raised 
 Every repository has an internal logger, configured via `logLevel` and `logSlowThresholdMs` on the constructor options:
 
 ```typescript
-import { VSLogLevel } from "vsrepo/internal/enums/vs-log-level.enum";
+import { VSLogLevel } from "vsrepo";
 
 super({
     pkName: "id",
