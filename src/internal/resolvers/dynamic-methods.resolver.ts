@@ -777,7 +777,7 @@ export class DynamicMethodsResolver<T, K> {
             }
 
             if (currentWhereRslvd.otherProps !== undefined) {
-                Object.assign(path[currentWhereRslvd.argName], currentWhereRslvd.otherProps);
+                Object.assign(current, currentWhereRslvd.otherProps);
             }
 
             if (ormode) {
