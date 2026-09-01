@@ -11,9 +11,10 @@
 //   - `Between`/`NotBetween` viram `{ between: [min, max] }` (não `gte`/`lte`);
 //   - `IsNull`/`IsNotNull` resolvem pra `null` / `{ not: null }` puro, sem
 //     objeto "operator" (ex.: NÃO é `{ equals: null }`);
-//   - `IgnoreCase` em um filtro de relação (`With...IgnoreCase`) fica como
-//     irmão de `_with` dentro do objeto da relação, não aninhado dentro do
-//     filtro do campo relacionado;
+//   - `IgnoreCase` em um filtro de relação (`With...IgnoreCase`) fica dentro
+//     do MESMO objeto do operador de texto que ele modifica (ex.:
+//     `city: { startsWith: "Rio", ignoreCase: true }`), não solto num nível
+//     acima;
 //   - blocos `AND`/`Or` combinados (`campoOrCampoANDcampoAndCampo...`) geram
 //     as chaves `OR`/`AND` do Prisma-like where, cada uma com um array de
 //     sub-where's mesclados.
@@ -256,17 +257,12 @@ describe("filtros de relação — um-para-um/opcional (With/Without)", () => {
         expect(where()).toEqual({ address: { _without: { city: "Rio de Janeiro" } } });
     });
 
-    it("'findByAddressWithCityStartsWithIgnoreCase' -> 'ignoreCase' fica IRMÃO de '_with', não dentro de 'city'", async () => {
+    it("'findByAddressWithCityStartsWithIgnoreCase' -> 'ignoreCase' fica DENTRO do filtro do campo relacionado ('city')", async () => {
         await repo.findByAddressWithCityStartsWithIgnoreCase("Rio");
 
-        // Repare que "ignoreCase: true" está no mesmo nível de "_with", e NÃO
-        // dentro de "{ startsWith: 'Rio', ignoreCase: true }" — esse é
-        // exatamente o tipo de detalhe não óbvio que este arquivo existe pra
-        // travar.
         expect(where()).toEqual({
             address: {
-                _with: { city: { startsWith: "Rio" } },
-                ignoreCase: true,
+                _with: { city: { startsWith: "Rio", ignoreCase: true } },
             },
         });
     });
