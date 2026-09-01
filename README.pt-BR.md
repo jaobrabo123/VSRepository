@@ -358,6 +358,7 @@ class UserRepository extends VSRepository<User, string> {
 | `findOneOrThrowWhere`      | `findOneOrThrow`      | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                                  |
 | `findWhere`                | `findMany`            | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                                  |
 | `findOneWhere`             | `findOne`             | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                                  |
+| `findOne`                  | `findOne`             | Sem filtros de campo; aplica só soft-delete/`see`.                                                   |
 | `countBy`                  | `count`               | Filtros de campo seguem o prefixo.                                                                   |
 | `countWhere`               | `count`               | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                                  |
 | `count`                    | `count`               | Sem filtros de campo.                                                                                |
@@ -365,6 +366,7 @@ class UserRepository extends VSRepository<User, string> {
 | `existsWhere`              | `exists`              | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                                  |
 | `create`                   | `create`              | Recebe `data` como argumento.                                                                        |
 | `createMany`               | `createMany`          | Recebe `data[]` como argumento; suporta `IgnoreConflicts`.                                           |
+| `createManyReturning`      | `createManyReturning` | Recebe `data[]` como argumento; suporta `IgnoreConflicts`; retorna os registros criados (`T[]`), em vez de `CountResult`. |
 | `updateBy`                 | `update`              | Filtros de campo + `data` como argumento.                                                            |
 | `updateWhere`              | `update`              | Recebe um `VSRepoWhere<T>` como primeiro argumento, depois `data`.                                   |
 | `updateManyBy`             | `updateMany`          | Filtros de campo + `data`.                                                                           |
@@ -464,7 +466,7 @@ declare findByProductsSome: () => Promise<User[]>;
 | `PaginatedAndOrdered`                      | Injeta `pagination` como antepenúltimo, depois `order` como penúltimo — ambos antes do `MethodOptions`.                                                                        |
 | `OrderBy<Campo>Asc` / `OrderBy<Campo>Desc` | **Novo na v2.** Embute uma ordenação fixa diretamente no nome do método — encadeie campos com `And` (ex.: `OrderByCreatedAtAscAndNameDesc`). Não precisa de argumento `order`. |
 | `Distinct<Campo>And<Campo>...`             | Embute campos `distinct` fixos diretamente no nome do método (só válido em métodos da família `findBy`/`findWhere`).                                                           |
-| `IgnoreConflicts`                          | No `createMany`, ignora registros que violariam uma constraint única, em vez de lançar erro. _(Renomeado do `SkipDuplicates` da v1.)_                                          |
+| `IgnoreConflicts`                          | No `createMany`/`createManyReturning`, ignora registros que violariam uma constraint única, em vez de lançar erro. _(Renomeado do `SkipDuplicates` da v1.)_                    |
 
 > ⚠️ **Ordem dos parâmetros:** `pagination` e `order` sempre vêm **antes** do último argumento opcional `MethodOptions<T>`. Quando `order` e `pagination` estão presentes juntos, a ordem relativa entre eles segue o nome do sufixo (`OrderedAndPaginated` → order, pagination; `PaginatedAndOrdered` → pagination, order).
 
@@ -481,6 +483,14 @@ declare findByNameContainsIgnoreCaseOrderedAndPaginated:
 
 @DynamicMethod()
 declare createManyIgnoreConflicts: (data: DeepPartial<User>[]) => Promise<{ count: number }>;
+
+// createManyReturning: mesmo comportamento do createMany, mas retorna os registros criados
+@DynamicMethod()
+declare createManyReturningIgnoreConflicts: (data: DeepPartial<User>[]) => Promise<User[]>;
+
+// findOne sem filtro (equivalente ao findOneOrThrow sem filtro, mas retorna null em vez de lançar)
+@DynamicMethod()
+declare findOne: (options?: MethodOptions<User>) => Promise<User | null>;
 ```
 
 > ⚠️ **Precedência entre `Distinct` e `OrderBy`:** quando os dois são usados no mesmo nome de método, **`Distinct` deve vir antes de `OrderBy`**:
@@ -701,6 +711,10 @@ export abstract class VSRepoAdapter<T> {
         objs: DeepPartial<T>[],
         options?: AdapterMethodOptions<T> & { ignoreConflicts?: boolean },
     ): Promise<CountResult>;
+    abstract createManyReturning(
+        objs: DeepPartial<T>[],
+        options?: AdapterMethodOptions<T> & { ignoreConflicts?: boolean },
+    ): Promise<T[]>;
     abstract delete(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T>;
     abstract deleteMany(
         where: VSRepoWhere<T>,
