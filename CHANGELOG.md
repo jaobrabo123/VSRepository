@@ -6,6 +6,34 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [1.4.2] - 2026-09-02
+
+### Fixed
+- `merge` method now strips `undefined` fields from the source object before merging — previously, when merging objects without relations, `undefined` values from the source were carried into the result, which could overwrite existing fields with `undefined`
+
+---
+
+## [1.4.2] - 2026-09-02 (Português)
+
+### Corrigido
+- O método `merge` agora remove campos com valor `undefined` do objeto de origem antes de mesclar — antes, ao mesclar objetos sem relations, valores `undefined` do objeto de origem eram propagados para o resultado, o que poderia sobrescrever campos existentes com `undefined`
+
+---
+
+## [1.4.1] - 2026-09-01
+
+### Fixed
+- `mode: "insensitive"` was being injected at the wrong level in relation filters — previously, `otherProps` (which includes `mode`) was being assigned to `path[argName]` (the nested relation object) instead of the current filter level, causing the insensitive mode to be placed incorrectly in the generated `where`
+
+---
+
+## [1.4.1] - 2026-09-01 (Português)
+
+### Corrigido
+- `mode: "insensive"` estava sendo injetado no nível errado em filtros de relations — antes, `otherProps` (que inclui `mode`) era atribuído a `path[argName]` (o objeto da relation aninhada) em vez do nível atual do filtro, causando colocação incorreta do modo insensitive no `where` gerado
+
+---
+
 ## [1.4.0] - 2026-08-11
 
 ### Fixed
