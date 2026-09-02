@@ -44,13 +44,13 @@ export function resolveSpecificWhere(args: any[], prettyWheres: PrettyWhere[]) {
         }
 
         if (currentWhereRslvd.otherProps !== undefined) {
-            Object.assign(path[currentWhereRslvd.argName], currentWhereRslvd.otherProps);
+            Object.assign(current, currentWhereRslvd.otherProps);
         }
 
         if (ormode) {
             if (!OR) OR = [];
             if (!OR[modeIdx!]) OR[modeIdx!] = {};
-            OR[modeIdx!] = merge(OR[modeIdx!], path)
+            OR[modeIdx!] = merge(OR[modeIdx!], path);
             // Object.assign(OR[modeIdx!], path);
         } else if (andmode) {
             if (!AND) AND = [];
@@ -58,7 +58,7 @@ export function resolveSpecificWhere(args: any[], prettyWheres: PrettyWhere[]) {
             AND[modeIdx!] = merge(AND[modeIdx!], path);
             // Object.assign(AND[modeIdx!], path);
         } else {
-            specificWhere = merge(specificWhere, path)
+            specificWhere = merge(specificWhere, path);
             // Object.assign(specificWhere, path);
         }
     }
