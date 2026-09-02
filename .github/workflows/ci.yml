@@ -10,24 +10,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: vsrepo
-          POSTGRES_PASSWORD: vsrepo
-          POSTGRES_DB: vsrepo
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U vsrepo"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    env:
-      DATABASE_URL: postgresql://vsrepo:vsrepo@localhost:5432/vsrepo
-
+    # Diferente da v1, a v2 é ORM-agnostic: o core (`VSRepository`) nunca fala
+    # com um banco diretamente, então os testes rodam contra um `VSRepoAdapter`
+    # falso (ver test/helpers/fake-adapter.ts) — não precisamos de um serviço
+    # Postgres nem de `prisma migrate deploy` aqui.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,15 +31,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Apply database migrations
-        run: pnpm exec prisma migrate deploy
-
-      - name: Build (needed so generated/vsrepo self-resolves against dist/)
-        run: pnpm run build
-
-      - name: Regenerate generated/vsrepo from the freshly built dist/
-        run: pnpm run vsrepo
 
       - name: Run tests (typing + implementation)
         run: pnpm test

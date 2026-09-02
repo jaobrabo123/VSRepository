@@ -1,42 +1,69 @@
 # Testes
 
-Este projeto tem dois tipos de teste, em duas pastas separadas:
+Este projeto (v2) tem dois tipos de teste, em duas pastas separadas:
 
 ```text
 test/
   implementation/   # Testes de implementação (comportamento em runtime), rodados com Jest
   typing/           # Testes de tipagem (compile-time), checados com tsc --noEmit
+  helpers/          # Fake adapter, entidades e repository de exemplo usados pelos testes
   tsconfig.json     # tsconfig usado pelo ts-jest para compilar os testes de implementação
 ```
 
+## Diferença em relação à v1
+
+Na v1, `VSRepository` falava diretamente com o Prisma, então os testes de implementação
+rodavam contra um Postgres real (via `DATABASE_URL`). Na v2, `VSRepository` é **ORM-agnostic**:
+ela nunca fala com um banco/ORM diretamente, apenas delega toda operação para um `VSRepoAdapter`
+(`findOne`, `findMany`, `save`, `update`, `delete`, `runInTransaction`, etc — ver `src/VSRepoAdapter.ts`).
+
+Por isso, **nenhum teste do core precisa de banco real**. Em vez disso, usamos um `VSRepoAdapter`
+falso (`test/helpers/fake-adapter.ts`, com todos os métodos mockados via `jest.fn()`) e verificamos:
+
+- **quais** métodos do adapter são chamados para cada operação (`get` → `adapter.findOne`,
+  `findByEmail` → `adapter.findMany`, `existsByEmail` → `adapter.exists`, etc);
+- **com quais argumentos** (`where` resolvido a partir do nome do método/PK/`softRemoveKey`,
+  `options` como `pagination`, `order`, `db`, `see`);
+- que o retorno do adapter é propagado sem alterações, e que erros lançados pelo adapter não
+  são engolidos.
+
+A lógica de tradução para um ORM específico (montagem de `select`/`include`, mapeamento de erros
+do driver, etc) é responsabilidade de cada pacote de adapter — ex. `@vsrepo/prisma7-adapter`
+(repositório [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter)), que
+tem sua própria suíte de testes seguindo o mesmo padrão (lá, um "Prisma Client" falso).
+
 ## Testes de implementação (`test/implementation`)
 
-São testes de integração que rodam contra um banco Postgres real (via Prisma), exercitando o
-comportamento em runtime da biblioteca — os mesmos cenários que antes viviam em `teste.ts` e
-`teste-class.ts` na raiz do projeto, agora organizados com Jest:
+Cada arquivo cobre uma área do core:
 
-- `functional-api.test.ts` — API funcional (`setupVSRepo`)
-- `class-based-api.test.ts` — API baseada em classes (`DynamicRepository` + `@DynamicMethod`)
-- `error-handling.test.ts` — os caminhos de erro (`VSRepoConfigError`, `VSRepoBuildError`,
-  `VSRepoExtendError`, `VSRepoRuntimeError`, `VSRepoDecoratorError`). **Não precisa de banco
-  real** — todas as validações cobertas aqui acontecem antes de qualquer query ser enviada ao
-  Postgres, então esse arquivo roda (e passa) mesmo sem `DATABASE_URL` configurada.
+- `error-handling.test.ts` — validação de config do construtor, validação dos argumentos de
+  `@DynamicMethod`/`@QueryMethod`, resolução de nomes de método inválidos, guard clauses dos
+  métodos base (`removeList`, `saveList`, `getList`, `transaction`, `softRemove`/`restore` sem
+  `softRemoveKey`), e propagação de erros lançados pelo adapter.
+- `base-methods.test.ts` — `get`, `getOrThrow`, `getList`, `getAll`, `save`, `saveList`, `patch`,
+  `remove`, `removeList`, `total`, `has`, `merge`, `transaction`, `getDbClient`, `query`.
+- `dynamic-methods.test.ts` — uso "do dia a dia" de métodos declarados com `@DynamicMethod`
+  (prefixos `findBy`/`findOneBy`, operador `And`, `existsBy`, `injectOrdering`) e de métodos
+  declarados com `@QueryMethod`.
+- `dynamic-methods-parser.test.ts` — cobertura exaustiva do **parser** de métodos dinâmicos
+  (`DynamicMethodsResolver`): uma variante isolada para cada sufixo de campo (`Not`, `In`,
+  `Contains`, `StartsWith`, `Between`, `IsNull`, `IsTrue`, `IgnoreCase`, etc), operador lógico
+  (`Or`, `And`, blocos `AND` maiúsculos combinados), filtro de relação (`Some`/`Every`/`None`/
+  `With`/`Without`), prefixo (`find`/`findOne`/`findOneOrThrow`/`count`/`exists`/`create`/
+  `update`/`upsert`/`delete`, e suas variantes `...Many`, `...ManyReturning`, `...Where`), sufixo
+  de ordenação/paginação/distinct, e as options do decorator (`proxyTo`, `injectOrdering`).
+  Existe separado de `dynamic-methods.test.ts` porque aqui o objetivo não é "uso realista", é
+  travar o comportamento exato do parser — inclusive detalhes não óbvios (ex.: `Between` vira
+  `{ between: [min, max] }`, não `gte`/`lte`; `IgnoreCase` num filtro de relação fica irmão de
+  `_with`, não aninhado dentro do filtro do campo). Cada valor esperado foi conferido rodando o
+  parser de verdade antes de virar asserção fixa — não é uma suposição de como "deveria" funcionar.
+- `soft-delete.test.ts` — `softRemove`, `softRemoveList`, `restore`, `restoreList`, e o filtro
+  automático aplicado pelos métodos base conforme `options.see` (`"active"` | `"removed"` | `"all"`).
+- `transactions.test.ts` — delegação de `transaction()` para `adapter.runInTransaction`, e
+  compartilhamento do client de transação via `options.db` (evitando uma nova chamada a
+  `adapter.getDbClient()`).
 
-Cada `describe` reproduz o fluxo original (`runAllTests`), com um `it` por área testada
-(métodos base, métodos dinâmicos, relations, includes, transações, etc). `beforeAll` limpa o
-banco e `afterAll` desconecta o Prisma.
-
-**Pré-requisitos:**
-
-1. Uma instância Postgres acessível, com a `DATABASE_URL` configurada (veja `.env` /
-   `examples/prisma.ts`).
-2. `dist/` e `generated/vsrepo/` atualizados com a tipagem mais recente, caso você tenha
-   alterado algo em `src/`:
-
-   ```bash
-   npm run build
-   npm run vsrepo
-   ```
+Nenhum pré-requisito externo é necessário — os testes usam apenas o `VSRepoAdapter` falso.
 
 **Rodando:**
 
@@ -45,21 +72,12 @@ npm run test:implementation          # roda uma vez
 npm run test:implementation:watch    # modo watch
 ```
 
-> Por padrão o Prisma 7 usa um query compiler em WASM, que faz `import()` dinâmico — o Jest
-> roda em CommonJS e precisa da flag `--experimental-vm-modules` do Node para suportar isso.
-> O script `test:implementation` já cuida disso (via `cross-env`), então normalmente você não
-> precisa se preocupar com isso.
-
 ## Testes de tipagem (`test/typing`)
 
-São arquivos TypeScript que não são executados — eles existem só para serem checados pelo
-compilador (`tsc --noEmit`). Cada cenário inválido usa `@ts-expect-error`, então, se algum
-cenário que deveria falhar passar a compilar (ou vice-versa), o `tsc` aponta o erro.
-
-- `functional-api.types.ts` — narrowing de `selectModel`/`includeModel`, raw `include`, raw
-  `select`, exclusividade mútua entre eles, tipagem de PK e de métodos dinâmicos, para a API
-  funcional.
-- `class-based-api.types.ts` — os mesmos cenários (adaptados) para `DynamicRepository`.
+Reservado para arquivos TypeScript não executados — existem só para serem checados pelo
+compilador (`tsc --noEmit`), usando `@ts-expect-error` em cenários que devem falhar a compilar.
+Ainda não há cenários aqui; ao adicionar, siga o padrão usado pela v1
+(`functional-api.types.ts`/`class-based-api.types.ts`).
 
 **Rodando:**
 
@@ -74,11 +92,10 @@ npm test
 ```
 
 Roda `test:typing` e depois `test:implementation`, nessa ordem — assim, uma regressão de
-tipagem falha rápido, antes de tentar abrir conexão com o banco.
+tipagem falha rápido, antes mesmo de instanciar qualquer repository.
 
 ## CI
 
-O workflow `.github/workflows/ci.yml` roda `pnpm test` (tipagem + implementação) a cada push
-e pull request pra `main`, usando um serviço Postgres efêmero. Antes de rodar os testes, o CI
-aplica as migrations (`prisma migrate deploy`), builda (`pnpm build`) e regenera
-`generated/vsrepo` (`pnpm vsrepo`) — os mesmos passos descritos acima para rodar localmente.
+O workflow `.github/workflows/ci.yml` roda `pnpm test` (tipagem + implementação) a cada push e
+pull request para `main`. Diferente da v1, não há serviço Postgres nem passos de migration/build
+— o core não precisa de nada disso para ser testado.

@@ -3,9 +3,15 @@
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",
-    "declaration": false,
+    // A v2 nao depende mais dos .d.ts manuais da v1: as declaracoes de tipo
+    // sao geradas automaticamente pelo tsc a partir do proprio `src/`.
+    "declaration": true,
     "declarationMap": false,
     "sourceMap": false
   },
+  // Apenas o nucleo (core) ORM-agnostico e empacotado. O `src/test.ts` e um
+  // script manual de smoke test que depende do Prisma gerado localmente e fica
+  // fora do build do pacote core. Os adapters serao publicados como pacotes
+  // separados `@vsrepo/*-adapter` (ver README).
   "include": ["src/**/*"]
 }

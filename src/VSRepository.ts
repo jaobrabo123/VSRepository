@@ -1,334 +1,529 @@
-export * from "./internal/errors/vs-repo.error";
+import "reflect-metadata";
+import { VSRepoOptions } from "./types/vsrepo/vsrepo-options.type";
+import { CountResult } from "./types/utils/count-result.type";
+import { DeepPartial } from "./types/utils/deep-partial.type";
+import { KeysOfType } from "./types/utils/keys-of-type.type";
+import { VSRepoAdapter } from "./VSRepoAdapter";
+import { VSRepoWhere } from "./types/vsrepo/vsrepo-where.type";
+import { MergeWheresResolver } from "./internal/resolvers/merge-wheres.resolver";
+import { VSRepoOrmTypes } from "./types/vsrepo/vsrepo-orm-types.type";
+import { VSRepoTransactionOptions } from "./types/vsrepo/vsrepo-transaction-options.type";
+import { MethodOptions } from "./types/utils/methods-options.type";
+import { Ordering } from "./types/utils/ordering.type";
+import { Pagination } from "./types/utils/pagination.type";
+import { VSLogger } from "./internal/utils/vs-logger.util";
+import { VSLogLevel } from "./internal/enums/vs-log-level.enum";
+import { VSRepoValidator } from "./internal/validators/vsrepo.validator";
+import { VSRepoArgs } from "./types/vsrepo/vsrepo-args.type";
+import { DynamicMethodsResolver } from "./internal/resolvers/dynamic-methods.resolver";
+import { VSRepoError } from "./errors/VSRepoError";
+import { VSRepoErrorType } from "./internal/enums/vsrepo-error-type.enum";
+import { VSRepoQueryOptions } from "./types/vsrepo/vsrepo-query-options.type";
 
-import { RepositoryBuildInstance } from "./internal/resolvers/types/repository-build-instance.type";
-import { validateBuildConfig } from "./internal/validation/build-config.validate";
-import { validateConstructorConfig } from "./internal/validation/constructor-config.validate";
-import { validateExtension } from "./internal/validation/extension.validate";
-import { validatePrismaClient } from "./internal/validation/prisma-client.validate";
-import { Method } from "./internal/validation/types/method.type";
-import { Relation } from "./internal/validation/types/relation.type";
-import { VSRepoBuildError, VSRepoRuntimeError } from "./internal/errors/vs-repo.error";
-import { resolveBaseMethods } from "./internal/resolvers/base-methods.resolve";
-import { logger, performanceLoggerEnd, performanceLoggerStart } from "./internal/utils/logger.util";
-import { resolveDynamicMethodInfo } from "./internal/resolvers/dynamic-method-info.resolve";
-import { resolveDynamicMethodCustomization } from "./internal/resolvers/dynamic-method-customization.resolve";
-import { DynamicMethodWhereOps } from "./internal/resolvers/types/dynamic-method-where-ops.type";
-import { resolvePrettyWheres } from "./internal/resolvers/pretty-wheres.resolve";
-import { PrismaArgs } from "./internal/resolvers/types/prisma-args.type";
-import { ResolveDbAndPrismaArgsData } from "./internal/resolvers/types/resolve-db-and-prisma-args-data.type";
-import { MethodOptions } from "./internal/validation/types/method-options.type";
-import { resolveSpecificWhere } from "./internal/resolvers/specific-where.resolve";
-import { resolveDbAndPrismaArgs } from "./internal/resolvers/dbAndPrismaArgs.resolve";
-import { validateMethodOptions } from "./internal/validation/method-options.validate";
-import { validateQueryMethodArg } from "./internal/validation/query-method-arg.validate";
+/**
+ * ORM-agnostic base repository, exposing a complete set of ready-to-use CRUD
+ * and soft-delete methods around an entity, plus any `@DynamicMethod`/`@QueryMethod`
+ * decorated methods declared on the subclass.
+ *
+ * Unlike the previous (v1) `VSRepository`, this class delegates every
+ * operation to a `VSRepoAdapter` instead of talking to Prisma directly, which
+ * is what allows it to work with any ORM/database that has an adapter
+ * implementation (e.g. Prisma, TypeORM).
+ *
+ * @template Entity Type of the entity managed by the repository.
+ * @template PKType Type of the entity's primary key value.
+ * @template OrmTypes ORM-specific client/transaction types. See `VSRepoOrmTypes`.
+ *
+ * @example
+ * ```typescript
+ * class UserRepository extends VSRepository<User, string> {
+ *     constructor() {
+ *         super({ pkName: "id", adapter: new VSRepoPrisma7Adapter(prisma, "user") });
+ *     }
+ *
+ *     @DynamicMethod()
+ *     declare findByEmail: (email: string) => Promise<User[]>;
+ * }
+ *
+ * const userRepository = new UserRepository();
+ * const user = await userRepository.get("123");
+ * ```
+ *
+ * @publicApi
+ */
+export abstract class VSRepository<
+    Entity,
+    PKType,
+    OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes,
+> {
+    public readonly pkName: KeysOfType<Entity, PKType>;
 
-export class VSRepository {
-    vsrepocache: Map<string, (args: any[], methodOptions?: MethodOptions) => PrismaArgs>;
-    tableName: string;
-    pkName: string;
-    softRemovekName?: string;
-    selectModels?: Record<string, { [x: string]: unknown }>;
-    includeModels?: Record<string, { [x: string]: unknown }>;
-    defaultSelectModel?: string;
-    requiredWhere?: object;
-    relations?: Record<string, Relation>;
-    methods?: Record<string | symbol, Method>;
-    defaultOrdering?: object | object[];
+    private readonly adapter: VSRepoAdapter<Entity>;
+    private readonly mergeWheresResolver: MergeWheresResolver<Entity>;
+    private readonly logger: VSLogger;
+    private readonly validator: VSRepoValidator<Entity, PKType, OrmTypes>;
 
-    constructor(config: unknown) {
-        const validatedConfig = validateConstructorConfig(config);
+    private readonly softRemoveKey?: keyof Entity;
+    private readonly defaultOrdering?: Ordering<Entity>;
 
-        this.vsrepocache = new Map();
-        this.tableName = validatedConfig.tableName;
-        this.pkName = validatedConfig.pkName;
-        this.softRemovekName = validatedConfig.softRemovekName;
-        this.selectModels = validatedConfig.selectModels;
-        this.includeModels = validatedConfig.includeModels;
-        this.defaultSelectModel = validatedConfig.defaultSelectModel;
-        this.relations = validatedConfig.relations;
-        this.requiredWhere = validatedConfig.requiredWhere;
-        this.methods = validatedConfig.methods;
-        this.defaultOrdering = validatedConfig.defaultOrdering;
-    }
+    /**
+     * This is a property managed by VSRepository, please don't modify it!!
+     * @internal
+     */
+    $vsrepocache: Map<
+        string,
+        (args: any[], methodOptions?: MethodOptions<Entity, OrmTypes>) => VSRepoArgs<Entity>
+    > = new Map();
 
-    extend(extensionFunc: unknown) {
-        const extension = validateExtension(extensionFunc, this);
+    /**
+     * Creates a configured instance of `VSRepository`, resolving and validating
+     * every `@DynamicMethod`/`@QueryMethod` declared on the subclass.
+     */
+    constructor(options: VSRepoOptions<Entity, PKType>) {
+        this.validator = new VSRepoValidator<Entity, PKType, OrmTypes>();
 
-        const extended = Object.assign(Object.create(this), extension);
+        const optionsValidated = this.validator.validateConstructorOptions(options);
 
-        if (Object.isFrozen(this)) {
-            Object.freeze(extended);
+        this.adapter = optionsValidated.adapter;
+        this.pkName = optionsValidated.pkName;
+        this.softRemoveKey = optionsValidated.softRemoveKey;
+        this.defaultOrdering = optionsValidated.defaultOrdering;
+        this.mergeWheresResolver = new MergeWheresResolver<Entity>(this.softRemoveKey);
+        this.logger = new VSLogger(
+            optionsValidated.logLevel ?? VSLogLevel.WARN,
+            this.constructor.name + "Logger",
+            optionsValidated.logSlowThresholdMs,
+        );
+        this.validator.setLogger(this.logger);
+
+        this.logger.logInfo(
+            `Initializing ${this.constructor.name} (pk: '${String(this.pkName)}'` +
+                (this.softRemoveKey ? `, softRemoveKey: '${String(this.softRemoveKey)}'` : "") +
+                (this.defaultOrdering
+                    ? `, defaultOrdering: ${JSON.stringify(this.defaultOrdering)}`
+                    : "") +
+                `, adapter: ${this.adapter.constructor.name}` +
+                `)`,
+        );
+
+        const dynamicMethodsResolver = new DynamicMethodsResolver<Entity, PKType>(
+            this.logger,
+            this.adapter,
+            this.mergeWheresResolver,
+            this.validator,
+            this.defaultOrdering,
+        );
+
+        let dynamicMethodsCount = 0;
+        let queryMethodsCount = 0;
+
+        try {
+            const start = this.logger.startPerformLog("resolve dynamic methods");
+            dynamicMethodsCount = dynamicMethodsResolver.resolve(this);
+            this.logger.endPerformLog(start);
+
+            const startQuery = this.logger.startPerformLog("resolve query methods");
+            queryMethodsCount = dynamicMethodsResolver.resolveQueries(this);
+            this.logger.endPerformLog(startQuery);
+        } catch (err) {
+            this.logger.logError(`Failed to initialize ${this.constructor.name}`, err);
+            throw err;
         }
 
-        return extended;
+        this.logger.logInfo(
+            `${this.constructor.name} ready (${dynamicMethodsCount} dynamic method(s), ${queryMethodsCount} query method(s) resolved)`,
+        );
     }
 
-    build(prisma: unknown, config: unknown, useInstance?: any) {
-        validatePrismaClient(prisma, this);
+    // * Loga o erro antes de lançar, pra guard clauses (mau uso da API) não passarem em silêncio
+    private fail(message: string, type: VSRepoErrorType): never {
+        this.logger.logError(`${this.constructor.name}: ${message}`);
+        throw new VSRepoError(message, type);
+    }
 
-        const buildInstance: RepositoryBuildInstance = useInstance ?? Object.create(this);
-        buildInstance.prisma = prisma;
+    private wherePk(pk: PKType): VSRepoWhere<Entity> {
+        return { [this.pkName]: pk } as VSRepoWhere<Entity>;
+    }
 
-        if (
-            buildInstance.softRemovekName &&
-            prisma[buildInstance.tableName]["fields"][buildInstance.softRemovekName]["typeName"] !==
-                "DateTime"
-        ) {
-            throw new VSRepoBuildError(
-                `[VSRepository] (${buildInstance.tableName}: build) 'typeName' of 'softRemovekName' must be "DateTime": ${buildInstance.softRemovekName}`,
+    private wherePkIn(pks: PKType[]): VSRepoWhere<Entity> {
+        return { [this.pkName]: { in: pks } } as VSRepoWhere<Entity>;
+    }
+
+    private async execBaseMethod<R>(
+        fn: (optionsChecked: MethodOptions<Entity, OrmTypes>) => Promise<R>,
+        methodName: string,
+        optionsUnchecked: unknown,
+    ): Promise<R> {
+        const optionsChecked =
+            methodName === "getAll"
+                ? this.validator.validateGetAllMethodOptions(optionsUnchecked)
+                : this.validator.validateMethodOptions(optionsUnchecked);
+
+        optionsChecked.db ??= this.getDbClient();
+
+        const start = this.logger.startPerformLog("run " + methodName);
+
+        try {
+            const result = await fn(optionsChecked);
+            this.logger.endPerformLog(start);
+
+            return result;
+        } catch (err) {
+            this.logger.endPerformLog(start);
+            // this.logger.logError(`Failed to run '${methodName}' on ${this.constructor.name}`, err);
+
+            throw err;
+        }
+    }
+
+    /**
+     * Runs `fn` inside a native transaction of the underlying ORM, sharing the
+     * transaction client (`tx`) across every repository call made within it.
+     */
+    async transaction<R, TX = OrmTypes["dbTransaction"]>(
+        fn: (tx: TX) => Promise<R>,
+        options?: VSRepoTransactionOptions,
+    ): Promise<R> {
+        if (typeof fn !== "function") {
+            this.fail("'fn' must be a valid function", VSRepoErrorType.BASE);
+        }
+
+        return this.adapter.runInTransaction(
+            fn,
+            this.validator.validateTransactionOptions(options),
+        );
+    }
+
+    /** Returns the underlying ORM client instance used outside of transactions. */
+    getDbClient<DB extends any = OrmTypes["dbClient"]>(): DB {
+        return this.adapter.getDbClient();
+    }
+
+    /**
+     * Executes a raw query/statement directly against the underlying database.
+     *
+     * Use `$1`, `$2`, ... placeholders for values passed via `options.args` —
+     * never interpolate values directly into `query`, to avoid SQL injection.
+     * Set `options.modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements.
+     *
+     * @example
+     * ```typescript
+     * const users = await userRepository.query<User[]>(
+     *     'SELECT * FROM "user" WHERE email = $1',
+     *     { args: ["joao@email.com"] },
+     * );
+     *
+     * const affected = await userRepository.query<number>(
+     *     'UPDATE "user" SET active = true WHERE id = $1',
+     *     { args: ["123"], modifying: true },
+     * );
+     * ```
+     */
+    async query<T = any>(query: string, options?: VSRepoQueryOptions<OrmTypes>): Promise<T> {
+        if (typeof query !== "string") {
+            this.fail("'query' must be a valid string", VSRepoErrorType.BASE);
+        }
+
+        const optionsValidated = this.validator.validateQueryOptions(options);
+        optionsValidated.db ??= this.getDbClient();
+
+        const start = this.logger.startPerformLog("run query");
+
+        try {
+            const result = await this.adapter.query<T>(query, {
+                args: optionsValidated.args,
+                db: optionsValidated.db,
+                modifying: optionsValidated.modifying ?? false,
+            });
+
+            this.logger.endPerformLog(start);
+
+            return result;
+        } catch (err) {
+            this.logger.endPerformLog(start);
+            // this.logger.logError(`Failed to run 'query' on ${this.constructor.name}`, err);
+
+            throw err;
+        }
+    }
+
+    /** Fetches a record by its primary key (PK). */
+    async get(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity | null> {
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.findOne(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    opt,
+                ),
+            "get",
+            options,
+        );
+    }
+
+    /** Fetches a record by PK and throws an Error if not found. */
+    async getOrThrow(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.findOneOrThrow(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    opt,
+                ),
+            "getOrThrow",
+            options,
+        );
+    }
+
+    /** Fetches multiple records by a list of primary keys (PKs). */
+    async getList(pks: PKType[], options?: MethodOptions<Entity, OrmTypes>): Promise<Entity[]> {
+        if (!Array.isArray(pks)) {
+            this.fail("'pks' must be a valid array", VSRepoErrorType.BASE);
+        }
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.findMany(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePkIn(pks)),
+                    opt,
+                ),
+            "getList",
+            options,
+        );
+    }
+
+    /** Fetches all records (respects the repository's `defaultOrdering` unless `order` is provided). */
+    async getAll(
+        options?: MethodOptions<Entity, OrmTypes> & {
+            pagination?: Pagination;
+            order?: Ordering<Entity>;
+        },
+    ): Promise<Entity[]> {
+        return this.execBaseMethod(
+            (opt: MethodOptions<Entity, OrmTypes> & { order?: Ordering<Entity> }) =>
+                this.adapter.findMany(this.mergeWheresResolver.resolve(opt.see, {}), {
+                    ...opt,
+                    order: opt.order ?? this.defaultOrdering,
+                }),
+            "getAll",
+            options,
+        );
+    }
+
+    /** Creates or updates (upsert) a record. */
+    async save(
+        obj: DeepPartial<Entity>,
+        options?: MethodOptions<Entity, OrmTypes>,
+    ): Promise<Entity> {
+        return this.execBaseMethod(opt => this.adapter.save(obj, opt), "save", options);
+    }
+
+    /** Creates or updates (upsert) multiple records in a single operation. */
+    async saveList(
+        objs: DeepPartial<Entity>[],
+        options?: MethodOptions<Entity, OrmTypes> & { db?: OrmTypes["dbTransaction"] },
+    ): Promise<Entity[]> {
+        if (!Array.isArray(objs)) {
+            this.fail("'objs' must be a valid array", VSRepoErrorType.BASE);
+        }
+
+        return this.execBaseMethod(opt => this.adapter.saveMany(objs, opt), "saveList", options);
+    }
+
+    /** Deletes a record identified by its primary key (PK). */
+    async remove(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.delete(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    opt,
+                ),
+            "remove",
+            options,
+        );
+    }
+
+    /** Deletes multiple records by their primary keys, returning the count of affected rows. */
+    async removeList(
+        pks: PKType[],
+        options?: MethodOptions<Entity, OrmTypes>,
+    ): Promise<CountResult> {
+        if (!Array.isArray(pks)) {
+            this.fail("'pks' must be a valid array", VSRepoErrorType.BASE);
+        }
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.deleteMany(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePkIn(pks)),
+                    opt,
+                ),
+            "removeList",
+            options,
+        );
+    }
+
+    /** Partially updates an existing record by its primary key (PK). */
+    async patch(
+        pk: PKType,
+        obj: DeepPartial<Entity>,
+        options?: MethodOptions<Entity, OrmTypes>,
+    ): Promise<Entity> {
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.update(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    obj,
+                    opt,
+                ),
+            "patch",
+            options,
+        );
+    }
+
+    /**
+     * Fetches a record by PK and returns it deep-merged, in memory, with the
+     * provided object — does **not** persist anything (pass the result to
+     * `save`/`patch` yourself to write it).
+     */
+    async merge<U extends DeepPartial<Entity>>(
+        pk: PKType,
+        obj: U,
+        options?: MethodOptions<Entity, OrmTypes>,
+    ): Promise<(U & Entity) | null> {
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.merge<U>(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    obj,
+                    opt,
+                ),
+            "merge",
+            options,
+        );
+    }
+
+    /** Returns the total number of records. */
+    async total(options?: MethodOptions<Entity, OrmTypes>): Promise<number> {
+        return this.execBaseMethod(
+            opt => this.adapter.count(this.mergeWheresResolver.resolve(opt.see, {}), opt),
+            "total",
+            options,
+        );
+    }
+
+    /** Checks whether a record exists by its primary key (PK). */
+    async has(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<boolean> {
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.exists(
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    opt,
+                ),
+            "has",
+            options,
+        );
+    }
+
+    /** Marks a record as deleted (soft-delete). Requires `softRemoveKey` to be configured on the repository. */
+    async softRemove(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
+        if (!this.softRemoveKey) {
+            this.fail(
+                "this method can only be used if you have configured 'softRemoveKey' in this repository.",
+                VSRepoErrorType.BASE,
             );
         }
 
-        const validatedConfig = validateBuildConfig(config ?? {}, buildInstance);
+        const key = this.softRemoveKey;
 
-        resolveBaseMethods(buildInstance, validatedConfig);
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.update(
+                    this.mergeWheresResolver.resolve(opt.see ?? "all", this.wherePk(pk)),
+                    { [key]: new Date() } as DeepPartial<Entity>,
+                    opt,
+                ),
+            "softRemove",
+            options,
+        );
+    }
 
-        const showWorking = validatedConfig.showWorking;
-
-        const methods = buildInstance.methods;
-        if (methods) {
-            const methodsToMap = Object.keys(methods).filter(m => methods[m]?.map);
-            if (showWorking) logger("Keys to map:", "build", buildInstance.tableName, methodsToMap);
-
-            for (let methodToMap of methodsToMap) {
-                const originalKey = methodToMap;
-
-                if (methods[originalKey]?.query) {
-                    const modifyingQueryMethod = methods[originalKey].query.modifying;
-                    const valueQueryMethod = methods[originalKey].query.value;
-
-                    (buildInstance as any)[originalKey] = async (arg: unknown) => {
-                        const queryArgValidated = validateQueryMethodArg(arg, buildInstance);
-                        const db = queryArgValidated.db ?? buildInstance.prisma;
-
-                        const start = showWorking
-                            ? performanceLoggerStart(
-                                  buildInstance.tableName,
-                                  `Query method: ${originalKey} (Modifying: ${modifyingQueryMethod})`,
-                                  queryArgValidated.args,
-                              )
-                            : undefined;
-
-                        try {
-                            const result = await db[
-                                modifyingQueryMethod ? "$executeRawUnsafe" : "$queryRawUnsafe"
-                            ](valueQueryMethod, ...queryArgValidated.args);
-
-                            if (showWorking)
-                                performanceLoggerEnd(
-                                    buildInstance.tableName,
-                                    `Query method: ${originalKey} (Modifying: ${modifyingQueryMethod})`,
-                                    start!,
-                                );
-
-                            return result;
-                        } catch (err) {
-                            throw err;
-                        }
-                    };
-
-                    continue;
-                }
-
-                methodToMap = methods[originalKey]?.proxyTo ?? methodToMap;
-
-                const dynamicMethodInfo = resolveDynamicMethodInfo(
-                    buildInstance,
-                    methodToMap,
-                    originalKey,
-                );
-
-                const dynamicMethodCustomization = resolveDynamicMethodCustomization(
-                    buildInstance,
-                    dynamicMethodInfo,
-                    originalKey,
-                );
-
-                const dynamicMethodWhereOps: DynamicMethodWhereOps = {
-                    uglyWheres: [],
-                    prettyWheres: [],
-                    whereType: methods[originalKey]?.whereType ?? "extending",
-                    pushWhere: methods[originalKey]?.pushWhere,
-                };
-
-                if (!dynamicMethodInfo.ignoreWhere) {
-                    resolvePrettyWheres(dynamicMethodInfo, dynamicMethodWhereOps);
-                    // if (showWorking) {
-                    //     const argsSimulation: any[] = [];
-
-                    //     for (let x = 0; x < dynamicMethodInfo.argsCount; x++) {
-                    //         argsSimulation[x] = "00";
-                    //     }
-
-                    //     logger(
-                    //         `Where object resolved to ${methodToMap}:`,
-                    //         "build",
-                    //         buildInstance.tableName,
-                    //         resolveSpecificWhere(
-                    //             argsSimulation,
-                    //             dynamicMethodWhereOps.prettyWheres,
-                    //         ),
-                    //     );
-
-                    //     // logger(
-                    //     //     `Where object resolved to ${methodToMap}:`,
-                    //     //     "build",
-                    //     //     buildInstance.tableName,
-                    //     //     dynamicMethodWhereOps.prettyWheres,
-                    //     // );
-                    // }
-                }
-
-                let select: object | undefined = undefined;
-                if (dynamicMethodInfo.existsMode) {
-                    select = { [buildInstance.pkName]: true };
-                }
-
-                buildInstance.vsrepocache.set(
-                    originalKey,
-                    (args: any[], methodOptions?: MethodOptions) => {
-                        if (dynamicMethodInfo.prismaArgsIndex !== undefined)
-                            return args.at(dynamicMethodInfo.prismaArgsIndex);
-
-                        const resolveDbAndPrismaArgsData: ResolveDbAndPrismaArgsData = {
-                            instance: buildInstance,
-                            options: methodOptions,
-                            alreadyValidatedOptions: true,
-                            baseConfig: {
-                                active: true,
-                                defaultSelect: methods[originalKey]?.selectModel,
-                                ignoreRequiredWhere:
-                                    dynamicMethodWhereOps.whereType === "overwrite",
-                            },
-                            withoutWhere:
-                                dynamicMethodInfo.ignoreWhere && !dynamicMethodInfo.onlyBaseWheres,
-                            specificSelect: select,
-                            pushWhere: dynamicMethodWhereOps.pushWhere,
-                            withoutSelect: dynamicMethodInfo.ignoreSelect,
-                            skipDuplicates: dynamicMethodCustomization.skipDuplicates,
-                            ordering:
-                                dynamicMethodCustomization.orderPosition !== undefined
-                                    ? args.at(dynamicMethodCustomization.orderPosition)
-                                    : dynamicMethodCustomization.injectOrdering,
-                            pagination:
-                                dynamicMethodCustomization.paginationPosition !== undefined
-                                    ? args.at(dynamicMethodCustomization.paginationPosition)
-                                    : dynamicMethodCustomization.injectPagination,
-                            dataPayload:
-                                dynamicMethodInfo.dataIndex !== undefined
-                                    ? args.at(dynamicMethodInfo.dataIndex)
-                                    : undefined,
-                            createPayload:
-                                dynamicMethodInfo.createIndex !== undefined
-                                    ? args.at(dynamicMethodInfo.createIndex)
-                                    : undefined,
-                            updatePayload:
-                                dynamicMethodInfo.updateIndex !== undefined
-                                    ? args.at(dynamicMethodInfo.updateIndex)
-                                    : undefined,
-                            withOrderingAndPagination:
-                                !dynamicMethodInfo.ignoreOrderByAndPagination,
-                            distinctKeys: dynamicMethodCustomization.distinctKeys,
-                        };
-
-                        if (!dynamicMethodInfo.ignoreWhere) {
-                            resolveDbAndPrismaArgsData.specificWhere = resolveSpecificWhere(
-                                args,
-                                dynamicMethodWhereOps.prettyWheres,
-                            );
-                        } else if (dynamicMethodInfo.onlyBaseWheres) {
-                            resolveDbAndPrismaArgsData.specificWhere =
-                                dynamicMethodInfo.whereIndex !== undefined
-                                    ? args.at(dynamicMethodInfo.whereIndex)
-                                    : {};
-                        }
-
-                        const { prismaArgs } = resolveDbAndPrismaArgs(resolveDbAndPrismaArgsData);
-
-                        return prismaArgs;
-                    },
-                );
-
-                if (showWorking) {
-                    const argsSimulation = new Array<string>(dynamicMethodInfo.argsCount).fill(
-                        "00",
-                    );
-
-                    const prismaArgs = buildInstance.vsrepocache.get(originalKey)!(argsSimulation);
-
-                    logger(
-                        `PrismaArgs preview for ${methodToMap}:`,
-                        "build",
-                        buildInstance.tableName,
-                        prismaArgs,
-                    );
-                }
-
-                (buildInstance as any)[originalKey] = async (...args: any[]) => {
-                    let db = buildInstance.prisma;
-                    let methodOptions: MethodOptions | undefined = undefined;
-
-                    if (args.length < dynamicMethodInfo.argsCount) {
-                        const missingParams = dynamicMethodInfo.whereParams
-                            .concat(dynamicMethodInfo.otherParams)
-                            .slice(args.length);
-
-                        throw new VSRepoRuntimeError(
-                            `[VSRepository] (${buildInstance.tableName}: runtime) Missing parameters: ${missingParams.join(", ")}`,
-                            "48670",
-                        );
-                    } else if (args.length > dynamicMethodInfo.argsCount) {
-                        const optionsArg = args[args.length - 1];
-                        methodOptions = validateMethodOptions(optionsArg, buildInstance);
-                        db = methodOptions.db ?? db;
-                    } else {
-                        args.push("1");
-                    }
-
-                    const prismaArgs = buildInstance.vsrepocache.get(originalKey)!(
-                        args,
-                        methodOptions,
-                    );
-
-                    const start = showWorking
-                        ? performanceLoggerStart(
-                              buildInstance.tableName,
-                              dynamicMethodInfo.method,
-                              prismaArgs,
-                          )
-                        : undefined;
-
-                    try {
-                        const result =
-                            await db[buildInstance.tableName][dynamicMethodInfo.method](prismaArgs);
-
-                        if (showWorking)
-                            performanceLoggerEnd(
-                                buildInstance.tableName,
-                                dynamicMethodInfo.method,
-                                start!,
-                            );
-
-                        if (dynamicMethodInfo.existsMode) {
-                            return !!result;
-                        }
-                        return result;
-                    } catch (err) {
-                        // logger(
-                        //     `Fatal error when executing ${dynamicMethodInfo.method}:`,
-                        //     "runtime",
-                        //     buildInstance.tableName,
-                        //     { prismaArgs },
-                        // );
-                        throw err;
-                    }
-                };
-            }
+    /** Marks multiple records as deleted (soft-delete) in batch. Requires `softRemoveKey` to be configured on the repository. */
+    async softRemoveList(
+        pks: PKType[],
+        options?: MethodOptions<Entity, OrmTypes>,
+    ): Promise<CountResult> {
+        if (!this.softRemoveKey) {
+            this.fail(
+                "this method can only be used if you have configured 'softRemoveKey' in this repository.",
+                VSRepoErrorType.BASE,
+            );
+        }
+        if (!Array.isArray(pks)) {
+            this.fail("'pks' must be a valid array", VSRepoErrorType.BASE);
         }
 
-        if (validatedConfig.freeze) Object.freeze(buildInstance);
-        return buildInstance;
+        const key = this.softRemoveKey;
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.updateMany(
+                    this.mergeWheresResolver.resolve(opt.see ?? "all", this.wherePkIn(pks)),
+                    { [key]: new Date() } as DeepPartial<Entity>,
+                    opt,
+                ),
+            "softRemoveList",
+            options,
+        );
+    }
+
+    /** Restores a record previously marked as deleted (soft-delete). Requires `softRemoveKey` to be configured on the repository. */
+    async restore(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
+        if (!this.softRemoveKey) {
+            this.fail(
+                "this method can only be used if you have configured 'softRemoveKey' in this repository.",
+                VSRepoErrorType.BASE,
+            );
+        }
+
+        const key = this.softRemoveKey;
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.update(
+                    this.mergeWheresResolver.resolve(opt.see ?? "all", this.wherePk(pk)),
+                    { [key]: null } as DeepPartial<Entity>,
+                    opt,
+                ),
+            "restore",
+            options,
+        );
+    }
+
+    /** Restores multiple records previously marked as deleted (soft-delete) in batch. Requires `softRemoveKey` to be configured on the repository. */
+    async restoreList(
+        pks: PKType[],
+        options?: MethodOptions<Entity, OrmTypes>,
+    ): Promise<CountResult> {
+        if (!this.softRemoveKey) {
+            this.fail(
+                "this method can only be used if you have configured 'softRemoveKey' in this repository.",
+                VSRepoErrorType.BASE,
+            );
+        }
+        if (!Array.isArray(pks)) {
+            this.fail("'pks' must be a valid array", VSRepoErrorType.BASE);
+        }
+
+        const key = this.softRemoveKey;
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.updateMany(
+                    this.mergeWheresResolver.resolve(opt.see ?? "all", this.wherePkIn(pks)),
+                    { [key]: null } as DeepPartial<Entity>,
+                    opt,
+                ),
+            "restoreList",
+            options,
+        );
     }
 }
-
-export const setupVSRepo = () => (config: unknown) => new VSRepository(config);
