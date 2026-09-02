@@ -5,6 +5,108 @@ All notable changes to this project will be documented in this file.
 (Português) Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
 ---
+ 
+## [2.0.0] - 2026-09-01
+ 
+> Major rewrite. If you're upgrading from v1, see the ["What changed from v1"](./README.md#what-changed-from-v1) table in the README for the full breakdown before migrating.
+ 
+### Changed
+- **BREAKING:** VSRepository is now **ORM-agnostic** — the core no longer talks to Prisma directly, it delegates every operation to a pluggable `VSRepoAdapter`. ORM support now ships as separate packages (e.g. `@vsrepo/prisma7-adapter`) instead of being bundled in the core `vsrepo` package
+- **BREAKING:** Repositories are now defined with a single **class-based** API — `extends VSRepository<Entity, PKType, OrmTypes>` — replacing the v1 functional `setupVSRepo<T, M>()({...}).build(prisma)` and the `DynamicRepository` class
+- **BREAKING:** Dynamic methods are now declared only with the `@DynamicMethod()` decorator on a `declare` field, replacing the `methods: { findByEmail: { map: true } }` config object
+- **BREAKING:** Data projections are now ad-hoc `select`/`relations` passed per call — named, reusable `selectModels`/`defaultSelectModel` were removed
+- **BREAKING:** Eager loading now uses an ORM-agnostic `relations` option instead of the Prisma-specific `include`/`includeModels`
+- **BREAKING:** `requiredWhere` was removed; global scoping is now limited to `softRemoveKey` + a `see: "active" | "removed" | "all"` option
+- **BREAKING:** The case-insensitive filter suffix was renamed from `Insensitive` to `IgnoreCase`
+- **BREAKING:** The `createMany` duplicate-handling suffix was renamed from `SkipDuplicates` to `IgnoreConflicts`
+- **BREAKING:** Error types were reworked — `VSRepoError` now carries a `type: VSRepoErrorType` field (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`); the old subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`) were replaced by the new `VSRepoAdapterError`, which carries an `AdapterErrorCode` and the original ORM error
+- **BREAKING:** Debug logging changed from a `showWorking: true` boolean to a `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) option, plus a new `logSlowThresholdMs` for slow-query warnings
+- **BREAKING:** The `vsrepo generate` CLI type-generation step is no longer part of the v2 core — types now come directly from your entity/ORM types
+- Runtime validation (ordering, pagination, where, adapter config) now uses `valibot` instead of `zod`, for a lighter footprint
+- Inline ordering can now be baked directly into a dynamic method name via `OrderBy<Field>Asc`/`OrderBy<Field>Desc` chains
+- v1 source and docs moved to a dedicated `v1` branch for anyone who still needs the previous Prisma-only release
+
+### Added
+- An ad-hoc `query()` method for raw SQL queries, with transaction support via `db: tx`
+- `VSRepoAdapterError` with a dedicated `AdapterErrorCode`, including a new `INVALID_ADAPTER_CONFIG` code, for surfacing adapter-level failures
+- `VSLogger` exported for use inside custom adapters
+- JSDoc added to every public API surface (everything marked `@publicApi`)
+- First official adapter published: [`@vsrepo/prisma7-adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) (Prisma 7); other ORMs (Prisma 8, TypeORM, Drizzle) are planned but not yet published
+
+### Fixed
+- The case-insensitive mode was being injected in the wrong place when combined with relation filters, producing an incorrect `where`
+- Corrected the argument-index preview shown when an argument is a `where` object
+
+### Removed
+- `patchList` — for a batch partial update, use an `updateManyBy`/`updateManyWhere` dynamic method instead
+- `aggregate`/`groupBy` passthrough support — not implemented yet in v2
+
+---
+ 
+## [2.0.0] - 2026-09-01 (Português)
+ 
+> Reescrita major. Se você está migrando da v1, veja a tabela ["O que mudou da v1"](./README.pt-BR.md#o-que-mudou-da-v1) no README para o detalhamento completo antes de migrar.
+ 
+### Alterado
+- **BREAKING:** O VSRepository agora é **agnóstico de ORM** — o core não conversa mais diretamente com o Prisma, delegando toda operação a um `VSRepoAdapter` plugável. O suporte a ORMs agora é publicado em pacotes separados (ex.: `@vsrepo/prisma7-adapter`) em vez de vir embutido no pacote core `vsrepo`
+- **BREAKING:** Repositories agora são definidos com uma única API **baseada em classes** — `extends VSRepository<Entity, PKType, OrmTypes>` — substituindo o `setupVSRepo<T, M>()({...}).build(prisma)` funcional da v1 e a classe `DynamicRepository`
+- **BREAKING:** Métodos dinâmicos agora são declarados somente com o decorator `@DynamicMethod()` em um campo `declare`, substituindo o objeto de config `methods: { findByEmail: { map: true } }`
+- **BREAKING:** Projeções de dados agora são `select`/`relations` ad-hoc passados em cada chamada — os `selectModels`/`defaultSelectModel` nomeados e reutilizáveis foram removidos
+- **BREAKING:** Eager loading agora usa uma option agnóstica de ORM chamada `relations`, no lugar do `include`/`includeModels` específico do Prisma
+- **BREAKING:** O `requiredWhere` foi removido; o escopo global agora se limita a `softRemoveKey` + uma option `see: "active" | "removed" | "all"`
+- **BREAKING:** O sufixo de filtro case-insensitive foi renomeado de `Insensitive` para `IgnoreCase`
+- **BREAKING:** O sufixo de tratamento de duplicados do `createMany` foi renomeado de `SkipDuplicates` para `IgnoreConflicts`
+- **BREAKING:** Os tipos de erro foram reformulados — `VSRepoError` agora carrega um campo `type: VSRepoErrorType` (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`); as antigas subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`) foram substituídas pelo novo `VSRepoAdapterError`, que carrega um `AdapterErrorCode` e o erro original do ORM
+- **BREAKING:** O log de debug mudou de um boolean `showWorking: true` para uma option `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`), além de um novo `logSlowThresholdMs` para avisos de queries lentas
+- **BREAKING:** O passo de geração de tipos via CLI `vsrepo generate` não faz mais parte do core da v2 — os tipos agora vêm diretamente das suas entidades/tipos do ORM
+- A validação em tempo de execução (ordering, pagination, where, config do adapter) agora usa `valibot` em vez de `zod`, por ser mais leve
+- A ordenação inline agora pode ser embutida diretamente no nome do método dinâmico via cadeias `OrderBy<Campo>Asc`/`OrderBy<Campo>Desc`
+- O código-fonte e a documentação da v1 foram movidos para uma branch `v1` dedicada, para quem ainda precisar da release anterior baseada apenas em Prisma
+
+### Adicionado
+- Um método `query()` ad-hoc para queries SQL raw, com suporte a transações via `db: tx`
+- `VSRepoAdapterError` com um `AdapterErrorCode` dedicado, incluindo um novo código `INVALID_ADAPTER_CONFIG`, para expor falhas em nível de adapter
+- `VSLogger` agora é exportado para uso dentro de adapters customizados
+- JSDoc adicionado a toda a API pública (tudo marcado com `@publicApi`)
+- Primeiro adapter oficial publicado: [`@vsrepo/prisma7-adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) (Prisma 7); outros ORMs (Prisma 8, TypeORM, Drizzle) estão planejados mas ainda não publicados
+
+### Corrigido
+- O modo case-insensitive estava sendo injetado no lugar errado quando combinado com filtros de relação, gerando um `where` incorreto
+- Corrigida a preview do índice do argumento exibida quando um argumento é um objeto `where`
+
+### Removido
+- `patchList` — para uma atualização parcial em lote, use um método dinâmico `updateManyBy`/`updateManyWhere`
+- Suporte de passthrough para `aggregate`/`groupBy` — ainda não implementado na v2
+
+---
+
+## [1.4.2] - 2026-09-02
+
+### Fixed
+- `merge` method now strips `undefined` fields from the source object before merging — previously, when merging objects without relations, `undefined` values from the source were carried into the result, which could overwrite existing fields with `undefined`
+
+---
+
+## [1.4.2] - 2026-09-02 (Português)
+
+### Corrigido
+- O método `merge` agora remove campos com valor `undefined` do objeto de origem antes de mesclar — antes, ao mesclar objetos sem relations, valores `undefined` do objeto de origem eram propagados para o resultado, o que poderia sobrescrever campos existentes com `undefined`
+
+---
+
+## [1.4.1] - 2026-09-01
+
+### Fixed
+- `mode: "insensitive"` was being injected at the wrong level in relation filters — previously, `otherProps` (which includes `mode`) was being assigned to `path[argName]` (the nested relation object) instead of the current filter level, causing the insensitive mode to be placed incorrectly in the generated `where`
+
+---
+
+## [1.4.1] - 2026-09-01 (Português)
+
+### Corrigido
+- `mode: "insensive"` estava sendo injetado no nível errado em filtros de relations — antes, `otherProps` (que inclui `mode`) era atribuído a `path[argName]` (o objeto da relation aninhada) em vez do nível atual do filtro, causando colocação incorreta do modo insensitive no `where` gerado
+
+---
 
 ## [1.4.0] - 2026-08-11
 

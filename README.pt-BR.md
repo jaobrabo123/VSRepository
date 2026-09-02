@@ -15,7 +15,7 @@
 
 > ✅ **Lançado.** O VSRepository v2.0.0 (o core agnóstico de ORM) e o [`@vsrepo/prisma7-adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) já foram publicados e estão prontos para uso. O Prisma 7 é o primeiro adapter totalmente suportado; outros ORMs (TypeORM, Drizzle, etc.) ainda estão em desenvolvimento — veja [Status dos adapters](#status-dos-adapters). Se você precisa da versão anterior, somente Prisma, use o código/docs da [`v1`](https://github.com/jaobrabo123/VSRepository/tree/v1).
 
-Biblioteca de repository pattern **agnóstica de ORM**, com suporte completo a **TypeScript** e **type inference** automático. O VSRepository v2 é uma reescrita da biblioteca [v1](./v1): em vez de falar diretamente com o Prisma, o núcleo agora delega toda operação a um **adapter** plugável, permitindo que a mesma API de repository funcione com Prisma, TypeORM ou qualquer outro ORM/banco que implemente o contrato de adapter.
+Biblioteca de repository pattern **agnóstica de ORM**, com suporte completo a **TypeScript** e **type inference** automático. O VSRepository v2 é uma reescrita da biblioteca [v1](https://github.com/jaobrabo123/VSRepository/tree/v1): em vez de falar diretamente com o Prisma, o núcleo agora delega toda operação a um **adapter** plugável, permitindo que a mesma API de repository funcione com Prisma, TypeORM ou qualquer outro ORM/banco que implemente o contrato de adapter.
 
 O VSRepository permite criar repositories fortemente tipados com:
 
@@ -63,7 +63,7 @@ O VSRepository permite criar repositories fortemente tipados com:
 
 ## O que mudou da v1
 
-Se você vem do código/docs da [v1](./v1), aqui está o resumo. Veja cada seção linkada para detalhes.
+Se você vem do código/docs da [v1](https://github.com/jaobrabo123/VSRepository/tree/v1), aqui está o resumo. Veja cada seção linkada para detalhes.
 
 | Área                                              | v1                                                                                                              | v2                                                                                                                                                                                                                                             |
 | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -960,7 +960,7 @@ npm install ../caminho/vsrepo-1.4.0.tgz
 Observações:
 
 - `pnpm build` executa `tsc -p tsconfig.build.json`, que gera o JS compilado e as declarações de tipo em `dist/` com `rootDir: src`.
-- O pacote publicado contém **apenas** a pasta `dist/` além dos READMEs e da `LICENSE` (veja `files` no `package.json`). Fontes, testes, a pasta `v1/` e `generated/` **não** são enviados — os adapters viverão em seus próprios pacotes `@vsrepo/*-adapter`.
+- O pacote publicado contém **apenas** a pasta `dist/` além dos READMEs e da `LICENSE` (veja `files` no `package.json`). Os adapters viverão em seus próprios pacotes `@vsrepo/*-adapter`.
 - O core é ORM-agnóstico e não tem dependência peer de `@prisma/client`.
 
 ---
