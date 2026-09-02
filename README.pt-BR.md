@@ -13,7 +13,7 @@
 
 🇧🇷 Você está lendo a versão em português. [🇺🇸 Read in English](./README.md)
 
-> ⚠️ **Trabalho em andamento.** Este documento descreve a branch `v2`, uma reescrita em andamento do VSRepository. O núcleo (classe de repositório, parser de métodos dinâmicos, decoradores, tratamento de erros) já funciona de ponta a ponta, mas nem todos os adapters estão completos ainda — veja [Status dos adapters](#status-dos-adapters) antes de depender desta branch. Se você precisa da versão estável, somente Prisma, use o código/docs da [`v1`](https://github.com/jaobrabo123/VSRepository/tree/v1).
+> ✅ **Lançado.** O VSRepository v2.0.0 (o core agnóstico de ORM) e o [`@vsrepo/prisma7-adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) já foram publicados e estão prontos para uso. O Prisma 7 é o primeiro adapter totalmente suportado; outros ORMs (TypeORM, Drizzle, etc.) ainda estão em desenvolvimento — veja [Status dos adapters](#status-dos-adapters). Se você precisa da versão anterior, somente Prisma, use o código/docs da [`v1`](https://github.com/jaobrabo123/VSRepository/tree/v1).
 
 Biblioteca de repository pattern **agnóstica de ORM**, com suporte completo a **TypeScript** e **type inference** automático. O VSRepository v2 é uma reescrita da biblioteca [v1](./v1): em vez de falar diretamente com o Prisma, o núcleo agora delega toda operação a um **adapter** plugável, permitindo que a mesma API de repository funcione com Prisma, TypeORM ou qualquer outro ORM/banco que implemente o contrato de adapter.
 
@@ -93,27 +93,28 @@ O VSRepository v2 é **agnóstico de ORM por design**. O pacote core (`vsrepo`) 
 - `@vsrepo/typeorm-adapter`
 - `@vsrepo/drizzle-adapter`
 
-Nenhum desses pacotes de adapter foi publicado no npm ainda — o contrato do `VSRepoAdapter` foi validado contra protótipos de referência durante o desenvolvimento do core, e esses protótipos não são mais distribuídos nesta branch. O Prisma 7 é o mais adiantado: o desenvolvimento ativo vive em uma implementação dedicada e completa (ver abaixo).
+O adapter do Prisma 7 já foi publicado no npm como `@vsrepo/prisma7-adapter` — por enquanto é o **único** adapter publicado. Os adapters para os outros ORMs listados acima (Prisma 8, TypeORM, Drizzle) estão **planejados**; eles só ainda não foram publicados. Até que exista um pacote `@vsrepo/*-adapter` oficial para o seu ORM, você pode escrever o seu próprio para o seu projeto e, se quiser, publicá-lo e abrir um PR para ajudar a fazer o ecossistema crescer — contribuições nesse sentido são muito bem-vindas.
 
-| Adapter                                                                                  | Status                                                                                                                                                                                                                                                           |
-| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Prisma 7 ([`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter)) | 🟢 **Desenvolvimento ativo, implementação completa** — ainda não publicado no npm, mas implementa todo o contrato de `VSRepoAdapter` (CRUD, relations, transactions, `merge`, logging) com testes; veja o README desse repositório pras instruções de vendoring. |
-| TypeORM (`@vsrepo/typeorm-adapter`)                                                      | 🔴 **Ainda não implementado.** Só foi escrito um parser de referência da cláusula `where` (`parseVSRepoWhere`) para validar o design; é o ponto de partida planejado do futuro pacote `@vsrepo/typeorm-adapter`.                                                 |
-| Adapters customizados                                                                    | 🟢 Totalmente suportados hoje — implemente você mesmo a classe abstrata [`VSRepoAdapter`](#escrevendo-seu-próprio-adapter) para qualquer ORM/banco que precisar, no seu próprio projeto ou pacote, seguindo o mesmo formato esperado dos `@vsrepo/*-adapter`.    |
+| Adapter                                                                                  | Status                                                                                                                                                                                                                          |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Prisma 7 (`@vsrepo/prisma7-adapter`)                                                     | 🟢 **Lançado** — publicado no npm, implementa todo o contrato de `VSRepoAdapter` (CRUD, relations, transactions, `merge`, logging) com testes; veja o [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) para o código-fonte e docs. |
+| TypeORM (`@vsrepo/typeorm-adapter`)                                                      | 🟡 **Planejado, ainda não publicado.** Só foi escrito um parser de referência da cláusula `where` (`parseVSRepoWhere`) para validar o design; é o ponto de partida planejado do futuro pacote `@vsrepo/typeorm-adapter`. Contribuições da comunidade nessa frente são bem-vindas. |
+| Outros ORMs (Prisma 8, Drizzle, etc.)                                                    | 🟡 **Planejados, ainda não publicados.** Nenhum pacote oficial existe ainda — por enquanto, escreva o seu próprio adapter (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) e considere publicá-lo/contribuir de volta com o projeto. |
+| Adapters customizados                                                                    | 🟢 Totalmente suportados hoje — implemente você mesmo a classe abstrata [`VSRepoAdapter`](#escrevendo-seu-próprio-adapter) para qualquer ORM/banco que precisar, no seu próprio projeto ou pacote, seguindo o mesmo formato esperado dos `@vsrepo/*-adapter`. |
 
-Resumindo: a classe de repository, os decoradores `@DynamicMethod`/`@QueryMethod`, o engine de parsing de nomes, o tratamento de erros e o logging já funcionam de ponta a ponta — o que ainda está sendo construído é a integração concreta com cada ORM, que será distribuída como pacotes `@vsrepo/*-adapter` separados, e não como parte do pacote core `vsrepo`. Trate esta branch como um preview da arquitetura da v2, e não como um substituto imediato para a v1.
+Resumindo: a classe de repository, os decoradores `@DynamicMethod`/`@QueryMethod`, o engine de parsing de nomes, o tratamento de erros e o logging já funcionam de ponta a ponta, e o suporte ao Prisma 7 agora é um adapter lançado e publicado. Adapters oficiais para os demais ORMs estão no roadmap e serão distribuídos como pacotes `@vsrepo/*-adapter` separados, e não como parte do pacote core `vsrepo` — mas você não precisa esperar por isso: escrever (e opcionalmente publicar) o seu próprio adapter enquanto isso é uma forma totalmente suportada de usar a v2 hoje e de contribuir de volta com o projeto.
 
 ---
 
 ## Instalação
 
-Quando lançada, a v2 será instalada como o pacote core mais um pacote de adapter para o seu ORM, por exemplo:
+A v2 é instalada como o pacote core mais um pacote de adapter para o seu ORM, por exemplo:
 
 ```bash
 npm i vsrepo @vsrepo/prisma7-adapter
 ```
 
-> Nem o `vsrepo` v2 nem nenhum pacote `@vsrepo/*-adapter` foram publicados no npm ainda. O core já pode ser compilado e empacotado a partir desta branch (`pnpm build` + `npm pack` + `npm install ../caminho/vsrepo-<versão>.tgz`) e o seu `package.json` reflete a API da v2. O que ainda falta para um release publicado de verdade são os pacotes `@vsrepo/*-adapter` e o publish em si. Até lá, se quiser usar a v2 hoje no Prisma 7, faça vendoring do [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) (veja o README dele), que está em desenvolvimento ativo; pra qualquer outro ORM, instale o core a partir do tarball empacotado ou consuma da pasta `src/` e escreva seu próprio adapter (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)).
+> O `vsrepo` v2.0.0 e o `@vsrepo/prisma7-adapter` já foram publicados no npm e estão prontos para uso. Para qualquer ORM além do Prisma 7, ainda não existe um pacote de adapter — instale o core e escreva o seu próprio (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)).
 
 ---
 
@@ -164,7 +165,7 @@ class UserRepository extends VSRepository<User, string> {
 export default new UserRepository();
 ```
 
-> A API do core (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums e tipos) é importada do entry point único `vsrepo`. O adapter concreto vem de um pacote **separado** (`@vsrepo/*-adapter`). Até que esses pacotes de adapter sejam publicados, no Prisma 7 faça vendoring do [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) de verdade (o construtor dele recebe um objeto de config — `tableName`, `pkName`, `relations`/`logLevel` opcionais — como no exemplo acima); pra qualquer outro ORM, implemente o contrato `VSRepoAdapter` você mesmo (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)).
+> A API do core (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums e tipos) é importada do entry point único `vsrepo`. O adapter concreto vem de um pacote **separado** (`@vsrepo/*-adapter`). No Prisma 7, instale o [`@vsrepo/prisma7-adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) já publicado (o construtor dele recebe um objeto de config — `tableName`, `pkName`, `relations`/`logLevel` opcionais — como no exemplo acima). Adapters oficiais para outros ORMs estão planejados, mas ainda não publicados; até lá, você pode implementar o contrato `VSRepoAdapter` você mesmo (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) — e publicá-lo para ajudar o projeto é muito bem-vindo.
 
 > **O terceiro generic (`OrmTypes`):** `VSRepository<Entity, PKType, OrmTypes>` aceita um terceiro type parameter opcional descrevendo os tipos de client/transaction do seu ORM, via `VSRepoOrmTypes` (`{ dbClient; dbTransaction }`). Ao fornecê-lo, `getDbClient()`, o callback de `transaction()` e a option `db` de todo método passam a ser tipados corretamente, em vez de `any`:
 > ```typescript
@@ -978,7 +979,7 @@ Observações:
 ```
 
 - `reflect-metadata` (já incluso como dependência, importado internamente — você não precisa importá-lo você mesmo)
-- Pelo menos um `VSRepoAdapter` funcional para o seu banco — nenhum pacote `@vsrepo/*-adapter` foi publicado ainda, então por enquanto isso significa escrever o seu próprio (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) ou fazer vendoring do ativo [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) no Prisma 7 (veja [Status dos adapters](#status-dos-adapters))
+- Pelo menos um `VSRepoAdapter` funcional para o seu banco — no Prisma 7, instale o [`@vsrepo/prisma7-adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) já publicado (veja [Status dos adapters](#status-dos-adapters)); adapters oficiais para outros ORMs estão planejados, mas ainda não publicados, então por enquanto isso significa escrever o seu próprio (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) — e, se publicá-lo, contribuir de volta com o projeto é bem-vindo
 
 ---
 
