@@ -21,7 +21,12 @@ export type { VSRepoOptions } from "./types/vsrepo/vsrepo-options.type.js";
 export type { VSRepoOrmTypes } from "./types/vsrepo/vsrepo-orm-types.type.js";
 export type { VSRepoArgs } from "./types/vsrepo/vsrepo-args.type.js";
 export type { VSRepoMethod } from "./types/vsrepo/vsrepo-method.type.js";
-export type { VSRepoWhere, VSRepoWherePlain, VSRepoFieldWhere, VSRepoFieldOperators } from "./types/vsrepo/vsrepo-where.type.js";
+export type {
+    VSRepoWhere,
+    VSRepoWherePlain,
+    VSRepoFieldWhere,
+    VSRepoFieldOperators,
+} from "./types/vsrepo/vsrepo-where.type.js";
 export type { VSRepoRelations, RelationKeys } from "./types/vsrepo/vsrepo-relations.type.js";
 export type { VSRepoSelect } from "./types/vsrepo/vsrepo-select.type.js";
 export type { VSRepoTransactionOptions } from "./types/vsrepo/vsrepo-transaction-options.type.js";
@@ -39,6 +44,10 @@ export type { Pagination } from "./types/utils/pagination.type.js";
 export type { Primitive } from "./types/utils/primitive.type.js";
 export type { SeeMode } from "./types/utils/see-mode.type.js";
 export type { VSRepoQueryOptions } from "./types/vsrepo/vsrepo-query-options.type";
+export type { DecimalLike } from "./types/utils/decimal-like.type.js";
+export type { NumericKeys } from "./types/utils/numeric-keys.type.js";
+export type { NumericLike } from "./types/utils/numeric-like.type.js";
+export type { RestrictMethodOptions } from "./types/utils/restrict-method-options.type.js";
 
 // Internal features
-export { VSLogger } from "./internal/utils/vs-logger.util.js"
+export { VSLogger } from "./internal/utils/vs-logger.util.js";

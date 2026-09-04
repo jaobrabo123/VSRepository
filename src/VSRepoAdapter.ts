@@ -2,6 +2,7 @@ import { AdapterMethodOptions } from "./types/adapter/adapter-method-options.typ
 import { AdapterQueryOptions } from "./types/adapter/adapter-query-options.type";
 import { CountResult } from "./types/utils/count-result.type";
 import { DeepPartial } from "./types/utils/deep-partial.type";
+import { NumericKeys } from "./types/utils/numeric-keys.type";
 import { VSRepoTransactionOptions } from "./types/vsrepo/vsrepo-transaction-options.type";
 import { VSRepoWhere } from "./types/vsrepo/vsrepo-where.type";
 
@@ -137,4 +138,56 @@ export abstract class VSRepoAdapter<T> {
         update: DeepPartial<T>,
         options?: AdapterMethodOptions<T>,
     ): Promise<T>;
+
+    public abstract incrementOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+
+    public abstract decrementOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+
+    public abstract multiplyOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+
+    public abstract divideOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+
+    public abstract sum(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
+
+    public abstract average(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
+
+    public abstract min(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
+
+    public abstract max(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
 }

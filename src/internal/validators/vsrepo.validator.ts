@@ -16,6 +16,8 @@ import paginationSchema from "./schemas/pagination.schema";
 import whereSchema from "./schemas/where.schema";
 import { VSRepoWhere } from "../../types/vsrepo/vsrepo-where.type";
 import { VSRepoQueryOptions } from "../../types/vsrepo/vsrepo-query-options.type";
+import { NumericLike } from "../../types/utils/numeric-like.type";
+import { RestrictMethodOptions } from "../../types/utils/restrict-method-options.type";
 
 export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
     // * Setado depois pelo VSRepository, pois no momento em que validateConstructorOptions
@@ -76,6 +78,21 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         }
 
         return parsed.output as unknown as MethodOptions<T>;
+    }
+
+    private readonly restrictMethodOptionsSchema = v.object({
+        db: v.optional(v.any()),
+        see: v.optional(v.picklist(["active", "removed", "all"])),
+    });
+
+    validateRestrictMethodOptions(options?: unknown): RestrictMethodOptions<T, O> {
+        const parsed = v.safeParse(this.restrictMethodOptionsSchema, options ?? {});
+
+        if (!parsed.success) {
+            this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR);
+        }
+
+        return parsed.output as unknown as RestrictMethodOptions<T, O>;
     }
 
     private readonly getAllMethodOptionsSchema = v.object({
@@ -171,5 +188,20 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         }
 
         return parsed.output as VSRepoWhere<T>;
+    }
+
+    private decimalLikeSchema = v.looseObject({
+        toNumber: v.function(),
+        decimalPlaces: v.function(),
+    });
+
+    private numericLikeSchema = v.union([v.number(), v.bigint(), this.decimalLikeSchema]);
+
+    assertIsNumericLike(value: unknown): asserts value is NumericLike {
+        const parsed = v.safeParse(this.numericLikeSchema, value);
+
+        if (!parsed.success) {
+            this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR);
+        }
     }
 }
