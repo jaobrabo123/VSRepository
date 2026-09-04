@@ -41,6 +41,14 @@ export function createFakeAdapter<T = any>(): jest.Mocked<VSRepoAdapter<T>> {
         exists: jest.fn(),
         merge: jest.fn(),
         upsert: jest.fn(),
+        incrementOne: jest.fn(),
+        decrementOne: jest.fn(),
+        multiplyOne: jest.fn(),
+        divideOne: jest.fn(),
+        sum: jest.fn(),
+        average: jest.fn(),
+        min: jest.fn(),
+        max: jest.fn(),
     } as unknown as jest.Mocked<VSRepoAdapter<T>>;
 
     return adapter;

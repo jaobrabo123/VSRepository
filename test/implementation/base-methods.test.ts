@@ -90,7 +90,7 @@ describe("save / saveList / patch", () => {
         const saved = buildUser({ name: "Maria", email: "maria@email.com" });
         fakeAdapter.save.mockResolvedValueOnce(saved);
 
-        const result = await userRepository.save(payload as any);
+        const result = await userRepository.save(payload);
 
         expect(fakeAdapter.save).toHaveBeenCalledWith(payload, expect.anything());
         expect(result).toBe(saved);
@@ -100,7 +100,7 @@ describe("save / saveList / patch", () => {
         const payload = [{ name: "Maria" }, { name: "João" }];
         fakeAdapter.saveMany.mockResolvedValueOnce([buildUser(), buildUser()]);
 
-        await userRepository.saveList(payload as any);
+        await userRepository.saveList(payload);
 
         expect(fakeAdapter.saveMany).toHaveBeenCalledWith(payload, expect.anything());
     });
@@ -113,7 +113,7 @@ describe("save / saveList / patch", () => {
         const patched = buildUser({ name: "Novo nome" });
         fakeAdapter.update.mockResolvedValueOnce(patched);
 
-        const result = await userRepository.patch("user-1", { name: "Novo nome" } as any);
+        const result = await userRepository.patch("user-1", { name: "Novo nome" });
 
         expect(fakeAdapter.update).toHaveBeenCalledWith(
             { id: "user-1" },
@@ -172,9 +172,9 @@ describe("total / has / merge", () => {
 
     it("'merge' delega para 'adapter.merge' sem persistir nada", async () => {
         const merged = { ...buildUser(), name: "Nome atualizado" };
-        fakeAdapter.merge.mockResolvedValueOnce(merged as any);
+        fakeAdapter.merge.mockResolvedValueOnce(merged);
 
-        const result = await userRepository.merge("user-1", { name: "Nome atualizado" } as any);
+        const result = await userRepository.merge("user-1", { name: "Nome atualizado" });
 
         expect(fakeAdapter.merge).toHaveBeenCalledWith(
             { id: "user-1" },

@@ -38,6 +38,8 @@ export type User = {
     userType: UserType;
     active: boolean;
     likesVSRepo: boolean;
+    balance: number;
+    bonusPoints: number | null;
     createdAt: Date;
     updatedAt: Date;
     deletedAt?: Date | null;
@@ -54,6 +56,8 @@ export function buildUser(overrides: Partial<User> = {}): User {
         userType: UserType.COMMON,
         active: true,
         likesVSRepo: true,
+        balance: 100,
+        bonusPoints: null,
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
         updatedAt: new Date("2026-01-01T00:00:00.000Z"),
         ...overrides,

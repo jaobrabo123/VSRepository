@@ -11,6 +11,7 @@ import { VSRepository } from "../../src/VSRepository";
 import { VSRepoAdapter } from "../../src/VSRepoAdapter";
 import { createFakeAdapter } from "../helpers/fake-adapter";
 import { User, buildUser } from "../helpers/entities";
+import { TransactionIsolationLevel } from "../../src";
 
 class UserRepository extends VSRepository<User, string> {
     constructor(adapter: VSRepoAdapter<User>) {
@@ -32,12 +33,12 @@ describe("transaction()", () => {
         fakeAdapter.runInTransaction.mockImplementationOnce((f: any) => f("fake-tx"));
 
         const result = await userRepository.transaction(fn, {
-            isolationLevel: "Serializable" as any,
+            isolationLevel: TransactionIsolationLevel.SERIALIZABLE,
         });
 
         expect(fakeAdapter.runInTransaction).toHaveBeenCalledWith(
             fn,
-            expect.objectContaining({ isolationLevel: "Serializable" }),
+            expect.objectContaining({ isolationLevel: TransactionIsolationLevel.SERIALIZABLE }),
         );
         expect(fn).toHaveBeenCalledWith("fake-tx");
         expect(result).toBe("fake-tx");
@@ -59,9 +60,7 @@ describe("compartilhando o client de transação via 'options.db'", () => {
         await userRepository.get("user-1", { db: tx });
 
         expect(fakeAdapter.getDbClient).not.toHaveBeenCalled();
-        expect(fakeAdapter.findOne.mock.calls[0]?.[1]).toEqual(
-            expect.objectContaining({ db: tx }),
-        );
+        expect(fakeAdapter.findOne.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ db: tx }));
     });
 
     it("sem 'options.db', busca o client padrão via 'adapter.getDbClient()'", async () => {
