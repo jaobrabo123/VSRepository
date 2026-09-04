@@ -39,6 +39,9 @@ O VSRepository permite criar repositories fortemente tipados com:
 - [Options do construtor](#options-do-construtor)
 - [Métodos base](#métodos-base)
 - [Soft-delete](#soft-delete)
+- [Métodos atômicos e de agregação](#métodos-atômicos-e-de-agregação)
+    - [Quais campos são elegíveis](#quais-campos-são-elegíveis)
+    - [Escrevendo um adapter](#escrevendo-um-adapter)
 - [`select` e `relations`](#select-e-relations)
 - [Métodos dinâmicos](#métodos-dinâmicos)
     - [Prefixos disponíveis](#prefixos-disponíveis)
@@ -97,7 +100,7 @@ O adapter do Prisma 7 já foi publicado no npm como `@vsrepo/prisma7-adapter` �
 
 | Adapter                                                                                  | Status                                                                                                                                                                                                                          |
 | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Prisma 7 (`@vsrepo/prisma7-adapter`)                                                     | 🟢 **Lançado** — publicado no npm, implementa todo o contrato de `VSRepoAdapter` (CRUD, relations, transactions, `merge`, logging) com testes; veja o [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) para o código-fonte e docs. |
+| Prisma 7 (`@vsrepo/prisma7-adapter`)                                                     | 🟢 **Lançado** — publicado no npm, implementa o contrato de `VSRepoAdapter` (CRUD, relations, transactions, `merge`, logging) com testes; veja o [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) para o código-fonte e docs. **Nota:** os métodos atômicos/de agregação (`incrementOne`, `decrementOne`, `multiplyOne`, `divideOne`, `sum`, `average`, `min`, `max` — veja [Métodos atômicos e de agregação](#métodos-atômicos-e-de-agregação)) foram adicionados ao contrato do `VSRepoAdapter` depois do último release desse adapter; confirme no changelog/versão dele se já implementam esses métodos antes de depender de `increment`/`sum`/etc. contra o Prisma 7. |
 | TypeORM (`@vsrepo/typeorm-adapter`)                                                      | 🟡 **Planejado, ainda não publicado.** Só foi escrito um parser de referência da cláusula `where` (`parseVSRepoWhere`) para validar o design; é o ponto de partida planejado do futuro pacote `@vsrepo/typeorm-adapter`. Contribuições da comunidade nessa frente são bem-vindas. |
 | Outros ORMs (Prisma 8, Drizzle, etc.)                                                    | 🟡 **Planejados, ainda não publicados.** Nenhum pacote oficial existe ainda — por enquanto, escreva o seu próprio adapter (veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)) e considere publicá-lo/contribuir de volta com o projeto. |
 | Adapters customizados                                                                    | 🟢 Totalmente suportados hoje — implemente você mesmo a classe abstrata [`VSRepoAdapter`](#escrevendo-seu-próprio-adapter) para qualquer ORM/banco que precisar, no seu próprio projeto ou pacote, seguindo o mesmo formato esperado dos `@vsrepo/*-adapter`. |
@@ -231,11 +234,19 @@ Disponíveis automaticamente em toda subclasse de `VSRepository`:
 | `removeList(pks, options?)` | Remove vários registros pela primary key, retornando `{ count }`.                                                                     |
 | `total(options?)`           | Retorna o total de registros.                                                                                                         |
 | `has(pk, options?)`         | Verifica se um registro existe, retornando `boolean`.                                                                                 |
+| `increment(pk, field, value, options?)` | Adiciona `value` a um campo numérico de forma atômica. Veja [Métodos atômicos e de agregação](#métodos-atômicos-e-de-agregação). |
+| `decrement(pk, field, value, options?)` | Subtrai `value` de um campo numérico de forma atômica.                                                                    |
+| `multiply(pk, field, value, options?)`  | Multiplica um campo numérico por `value` de forma atômica.                                                                |
+| `divide(pk, field, value, options?)`    | Divide um campo numérico por `value` de forma atômica.                                                                    |
+| `sum(field, where?, options?)`          | Soma um campo numérico em todos os registros que baterem no filtro; `null` se nenhum bater.                               |
+| `average(field, where?, options?)`      | Média aritmética de um campo numérico em todos os registros que baterem no filtro; `null` se nenhum bater.                |
+| `min(field, where?, options?)`          | Valor mínimo de um campo numérico em todos os registros que baterem no filtro; `null` se nenhum bater.                    |
+| `max(field, where?, options?)`          | Valor máximo de um campo numérico em todos os registros que baterem no filtro; `null` se nenhum bater.                    |
 | `transaction(fn, options?)` | Executa `fn` dentro de uma transação nativa do ORM.                                                                                   |
 | `getDbClient()`             | Retorna a instância do client do ORM usada fora de transações.                                                                        |
 | `query<T>(query, options?)` | Executa uma instrução SQL raw diretamente contra o banco. Veja [Queries raw pontuais com `query()`](#queries-raw-pontuais-com-query). |
 
-Todos os métodos acima (exceto `transaction`, `query` e `getDbClient`, que recebem options proprias ou nenhuma) aceitam um objeto `MethodOptions<Entity, OrmTypes>` como último argumento (`select`, `relations`, `see`, `db`).
+A maioria dos métodos acima aceita um objeto `MethodOptions<Entity, OrmTypes>` como último argumento (`select`, `relations`, `see`, `db`). Alguns — `total`, `has`, `removeList`, `sum`, `average`, `min`, `max`, e os métodos em lote de soft-delete (`softRemoveList`/`restoreList`) — não retornam/moldam uma `Entity`, então aceitam o tipo mais restrito `RestrictMethodOptions<Entity, OrmTypes>` (só `see`, `db`; sem `select`/`relations`). `transaction`, `query` e `getDbClient` recebem options próprias ou nenhuma.
 
 ---
 
@@ -267,6 +278,62 @@ await userRepository.getAll({ see: "active" }); // padrão — apenas registros 
 await userRepository.getAll({ see: "removed" }); // apenas registros com soft-delete
 await userRepository.getAll({ see: "all" }); // todos, ignorando o soft-delete
 ```
+
+---
+
+## Métodos atômicos e de agregação
+
+Toda subclasse de `VSRepository` ganha 8 métodos extras para trabalhar com campos numéricos, divididos em dois grupos:
+
+**Updates atômicos** — avaliados no servidor contra o valor *atual* da linha (`UPDATE ... SET field = field + value`), não um read-modify-write feito no client:
+
+```typescript
+await userRepository.increment("user-1", "balance", 50); // balance = balance + 50
+await userRepository.decrement("user-1", "balance", 50); // balance = balance - 50
+await userRepository.multiply("user-1", "balance", 2); // balance = balance * 2
+await userRepository.divide("user-1", "balance", 4); // balance = balance / 4
+```
+
+Os quatro retornam a `Entity` atualizada e aceitam o `MethodOptions<Entity, OrmTypes>` completo (`select`, `relations`, `see`, `db`) como último argumento, igual `get`/`save`/`patch`.
+
+**Agregações** — calculadas sobre todos os registros que baterem num `where` (opcional):
+
+```typescript
+await userRepository.sum("balance"); // soma do saldo de todos os registros ativos
+await userRepository.sum("balance", { active: true }); // ...restrito por um where
+await userRepository.average("balance");
+await userRepository.min("balance");
+await userRepository.max("balance");
+```
+
+Os quatro retornam `number | null` — `null` quando nenhum registro bate no filtro, espelhando o comportamento de `SUM()`/`AVG()`/`MIN()`/`MAX()` do SQL, que retornam `NULL` (não `0`) sobre um conjunto vazio. Diferente dos métodos atômicos, eles aceitam o tipo mais restrito `RestrictMethodOptions<Entity, OrmTypes>` (só `see`, `db` — sem `select`/`relations`, já que o resultado é um número simples, não uma `Entity` moldada).
+
+Os dois grupos respeitam `softRemoveKey`/`see` do mesmo jeito que todo outro método base — `sum("balance")` só soma registros não removidos por padrão; passe `{ see: "all" }` ou `{ see: "removed" }` para mudar isso.
+
+### Quais campos são elegíveis
+
+`field` é restrito a `NumericKeys<Entity>` — chaves cujo valor (ignorando `null`/`undefined`) é um `number`, um `bigint`, ou um objeto `DecimalLike` (qualquer coisa que exponha `toNumber()` e `decimalPlaces()`, como o `Prisma.Decimal` do Prisma):
+
+```typescript
+type Product = { id: string; name: string; price: Decimal; stock: number | null };
+
+await productRepository.increment(id, "price", new Decimal(10.5)); // ok — Decimal-like
+await productRepository.increment(id, "stock", 5); // ok — campos numéricos nullable são incluídos
+await productRepository.increment(id, "name", 1); // erro de compilação — "name" não é numérico
+```
+
+`value` é tipado como `NonNullable<Entity[Field]>` — precisa bater exatamente com o tipo do próprio campo. Um campo `Decimal` espera uma instância de `Decimal`, não um `number`/`string` puro:
+
+```typescript
+await productRepository.increment(id, "price", new Decimal(10.5)); // ok
+await productRepository.increment(id, "price", 10.5); // erro de compilação — envolva: new Decimal(10.5)
+```
+
+Vale notar que vários ORMs (Drizzle, MikroORM, TypeORM) representam colunas `decimal`/`numeric` como `string` pura por padrão, para evitar perda de precisão de ponto flutuante — um campo `string` **não** satisfaz `NumericKeys<Entity>` por padrão. Configure a coluna em modo numérico (ou um transformer) nesses ORMs se quiser que o campo fique disponível para esses 8 métodos.
+
+### Escrevendo um adapter
+
+O `VSRepoAdapter` espelha as mesmas 8 operações (`incrementOne`, `decrementOne`, `multiplyOne`, `divideOne`, `sum`, `average`, `min`, `max` — veja [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)). Cada adapter traduz isso para o que o ORM/banco considera "nativo": o Prisma tem um formato de update embutido (`{ field: { increment: value } }`) e uma chamada `aggregate()`; outros ORMs em geral precisam de um `QueryBuilder`/expressão `sql` raw (ex.: `SET field = field * :value`, `SELECT SUM(field) ...`). Os métodos atômicos precisam retornar o registro refletindo o estado *depois* do write — se a API de update atômico do ORM só retorna a quantidade de linhas afetadas, faça uma leitura extra em vez de devolver uma cópia desatualizada que já estava em memória.
 
 ---
 
@@ -618,6 +685,7 @@ Além dos tipos que descrevem o formato da entidade já vistos acima (`VSRepoSel
 ```typescript
 import type {
     MethodOptions,
+    RestrictMethodOptions,
     Pagination,
     Ordering,
     OrderByField,
@@ -627,6 +695,9 @@ import type {
     CountResult,
     QueryMethodArg,
     KeysOfType,
+    NumericKeys,
+    NumericLike,
+    DecimalLike,
     Primitive,
     VSRepoWhere,
     VSRepoOrmTypes,
@@ -637,7 +708,8 @@ import type {
 
 | Tipo                                                | Descrição                                                                                                                                                                                                           | Usado por                                                                                                                                                           |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MethodOptions<T, K>`                               | Options aceitas como último argumento por todo método base e dinâmico: `select`, `relations`, `see`, `db`.                                                                                                          | [Métodos base](#métodos-base), [Métodos Dinâmicos](#métodos-dinâmicos).                                                                                             |
+| `MethodOptions<T, K>`                               | Options aceitas como último argumento pela maioria dos métodos base e dinâmicos: `select`, `relations`, `see`, `db`.                                                                                                | [Métodos base](#métodos-base), [Métodos Dinâmicos](#métodos-dinâmicos).                                                                                             |
+| `RestrictMethodOptions<T, K>`                       | `MethodOptions<T, K>` restrito, expondo só `see`/`db` — usado pelos métodos que não retornam/moldam uma `Entity` (`total`, `has`, `sum`, `average`, `min`, `max`, `removeList`, `softRemoveList`, `restoreList`). | [Métodos base](#métodos-base), [Métodos atômicos e de agregação](#métodos-atômicos-e-de-agregação).                                                                 |
 | `Pagination`                                        | `{ limit?, offset? }` aceito por `getAll` e pelos métodos dinâmicos com `Paginated`.                                                                                                                                | [Métodos base](#métodos-base), [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct).                                                                  |
 | `Ordering<T>` / `OrderByField<T>` / `SortDirection` | Formato de ordenação aceito por `getAll`, `defaultOrdering` e `injectOrdering`, e pelos métodos dinâmicos com `Ordered`. Pode ser um único objeto ou um array encadeado; objetos aninhados ordenam relações to-one. | [Options do construtor](#options-do-construtor), [Options do decorador](#options-do-decorador), [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct). |
 | `SeeMode`                                           | `"active" \| "removed" \| "all"` — controla a visibilidade de registros com soft-delete.                                                                                                                            | [Soft-delete](#soft-delete).                                                                                                                                        |
@@ -645,6 +717,9 @@ import type {
 | `CountResult`                                       | `{ count: number }` — o formato retornado por operações em lote.                                                                                                                                                    | `removeList`, `softRemoveList`, `restoreList`, `createManyIgnoreConflicts`.                                                                                         |
 | `QueryMethodArg<T>`                                 | `{ args?: T, db? }` — parâmetros posicionais do SQL (`$1`, `$2`, ...) e cliente de transação para o `@QueryMethod`.                                                                                                 | [Query methods (SQL raw)](#query-methods-sql-raw).                                                                                                                  |
 | `KeysOfType<T, K>`                                  | Extrai as chaves de `T` cujo tipo de valor é atribuível a `K`.                                                                                                                                                      | Restringe `pkName`, em [Options do construtor](#options-do-construtor), aos campos da entidade compatíveis com o tipo de chave primária configurado.                |
+| `NumericKeys<T>`                                    | Extrai as chaves de `T` cujo tipo de valor (ignorando `null`/`undefined`) é atribuível a `NumericLike`. Campos numéricos nullable (`number \| null`) são incluídos.                                                | Restringe `field` em [Métodos atômicos e de agregação](#métodos-atômicos-e-de-agregação) (`increment`, `sum`, etc).                                                 |
+| `NumericLike`                                       | `number \| bigint \| DecimalLike`.                                                                                                                                                                                   | [Métodos atômicos e de agregação](#métodos-atômicos-e-de-agregação).                                                                                                 |
+| `DecimalLike`                                       | Formato estrutural de um valor decimal de precisão arbitrária (`{ toNumber(): number; decimalPlaces(): number }`), compatível com o `Prisma.Decimal` do Prisma sem precisar importá-lo diretamente.                | [Quais campos são elegíveis](#quais-campos-são-elegíveis).                                                                                                           |
 | `Primitive`                                         | União de tipos escalares (`string \| number \| boolean \| bigint \| symbol \| undefined \| null \| Date`) tratados como valores-folha — e não relações — ao percorrer o formato de uma entidade.                    | Usado por `Ordering<T>` para distinguir campos escalares de campos de relação.                                                                                      |
 | `VSRepoWhere<T>`                                    | Tipo de filtro agnóstico de ORM aceito pelos métodos dinâmicos `*Where` (ex.: `findWhere`, `findOneWhere`, `updateWhere`). Suporta filtros de campo, operadores lógicos (`AND`/`OR`/`NOT`) e filtros de relação.    | [Prefixos `findWhere`, `findOneWhere` e demais `*Where`](#prefixos-disponíveis).                                                                                    |
 | `VSRepoOrmTypes`                                    | `{ dbClient; dbTransaction }` — descreve os tipos de client/transaction do seu ORM. Passado como terceiro generic de `VSRepository<Entity, PKType, OrmTypes>` para tipar `getDbClient()`, `transaction()` e a option `db` em vez de `any`. | [Criando um repository](#criando-um-repository).                                                                                                                    |
@@ -753,6 +828,51 @@ export abstract class VSRepoAdapter<T> {
         update: DeepPartial<T>,
         options?: AdapterMethodOptions<T>,
     ): Promise<T>;
+
+    abstract incrementOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+    abstract decrementOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+    abstract multiplyOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+    abstract divideOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+    abstract sum(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
+    abstract average(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
+    abstract min(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
+    abstract max(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
 }
 ```
 

@@ -39,6 +39,9 @@ VSRepository lets you create strongly-typed repositories with:
 - [Constructor options](#constructor-options)
 - [Base methods](#base-methods)
 - [Soft-delete](#soft-delete)
+- [Atomic and aggregate methods](#atomic-and-aggregate-methods)
+    - [Which fields are eligible](#which-fields-are-eligible)
+    - [Writing an adapter](#writing-an-adapter)
 - [`select` and `relations`](#select-and-relations)
 - [Dynamic methods](#dynamic-methods)
     - [Available prefixes](#available-prefixes)
@@ -97,7 +100,7 @@ The Prisma 7 adapter has now been published to npm as `@vsrepo/prisma7-adapter` 
 
 | Adapter                                                                                  | Status                                                                                                                                                                                                       |
 | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Prisma 7 (`@vsrepo/prisma7-adapter`)                                                     | 🟢 **Released** — published to npm, implements the entire `VSRepoAdapter` contract (CRUD, relations, transactions, `merge`, logging) with tests; see [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) for source and docs. |
+| Prisma 7 (`@vsrepo/prisma7-adapter`)                                                     | 🟢 **Released** — published to npm, implements the `VSRepoAdapter` contract (CRUD, relations, transactions, `merge`, logging) with tests; see [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) for source and docs. **Note:** the atomic/aggregate methods (`incrementOne`, `decrementOne`, `multiplyOne`, `divideOne`, `sum`, `average`, `min`, `max` — see [Atomic and aggregate methods](#atomic-and-aggregate-methods)) were added to the `VSRepoAdapter` contract after this adapter's last release; confirm its changelog/version implements them before relying on `increment`/`sum`/etc. against Prisma 7. |
 | TypeORM (`@vsrepo/typeorm-adapter`)                                                      | 🟡 **Planned, not published yet.** Only a reference `where`-clause parser (`parseVSRepoWhere`) was written to validate the design; it's the planned starting point for the future `@vsrepo/typeorm-adapter` package. Community contributions toward this are welcome. |
 | Other ORMs (Prisma 8, Drizzle, etc.)                                                     | 🟡 **Planned, not published yet.** No official package exists yet — write your own adapter for now (see [Writing your own adapter](#writing-your-own-adapter)), and consider publishing/contributing it back. |
 | Custom adapters                                                                          | 🟢 Fully supported today — implement the [`VSRepoAdapter`](#writing-your-own-adapter) abstract class yourself for any ORM/database you need, in your own project or package, following the same shape as `@vsrepo/*-adapter` is expected to have. |
@@ -231,11 +234,19 @@ Available automatically on every `VSRepository` subclass:
 | `removeList(pks, options?)` | Deletes multiple records by primary key, returning `{ count }`.                                                                      |
 | `total(options?)`           | Returns the total number of records.                                                                                                 |
 | `has(pk, options?)`         | Checks whether a record exists, returning `boolean`.                                                                                 |
+| `increment(pk, field, value, options?)` | Atomically adds `value` to a numeric field. See [Atomic and aggregate methods](#atomic-and-aggregate-methods).           |
+| `decrement(pk, field, value, options?)` | Atomically subtracts `value` from a numeric field.                                                                        |
+| `multiply(pk, field, value, options?)`  | Atomically multiplies a numeric field by `value`.                                                                         |
+| `divide(pk, field, value, options?)`    | Atomically divides a numeric field by `value`.                                                                            |
+| `sum(field, where?, options?)`          | Sums a numeric field across every matching record; `null` if none match.                                                  |
+| `average(field, where?, options?)`      | Arithmetic mean of a numeric field across every matching record; `null` if none match.                                    |
+| `min(field, where?, options?)`          | Minimum value of a numeric field across every matching record; `null` if none match.                                      |
+| `max(field, where?, options?)`          | Maximum value of a numeric field across every matching record; `null` if none match.                                      |
 | `transaction(fn, options?)` | Runs `fn` inside a native transaction of the underlying ORM.                                                                         |
 | `getDbClient()`             | Returns the underlying ORM client instance used outside of transactions.                                                             |
 | `query<T>(query, options?)` | Executes a raw SQL statement directly against the database. See [Ad-hoc raw queries with `query()`](#ad-hoc-raw-queries-with-query). |
 
-All of the above (except `transaction`, `query`, and `getDbClient`, which accept their own options or none at all) accept a `MethodOptions<Entity, OrmTypes>` object as their last argument (`select`, `relations`, `see`, `db`).
+Most of the above accept a `MethodOptions<Entity, OrmTypes>` object as their last argument (`select`, `relations`, `see`, `db`). A few — `total`, `has`, `removeList`, `sum`, `average`, `min`, `max`, and the soft-delete batch methods (`softRemoveList`/`restoreList`) — don't return/shape an `Entity`, so they accept the narrower `RestrictMethodOptions<Entity, OrmTypes>` instead (`see`, `db` only; no `select`/`relations`). `transaction`, `query`, and `getDbClient` accept their own options or none at all.
 
 ---
 
@@ -267,6 +278,62 @@ await userRepository.getAll({ see: "active" }); // default — only non-deleted 
 await userRepository.getAll({ see: "removed" }); // only soft-deleted records
 await userRepository.getAll({ see: "all" }); // everything, ignoring soft-delete
 ```
+
+---
+
+## Atomic and aggregate methods
+
+Every `VSRepository` subclass gets 8 extra methods for working with numeric fields, split into two groups:
+
+**Atomic updates** — evaluated server-side against the row's *current* value (`UPDATE ... SET field = field + value`), not a client-side read-modify-write:
+
+```typescript
+await userRepository.increment("user-1", "balance", 50); // balance = balance + 50
+await userRepository.decrement("user-1", "balance", 50); // balance = balance - 50
+await userRepository.multiply("user-1", "balance", 2); // balance = balance * 2
+await userRepository.divide("user-1", "balance", 4); // balance = balance / 4
+```
+
+All four return the updated `Entity` and accept the full `MethodOptions<Entity, OrmTypes>` (`select`, `relations`, `see`, `db`) as their last argument, same as `get`/`save`/`patch`.
+
+**Aggregates** — computed across every record matching an (optional) `where`:
+
+```typescript
+await userRepository.sum("balance"); // total balance across every active record
+await userRepository.sum("balance", { active: true }); // ...restricted by a where
+await userRepository.average("balance");
+await userRepository.min("balance");
+await userRepository.max("balance");
+```
+
+All four return `number | null` — `null` when no record matches, mirroring SQL's `SUM()`/`AVG()`/`MIN()`/`MAX()`, which return `NULL` (not `0`) over an empty set. Unlike the atomic methods, they accept the narrower `RestrictMethodOptions<Entity, OrmTypes>` (`see`, `db` only — no `select`/`relations`, since the result is a plain number, not a shaped `Entity`).
+
+Both groups respect `softRemoveKey`/`see` the same way every other base method does — `sum("balance")` only totals non-deleted records by default, pass `{ see: "all" }` or `{ see: "removed" }` to change that.
+
+### Which fields are eligible
+
+`field` is constrained to `NumericKeys<Entity>` — keys whose (non-nullable) value type is a `number`, a `bigint`, or a `DecimalLike` object (anything exposing `toNumber()` and `decimalPlaces()`, matching e.g. Prisma's `Prisma.Decimal`):
+
+```typescript
+type Product = { id: string; name: string; price: Decimal; stock: number | null };
+
+await productRepository.increment(id, "price", new Decimal(10.5)); // ok — Decimal-like
+await productRepository.increment(id, "stock", 5); // ok — nullable numeric fields are included
+await productRepository.increment(id, "name", 1); // compile error — "name" isn't numeric
+```
+
+`value` is typed as `NonNullable<Entity[Field]>` — it must match the field's own type exactly. A `Decimal` field expects a `Decimal` instance, not a plain `number`/`string`:
+
+```typescript
+await productRepository.increment(id, "price", new Decimal(10.5)); // ok
+await productRepository.increment(id, "price", 10.5); // compile error — wrap it: new Decimal(10.5)
+```
+
+Note that several ORMs (Drizzle, MikroORM, TypeORM) represent `decimal`/`numeric` columns as plain `string` by default, to avoid floating-point precision loss — a `string` field does **not** satisfy `NumericKeys<Entity>` out of the box. Configure the column in a numeric mode (or a transformer) on those ORMs if you want the field to be usable with these 8 methods.
+
+### Writing an adapter
+
+`VSRepoAdapter` mirrors the same 8 operations (`incrementOne`, `decrementOne`, `multiplyOne`, `divideOne`, `sum`, `average`, `min`, `max` — see [Writing your own adapter](#writing-your-own-adapter)). Each adapter translates them into whatever its ORM/database considers "native": Prisma has a built-in `{ field: { increment: value } }` update shape and an `aggregate()` call; other ORMs typically need a `QueryBuilder`/raw-`sql` expression (e.g. `SET field = field * :value`, `SELECT SUM(field) ...`) instead. The atomic methods must return the record reflecting the state *after* the write — if the ORM's atomic-update API only returns an affected-row count, issue a follow-up read rather than returning a stale in-memory copy.
 
 ---
 
@@ -615,6 +682,7 @@ Beyond the entity-shaping types covered above (`VSRepoSelect`, `VSRepoRelations`
 ```typescript
 import type {
     MethodOptions,
+    RestrictMethodOptions,
     Pagination,
     Ordering,
     OrderByField,
@@ -624,6 +692,9 @@ import type {
     CountResult,
     QueryMethodArg,
     KeysOfType,
+    NumericKeys,
+    NumericLike,
+    DecimalLike,
     Primitive,
     VSRepoWhere,
     VSRepoOrmTypes,
@@ -634,7 +705,8 @@ import type {
 
 | Type                                                | Description                                                                                                                                                                                          | Used by                                                                                                                                                       |
 | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MethodOptions<T, K>`                               | Options accepted as the last argument of every base and dynamic method: `select`, `relations`, `see`, `db`.                                                                                          | [Base methods](#base-methods), [Dynamic methods](#dynamic-methods).                                                                                           |
+| `MethodOptions<T, K>`                               | Options accepted as the last argument of most base and dynamic methods: `select`, `relations`, `see`, `db`.                                                                                          | [Base methods](#base-methods), [Dynamic methods](#dynamic-methods).                                                                                           |
+| `RestrictMethodOptions<T, K>`                        | Narrowed `MethodOptions<T, K>` exposing only `see`/`db` — used by methods that don't shape/return an `Entity` (`total`, `has`, `sum`, `average`, `min`, `max`, `removeList`, `softRemoveList`, `restoreList`).           | [Base methods](#base-methods), [Atomic and aggregate methods](#atomic-and-aggregate-methods).                                                                 |
 | `Pagination`                                        | `{ limit?, offset? }` accepted by `getAll` and by `Paginated` dynamic methods.                                                                                                                       | [Base methods](#base-methods), [Ordering, pagination and distinct](#ordering-pagination-and-distinct).                                                        |
 | `Ordering<T>` / `OrderByField<T>` / `SortDirection` | Ordering shape accepted by `getAll`, `defaultOrdering` and `injectOrdering`, and by `Ordered` dynamic methods. A single object or a chained array; nested objects order to-one relations.            | [Constructor options](#constructor-options), [Decorator options](#decorator-options), [Ordering, pagination and distinct](#ordering-pagination-and-distinct). |
 | `SeeMode`                                           | `"active" \| "removed" \| "all"` — controls visibility of soft-deleted records.                                                                                                                      | [Soft-delete](#soft-delete).                                                                                                                                  |
@@ -642,6 +714,9 @@ import type {
 | `CountResult`                                       | `{ count: number }` — the shape returned by batch operations.                                                                                                                                        | `removeList`, `softRemoveList`, `restoreList`, `createManyIgnoreConflicts`.                                                                                   |
 | `QueryMethodArg<T>`                                 | `{ args?: T, db? }` — positional SQL parameters (`$1`, `$2`, ...) and transaction client for `@QueryMethod`.                                                                                         | [Query methods (raw SQL)](#query-methods-raw-sql).                                                                                                            |
 | `KeysOfType<T, K>`                                  | Extracts the keys of `T` whose value type is assignable to `K`.                                                                                                                                      | Constrains `pkName` in [Constructor options](#constructor-options) to fields of the entity matching the configured primary-key type.                          |
+| `NumericKeys<T>`                                    | Extracts the keys of `T` whose (non-nullable) value type is assignable to `NumericLike`. Nullable numeric fields (`number \| null`) are included.                                                   | Constrains `field` in [Atomic and aggregate methods](#atomic-and-aggregate-methods) (`increment`, `sum`, etc).                                                |
+| `NumericLike`                                       | `number \| bigint \| DecimalLike`.                                                                                                                                                                    | [Atomic and aggregate methods](#atomic-and-aggregate-methods).                                                                                                 |
+| `DecimalLike`                                       | Structural shape of an arbitrary-precision decimal value (`{ toNumber(): number; decimalPlaces(): number }`), matching e.g. Prisma's `Prisma.Decimal` without importing it directly.                | [Which fields are eligible](#which-fields-are-eligible).                                                                                                       |
 | `Primitive`                                         | Union of scalar types (`string \| number \| boolean \| bigint \| symbol \| undefined \| null \| Date`) treated as leaves — not relations — when walking an entity's shape.                           | Used by `Ordering<T>` to tell scalar fields apart from relation fields.                                                                                       |
 | `VSRepoWhere<T>`                                    | ORM-agnostic filter type accepted by `*Where` dynamic methods (e.g. `findWhere`, `findOneWhere`, `updateWhere`). Supports field filters, logical operators (`AND`/`OR`/`NOT`), and relation filters. | [`findWhere`, `findOneWhere` and other `*Where` prefixes](#available-prefixes).                                                                               |
 | `VSRepoOrmTypes`                                    | `{ dbClient; dbTransaction }` — describes your ORM's client/transaction types. Passed as the third generic to `VSRepository<Entity, PKType, OrmTypes>` to type `getDbClient()`, `transaction()` and the `db` option instead of `any`. | [Creating a repository](#creating-a-repository).                                                                                                              |
@@ -750,6 +825,51 @@ export abstract class VSRepoAdapter<T> {
         update: DeepPartial<T>,
         options?: AdapterMethodOptions<T>,
     ): Promise<T>;
+
+    abstract incrementOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+    abstract decrementOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+    abstract multiplyOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+    abstract divideOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+    abstract sum(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
+    abstract average(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
+    abstract min(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
+    abstract max(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
 }
 ```
 

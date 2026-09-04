@@ -538,6 +538,11 @@ export abstract class VSRepository<
         );
     }
 
+    /**
+     * Atomically adds `value` to a numeric field of the record identified
+     * by `pk`, evaluated server-side against the row's current value (e.g.
+     * `saldo = saldo + value`) — not a fetch-then-save round trip.
+     */
     async increment<Field extends NumericKeys<Entity>>(
         pk: PKType,
         field: Field,
@@ -559,6 +564,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Same as {@link VSRepository.increment}, subtracting `value` instead of adding it. */
     async decrement<Field extends NumericKeys<Entity>>(
         pk: PKType,
         field: Field,
@@ -580,6 +586,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Same as {@link VSRepository.increment}, multiplying the field's current value by `value`. */
     async multiply<Field extends NumericKeys<Entity>>(
         pk: PKType,
         field: Field,
@@ -601,6 +608,11 @@ export abstract class VSRepository<
         );
     }
 
+    /**
+     * Same as {@link VSRepository.increment}, dividing the field's current
+     * value by `value`. Division-by-zero behavior depends on the adapter/
+     * underlying database (see {@link VSRepoAdapter.divideOne}).
+     */
     async divide<Field extends NumericKeys<Entity>>(
         pk: PKType,
         field: Field,
@@ -622,6 +634,11 @@ export abstract class VSRepository<
         );
     }
 
+    /**
+     * Returns the sum of a numeric field across every record matching
+     * `where` (all records if omitted), or `null` if none match — mirrors
+     * SQL's `SUM()`, which returns `NULL` (not `0`) over an empty set.
+     */
     async sum(
         field: NumericKeys<Entity>,
         where?: VSRepoWhere<Entity>,
@@ -642,6 +659,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Same as {@link VSRepository.sum}, but the arithmetic mean instead of the total. */
     async average(
         field: NumericKeys<Entity>,
         where?: VSRepoWhere<Entity>,
@@ -662,6 +680,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Same as {@link VSRepository.sum}, but the minimum value instead of the total. */
     async min(
         field: NumericKeys<Entity>,
         where?: VSRepoWhere<Entity>,
@@ -682,6 +701,7 @@ export abstract class VSRepository<
         );
     }
 
+    /** Same as {@link VSRepository.sum}, but the maximum value instead of the total. */
     async max(
         field: NumericKeys<Entity>,
         where?: VSRepoWhere<Entity>,
