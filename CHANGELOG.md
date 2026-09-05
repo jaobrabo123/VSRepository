@@ -6,6 +6,42 @@ All notable changes to this project will be documented in this file.
 
 ---
  
+## [2.1.0] - 2026-09-04
+
+### Added
+- **Atomic operations** — new `increment(pk, field, value)`, `decrement`, `multiply` and `divide` methods on `VSRepository`. They are evaluated **server-side** against the row's *current* value (`UPDATE ... SET field = field + value`), not as a client-side read-modify-write, and each returns the record reflecting the state *after* the write. The `value` argument accepts `number`, `bigint` or `DecimalLike` and is validated at runtime
+- **Aggregation methods** — new `sum`, `average`, `min` and `max` methods that compute the value across every record matching an optional `where` (all records if omitted). All four return `number | null` — `null` when no record matches, mirroring SQL's `SUM()`/`AVG()`/`MIN()`/`MAX()`, which return `NULL` (not `0`) over an empty set
+- **`VSRepoAdapter` contract extended** with the 8 corresponding abstract methods: `incrementOne`, `decrementOne`, `multiplyOne`, `divideOne`, `sum`, `average`, `min`, `max`
+- New public types: `NumericKeys<T>` (extracts the numeric fields eligible as `field`), `NumericLike` (`number | bigint | DecimalLike`), `DecimalLike` (structural shape of arbitrary-precision decimals such as Prisma's `Prisma.Decimal`), and `RestrictMethodOptions`
+- `Primitive` now also includes `DecimalLike`, so Decimal-typed fields are treated as scalar (non-relation) values when walking an entity's shape
+- Implementation and typing tests covering the atomic and aggregate methods, plus README docs and JSDoc for every new method and type
+
+> **Note for adapter authors:** the new abstract methods are **breaking** for anyone implementing a custom `VSRepoAdapter` — existing adapters must implement all 8 before they compile against 2.1.0. Published adapters (e.g. `@vsrepo/prisma7-adapter`) may not implement them yet; confirm the adapter version supports them before relying on `increment`/`sum`/etc.
+
+### Changed
+- `total`, `has`, `removeList`, `softRemoveList` and `restoreList` now accept the narrowed `RestrictMethodOptions` (`db`/`see` only) instead of the full `MethodOptions` — these methods don't shape/return an `Entity`, so `select`/`relations` no longer apply at the type level
+- The `v1` folder was removed from the `main` branch — the v1 source and docs now live exclusively on the dedicated `v1` branch (READMEs updated to point there)
+
+---
+
+## [2.1.0] - 2026-09-04 (Português)
+
+### Adicionado
+- **Operações atômicas** — novos métodos `increment(pk, field, value)`, `decrement`, `multiply` e `divide` no `VSRepository`. Elas são avaliadas **server-side** contra o valor *atual* do registro (`UPDATE ... SET field = field + value`), e não como um read-modify-write no cliente, e cada uma retorna o registro refletindo o estado *após* a escrita. O argumento `value` aceita `number`, `bigint` ou `DecimalLike` e é validado em tempo de execução
+- **Métodos de agregação** — novos métodos `sum`, `average`, `min` e `max` que calculam o valor entre todos os registros que correspondem a um `where` opcional (todos os registros se omitido). Os quatro retornam `number | null` — `null` quando nenhum registro corresponde, espelhando o `SUM()`/`AVG()`/`MIN()`/`MAX()` do SQL, que retornam `NULL` (não `0`) sobre um conjunto vazio
+- **Contrato do `VSRepoAdapter` estendido** com os 8 métodos abstratos correspondentes: `incrementOne`, `decrementOne`, `multiplyOne`, `divideOne`, `sum`, `average`, `min`, `max`
+- Novos tipos públicos: `NumericKeys<T>` (extrai os campos numéricos elegíveis como `field`), `NumericLike` (`number | bigint | DecimalLike`), `DecimalLike` (formato estrutural de decimais de alta precisão, como o `Prisma.Decimal` do Prisma) e `RestrictMethodOptions`
+- `Primitive` agora também inclui `DecimalLike`, então campos com tipo Decimal são tratados como valores escalares (não-relation) ao percorrer a forma da entidade
+- Testes de implementação e de tipagem cobrindo os métodos atômicos e de agregação, além de documentação nos READMEs e JSDoc para cada novo método e tipo
+
+> **Nota para autores de adapters:** os novos métodos abstratos são uma mudança **breaking** para quem implementa um `VSRepoAdapter` customizado — adapters existentes precisam implementar os 8 antes de compilarem contra a 2.1.0. Adapters publicados (ex.: `@vsrepo/prisma7-adapter`) podem ainda não os implementar; confirme que a versão do adapter suporta antes de usar `increment`/`sum`/etc.
+
+### Alterado
+- `total`, `has`, `removeList`, `softRemoveList` e `restoreList` agora aceitam o `RestrictMethodOptions` restrito (somente `db`/`see`) em vez do `MethodOptions` completo — esses métodos não moldam/retornam uma `Entity`, então `select`/`relations` não se aplicam mais no nível de tipos
+- A pasta `v1` foi removida da branch `main` — o código-fonte e a documentação da v1 agora vivem exclusivamente na branch `v1` dedicada (READMEs atualizados para apontar para lá)
+
+---
+
 ## [2.0.0] - 2026-09-01
  
 > Major rewrite. If you're upgrading from v1, see the ["What changed from v1"](./README.md#what-changed-from-v1) table in the README for the full breakdown before migrating.

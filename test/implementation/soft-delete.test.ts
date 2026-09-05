@@ -31,9 +31,7 @@ describe("sem 'softRemoveKey' configurado", () => {
     it("'softRemove' rejeita informando que o repository não tem 'softRemoveKey'", async () => {
         const userRepository = new UserRepository(fakeAdapter);
 
-        await expect(userRepository.softRemove("user-1")).rejects.toThrow(
-            /softRemoveKey/,
-        );
+        await expect(userRepository.softRemove("user-1")).rejects.toThrow(/softRemoveKey/);
     });
 
     it("'restoreList' rejeita informando que o repository não tem 'softRemoveKey'", async () => {
@@ -52,7 +50,7 @@ describe("com 'softRemoveKey' configurado", () => {
 
         const [where, data] = fakeAdapter.update.mock.calls[0]!;
         expect(where).toEqual({ id: "user-1" });
-        expect((data as any).deletedAt).toBeInstanceOf(Date);
+        expect(data.deletedAt).toBeInstanceOf(Date);
     });
 
     it("'restore' faz 'update' setando a chave configurada para 'null'", async () => {
@@ -62,7 +60,7 @@ describe("com 'softRemoveKey' configurado", () => {
         await softDeletable.restore("user-1");
 
         const [, data] = fakeAdapter.update.mock.calls[0]!;
-        expect((data as any).deletedAt).toBeNull();
+        expect(data.deletedAt).toBeNull();
     });
 
     it("'softRemoveList' faz 'updateMany' para todas as PKs informadas", async () => {
@@ -73,7 +71,7 @@ describe("com 'softRemoveKey' configurado", () => {
 
         const [where, data] = fakeAdapter.updateMany.mock.calls[0]!;
         expect(where).toEqual({ id: { in: ["user-1", "user-2"] } });
-        expect((data as any).deletedAt).toBeInstanceOf(Date);
+        expect(data.deletedAt).toBeInstanceOf(Date);
         expect(result).toEqual({ count: 2 });
     });
 

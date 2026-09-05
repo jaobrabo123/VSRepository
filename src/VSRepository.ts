@@ -19,6 +19,8 @@ import { DynamicMethodsResolver } from "./internal/resolvers/dynamic-methods.res
 import { VSRepoError } from "./errors/VSRepoError";
 import { VSRepoErrorType } from "./internal/enums/vsrepo-error-type.enum";
 import { VSRepoQueryOptions } from "./types/vsrepo/vsrepo-query-options.type";
+import { NumericKeys } from "./types/utils/numeric-keys.type";
+import { RestrictMethodOptions } from "./types/utils/restrict-method-options.type";
 
 /**
  * ORM-agnostic base repository, exposing a complete set of ready-to-use CRUD
@@ -153,11 +155,14 @@ export abstract class VSRepository<
         fn: (optionsChecked: MethodOptions<Entity, OrmTypes>) => Promise<R>,
         methodName: string,
         optionsUnchecked: unknown,
+        opsType: "common" | "getAll" | "restrict" = "common",
     ): Promise<R> {
         const optionsChecked =
-            methodName === "getAll"
-                ? this.validator.validateGetAllMethodOptions(optionsUnchecked)
-                : this.validator.validateMethodOptions(optionsUnchecked);
+            opsType === "common"
+                ? this.validator.validateMethodOptions(optionsUnchecked)
+                : opsType === "restrict"
+                  ? this.validator.validateRestrictMethodOptions(optionsUnchecked)
+                  : this.validator.validateGetAllMethodOptions(optionsUnchecked);
 
         optionsChecked.db ??= this.getDbClient();
 
@@ -305,6 +310,7 @@ export abstract class VSRepository<
                 }),
             "getAll",
             options,
+            "getAll",
         );
     }
 
@@ -344,7 +350,7 @@ export abstract class VSRepository<
     /** Deletes multiple records by their primary keys, returning the count of affected rows. */
     async removeList(
         pks: PKType[],
-        options?: MethodOptions<Entity, OrmTypes>,
+        options?: RestrictMethodOptions<Entity, OrmTypes>,
     ): Promise<CountResult> {
         if (!Array.isArray(pks)) {
             this.fail("'pks' must be a valid array", VSRepoErrorType.BASE);
@@ -358,6 +364,7 @@ export abstract class VSRepository<
                 ),
             "removeList",
             options,
+            "restrict",
         );
     }
 
@@ -402,16 +409,17 @@ export abstract class VSRepository<
     }
 
     /** Returns the total number of records. */
-    async total(options?: MethodOptions<Entity, OrmTypes>): Promise<number> {
+    async total(options?: RestrictMethodOptions<Entity, OrmTypes>): Promise<number> {
         return this.execBaseMethod(
             opt => this.adapter.count(this.mergeWheresResolver.resolve(opt.see, {}), opt),
             "total",
             options,
+            "restrict",
         );
     }
 
     /** Checks whether a record exists by its primary key (PK). */
-    async has(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<boolean> {
+    async has(pk: PKType, options?: RestrictMethodOptions<Entity, OrmTypes>): Promise<boolean> {
         return this.execBaseMethod(
             opt =>
                 this.adapter.exists(
@@ -420,6 +428,7 @@ export abstract class VSRepository<
                 ),
             "has",
             options,
+            "restrict",
         );
     }
 
@@ -449,7 +458,7 @@ export abstract class VSRepository<
     /** Marks multiple records as deleted (soft-delete) in batch. Requires `softRemoveKey` to be configured on the repository. */
     async softRemoveList(
         pks: PKType[],
-        options?: MethodOptions<Entity, OrmTypes>,
+        options?: RestrictMethodOptions<Entity, OrmTypes>,
     ): Promise<CountResult> {
         if (!this.softRemoveKey) {
             this.fail(
@@ -472,6 +481,7 @@ export abstract class VSRepository<
                 ),
             "softRemoveList",
             options,
+            "restrict",
         );
     }
 
@@ -501,7 +511,7 @@ export abstract class VSRepository<
     /** Restores multiple records previously marked as deleted (soft-delete) in batch. Requires `softRemoveKey` to be configured on the repository. */
     async restoreList(
         pks: PKType[],
-        options?: MethodOptions<Entity, OrmTypes>,
+        options?: RestrictMethodOptions<Entity, OrmTypes>,
     ): Promise<CountResult> {
         if (!this.softRemoveKey) {
             this.fail(
@@ -524,6 +534,191 @@ export abstract class VSRepository<
                 ),
             "restoreList",
             options,
+            "restrict",
+        );
+    }
+
+    /**
+     * Atomically adds `value` to a numeric field of the record identified
+     * by `pk`, evaluated server-side against the row's current value (e.g.
+     * `saldo = saldo + value`) — not a fetch-then-save round trip.
+     */
+    async increment<Field extends NumericKeys<Entity>>(
+        pk: PKType,
+        field: Field,
+        value: NonNullable<Entity[Field]>,
+        options?: MethodOptions<Entity, OrmTypes>,
+    ): Promise<Entity> {
+        this.validator.assertIsNumericLike(value);
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.incrementOne(
+                    field,
+                    value,
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    opt,
+                ),
+            "increment",
+            options,
+        );
+    }
+
+    /** Same as {@link VSRepository.increment}, subtracting `value` instead of adding it. */
+    async decrement<Field extends NumericKeys<Entity>>(
+        pk: PKType,
+        field: Field,
+        value: NonNullable<Entity[Field]>,
+        options?: MethodOptions<Entity, OrmTypes>,
+    ): Promise<Entity> {
+        this.validator.assertIsNumericLike(value);
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.decrementOne(
+                    field,
+                    value,
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    opt,
+                ),
+            "decrement",
+            options,
+        );
+    }
+
+    /** Same as {@link VSRepository.increment}, multiplying the field's current value by `value`. */
+    async multiply<Field extends NumericKeys<Entity>>(
+        pk: PKType,
+        field: Field,
+        value: NonNullable<Entity[Field]>,
+        options?: MethodOptions<Entity, OrmTypes>,
+    ): Promise<Entity> {
+        this.validator.assertIsNumericLike(value);
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.multiplyOne(
+                    field,
+                    value,
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    opt,
+                ),
+            "multiply",
+            options,
+        );
+    }
+
+    /**
+     * Same as {@link VSRepository.increment}, dividing the field's current
+     * value by `value`. Division-by-zero behavior depends on the adapter/
+     * underlying database (see {@link VSRepoAdapter.divideOne}).
+     */
+    async divide<Field extends NumericKeys<Entity>>(
+        pk: PKType,
+        field: Field,
+        value: NonNullable<Entity[Field]>,
+        options?: MethodOptions<Entity, OrmTypes>,
+    ): Promise<Entity> {
+        this.validator.assertIsNumericLike(value);
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.divideOne(
+                    field,
+                    value,
+                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
+                    opt,
+                ),
+            "divide",
+            options,
+        );
+    }
+
+    /**
+     * Returns the sum of a numeric field across every record matching
+     * `where` (all records if omitted), or `null` if none match — mirrors
+     * SQL's `SUM()`, which returns `NULL` (not `0`) over an empty set.
+     */
+    async sum(
+        field: NumericKeys<Entity>,
+        where?: VSRepoWhere<Entity>,
+        options?: RestrictMethodOptions<Entity, OrmTypes>,
+    ): Promise<number | null> {
+        const validatedWhere = this.validator.validateWhere(where ?? {});
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.sum(
+                    field,
+                    this.mergeWheresResolver.resolve(opt.see, validatedWhere),
+                    opt,
+                ),
+            "sum",
+            options,
+            "restrict",
+        );
+    }
+
+    /** Same as {@link VSRepository.sum}, but the arithmetic mean instead of the total. */
+    async average(
+        field: NumericKeys<Entity>,
+        where?: VSRepoWhere<Entity>,
+        options?: RestrictMethodOptions<Entity, OrmTypes>,
+    ): Promise<number | null> {
+        const validatedWhere = this.validator.validateWhere(where ?? {});
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.average(
+                    field,
+                    this.mergeWheresResolver.resolve(opt.see, validatedWhere),
+                    opt,
+                ),
+            "average",
+            options,
+            "restrict",
+        );
+    }
+
+    /** Same as {@link VSRepository.sum}, but the minimum value instead of the total. */
+    async min(
+        field: NumericKeys<Entity>,
+        where?: VSRepoWhere<Entity>,
+        options?: RestrictMethodOptions<Entity, OrmTypes>,
+    ): Promise<number | null> {
+        const validatedWhere = this.validator.validateWhere(where ?? {});
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.min(
+                    field,
+                    this.mergeWheresResolver.resolve(opt.see, validatedWhere),
+                    opt,
+                ),
+            "min",
+            options,
+            "restrict",
+        );
+    }
+
+    /** Same as {@link VSRepository.sum}, but the maximum value instead of the total. */
+    async max(
+        field: NumericKeys<Entity>,
+        where?: VSRepoWhere<Entity>,
+        options?: RestrictMethodOptions<Entity, OrmTypes>,
+    ): Promise<number | null> {
+        const validatedWhere = this.validator.validateWhere(where ?? {});
+
+        return this.execBaseMethod(
+            opt =>
+                this.adapter.max(
+                    field,
+                    this.mergeWheresResolver.resolve(opt.see, validatedWhere),
+                    opt,
+                ),
+            "max",
+            options,
+            "restrict",
         );
     }
 }

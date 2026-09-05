@@ -2,6 +2,7 @@ import { AdapterMethodOptions } from "./types/adapter/adapter-method-options.typ
 import { AdapterQueryOptions } from "./types/adapter/adapter-query-options.type";
 import { CountResult } from "./types/utils/count-result.type";
 import { DeepPartial } from "./types/utils/deep-partial.type";
+import { NumericKeys } from "./types/utils/numeric-keys.type";
 import { VSRepoTransactionOptions } from "./types/vsrepo/vsrepo-transaction-options.type";
 import { VSRepoWhere } from "./types/vsrepo/vsrepo-where.type";
 
@@ -137,4 +138,85 @@ export abstract class VSRepoAdapter<T> {
         update: DeepPartial<T>,
         options?: AdapterMethodOptions<T>,
     ): Promise<T>;
+
+    /**
+     * Atomically adds `value` to `field` on the single record matching
+     * `where` — equivalent to `UPDATE ... SET field = field + value WHERE
+     * ...`, evaluated server-side against the row's current value (not a
+     * client-side read-modify-write).
+     *
+     * Implementations must return the record reflecting the state *after*
+     * the write. If the underlying ORM's atomic-update API doesn't already
+     * return the updated row (e.g. it only returns an affected-row count),
+     * issue a follow-up read instead of returning a stale in-memory copy.
+     */
+    public abstract incrementOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+
+    /** Same as {@link VSRepoAdapter.incrementOne}, subtracting `value` instead of adding it. */
+    public abstract decrementOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+
+    /** Same as {@link VSRepoAdapter.incrementOne}, multiplying the field's current value by `value`. */
+    public abstract multiplyOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+
+    /**
+     * Same as {@link VSRepoAdapter.incrementOne}, dividing the field's
+     * current value by `value`. Division-by-zero behavior is not
+     * standardized by this contract — it is whatever the underlying
+     * database/driver does natively (e.g. Postgres raises a
+     * `division_by_zero` error); document your adapter's actual behavior.
+     */
+    public abstract divideOne<K extends NumericKeys<T>>(
+        field: K,
+        value: NonNullable<T[K]>,
+        where: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<T>;
+
+    /**
+     * Returns the sum of `field` across every record matching `where` (all
+     * records if `where` is omitted/empty), or `null` if no record
+     * matches — mirroring SQL's `SUM()`, which returns `NULL` (not `0`)
+     * over an empty set.
+     */
+    public abstract sum(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
+
+    /** Same as {@link VSRepoAdapter.sum}, but the arithmetic mean (`AVG()`) instead of the total. */
+    public abstract average(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
+
+    /** Same as {@link VSRepoAdapter.sum}, but the minimum value (`MIN()`) instead of the total. */
+    public abstract min(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
+
+    /** Same as {@link VSRepoAdapter.sum}, but the maximum value (`MAX()`) instead of the total. */
+    public abstract max(
+        field: NumericKeys<T>,
+        where?: VSRepoWhere<T>,
+        options?: AdapterMethodOptions<T>,
+    ): Promise<number | null>;
 }
