@@ -221,4 +221,52 @@ describe("transaction / getDbClient / query", () => {
     it("'query' rejeita quando 'query' não é uma string", async () => {
         await expect(userRepository.query(123 as any)).rejects.toThrow();
     });
+
+    describe("'singleResult'", () => {
+        it("com 'singleResult: true' e resultado em array, resolve para o primeiro elemento", async () => {
+            const user = buildUser();
+            fakeAdapter.query.mockResolvedValueOnce([user]);
+
+            const result = await userRepository.query('SELECT * FROM "user" WHERE id = $1 LIMIT 1', {
+                args: ["user-1"],
+                singleResult: true,
+            });
+
+            expect(result).toBe(user);
+        });
+
+        it("com 'singleResult: true' e array vazio, resolve para 'null'", async () => {
+            fakeAdapter.query.mockResolvedValueOnce([]);
+
+            const result = await userRepository.query('SELECT * FROM "user" WHERE id = $1 LIMIT 1', {
+                args: ["missing"],
+                singleResult: true,
+            });
+
+            expect(result).toBeNull();
+        });
+
+        it("com 'singleResult: true' e resultado que não é array (ex.: query 'modifying'), mantém o valor original", async () => {
+            fakeAdapter.query.mockResolvedValueOnce(1);
+
+            const result = await userRepository.query('UPDATE "user" SET active = true WHERE id = $1', {
+                args: ["user-1"],
+                modifying: true,
+                singleResult: true,
+            });
+
+            expect(result).toBe(1);
+        });
+
+        it("sem 'singleResult' (padrão 'false'), mantém o array como está", async () => {
+            const users = [buildUser(), buildUser()];
+            fakeAdapter.query.mockResolvedValueOnce(users);
+
+            const result = await userRepository.query('SELECT * FROM "user" WHERE email = $1', {
+                args: ["joao@email.com"],
+            });
+
+            expect(result).toBe(users);
+        });
+    });
 });

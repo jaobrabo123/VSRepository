@@ -92,4 +92,39 @@ describe("@QueryMethod — query crua", () => {
         );
         expect(result).toBe(users);
     });
+
+    describe("'singleResult'", () => {
+        it("'findByIdRaw' (singleResult: true) resolve para o primeiro elemento do array retornado pelo adapter", async () => {
+            const user = buildUser();
+            fakeAdapter.query.mockResolvedValueOnce([user]);
+
+            const result = await userRepository.findByIdRaw({ args: ["user-1"] });
+
+            expect(fakeAdapter.query).toHaveBeenCalledWith(
+                'SELECT * FROM "user" WHERE id = $1 LIMIT 1',
+                expect.objectContaining({ args: ["user-1"], modifying: false }),
+            );
+            expect(result).toBe(user);
+        });
+
+        it("'findByIdRaw' (singleResult: true) resolve para 'null' quando o adapter retorna um array vazio", async () => {
+            fakeAdapter.query.mockResolvedValueOnce([]);
+
+            const result = await userRepository.findByIdRaw({ args: ["missing"] });
+
+            expect(result).toBeNull();
+        });
+
+        it("'activateUserRaw' (modifying + singleResult: true) mantém o valor original quando o resultado não é um array", async () => {
+            fakeAdapter.query.mockResolvedValueOnce(1);
+
+            const result = await userRepository.activateUserRaw({ args: ["user-1"] });
+
+            expect(fakeAdapter.query).toHaveBeenCalledWith(
+                'UPDATE "user" SET active = true WHERE id = $1',
+                expect.objectContaining({ args: ["user-1"], modifying: true }),
+            );
+            expect(result).toBe(1);
+        });
+    });
 });

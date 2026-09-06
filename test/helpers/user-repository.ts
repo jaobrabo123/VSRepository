@@ -36,6 +36,15 @@ export class UserRepository extends VSRepository<User, string> {
 
     @QueryMethod('SELECT * FROM "user" WHERE email = $1')
     declare findByEmailRaw: (arg: QueryMethodArg<[email: string]>) => Promise<User[]>;
+
+    @QueryMethod('SELECT * FROM "user" WHERE id = $1 LIMIT 1', { singleResult: true })
+    declare findByIdRaw: (arg: QueryMethodArg<[id: string]>) => Promise<User | null>;
+
+    @QueryMethod('UPDATE "user" SET active = true WHERE id = $1', {
+        modifying: true,
+        singleResult: true,
+    })
+    declare activateUserRaw: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
 }
 
 export class SoftDeletableUserRepository extends VSRepository<User, string> {
