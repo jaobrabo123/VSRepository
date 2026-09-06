@@ -12,4 +12,9 @@ export type QueryMethodOptions = {
      * @default false
      */
     modifying: boolean;
+
+    /**
+     * @default false
+     */
+    singleResult?: boolean;
 };

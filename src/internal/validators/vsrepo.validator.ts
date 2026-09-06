@@ -133,6 +133,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         args: v.optional(v.array(v.any())),
         db: v.optional(v.any()),
         modifying: v.optional(v.boolean()),
+        singleResult: v.optional(v.boolean()),
     });
 
     validateQueryOptions(options?: unknown): VSRepoQueryOptions {
@@ -142,7 +143,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
             this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR);
         }
 
-        return parsed.output as VSRepoQueryOptions;
+        return parsed.output;
     }
 
     private transactionOptionsSchema = v.object({
@@ -157,7 +158,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
             this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR);
         }
 
-        return parsed.output as VSRepoTransactionOptions;
+        return parsed.output;
     }
 
     validateOrdering(value: unknown): Ordering<T> {
@@ -177,7 +178,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
             this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR, "pagination");
         }
 
-        return parsed.output as Pagination;
+        return parsed.output;
     }
 
     validateWhere(value: unknown): VSRepoWhere<T> {

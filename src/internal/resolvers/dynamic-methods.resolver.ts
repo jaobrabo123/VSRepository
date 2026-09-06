@@ -1002,6 +1002,7 @@ export class DynamicMethodsResolver<T, K> {
 
             const modifyingQueryMethod = method.modifying;
             const valueQueryMethod = method.value;
+            const singleResult = method.singleResult;
 
             (instance as any)[originalKey] = async (arg: unknown) => {
                 const queryArgValidated = this.validator.validateQueryMethodArg(arg);
@@ -1017,9 +1018,11 @@ export class DynamicMethodsResolver<T, K> {
                         modifying: modifyingQueryMethod,
                     });
 
+                    const resolved = singleResult && Array.isArray(result) ? result[0] : result;
+
                     this.logger.endPerformLog(start);
 
-                    return result;
+                    return resolved;
                 } catch (err) {
                     this.logger.endPerformLog(start);
                     // this.logger.logError(

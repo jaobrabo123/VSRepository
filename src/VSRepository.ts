@@ -241,9 +241,12 @@ export abstract class VSRepository<
                 modifying: optionsValidated.modifying ?? false,
             });
 
+            const resolved =
+                optionsValidated.singleResult && Array.isArray(result) ? result[0] : result;
+
             this.logger.endPerformLog(start);
 
-            return result;
+            return resolved;
         } catch (err) {
             this.logger.endPerformLog(start);
             // this.logger.logError(`Failed to run 'query' on ${this.constructor.name}`, err);

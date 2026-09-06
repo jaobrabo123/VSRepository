@@ -15,4 +15,8 @@ export type VSRepoQueryOptions<T extends VSRepoOrmTypes = VSRepoOrmTypes> = {
      * @default false
      */
     modifying?: boolean;
+    /**
+     * @default false
+     */
+    singleResult?: boolean;
 };

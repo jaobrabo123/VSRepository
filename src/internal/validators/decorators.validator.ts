@@ -22,11 +22,12 @@ export class DecoratorsValidator {
             throw new VSRepoError(`${path}: ${firstIssue.message}`, VSRepoErrorType.DECORATOR);
         }
 
-        return parsed.output as DynamicMethodOptions;
+        return parsed.output;
     }
 
     private static queryMethodOptionsSchema = v.object({
         modifying: v.optional(v.boolean(), false),
+        singleResult: v.optional(v.boolean()),
     });
 
     static validateQueryMethodOptions(options: unknown): QueryMethodOptions {
@@ -40,6 +41,6 @@ export class DecoratorsValidator {
             throw new VSRepoError(`${path}: ${firstIssue.message}`, VSRepoErrorType.DECORATOR);
         }
 
-        return parsed.output as QueryMethodOptions;
+        return parsed.output;
     }
 }
