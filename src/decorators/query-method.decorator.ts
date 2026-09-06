@@ -15,7 +15,9 @@ import { VSRepoQuery } from "../types/vsrepo/vsrepo-query.type";
  *
  * @param value Raw SQL statement to execute. Use `$1`, `$2`, ... placeholders for
  * the values that will be passed via `args` — never interpolate values directly into `value`.
- * @param options Optional configuration; set `modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements.
+ * @param options Optional configuration; set `modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements,
+ * and `singleResult: true` to collapse an array result into its first element — see
+ * {@link QueryMethodOptions.singleResult}.
  *
  * @example
  * ```typescript
@@ -25,6 +27,11 @@ import { VSRepoQuery } from "../types/vsrepo/vsrepo-query.type";
  *
  *     @QueryMethod('UPDATE "user" SET active = true WHERE id = $1', { modifying: true })
  *     declare activateUser: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
+ *
+ *     // Only one row is ever expected here, so `singleResult` collapses the
+ *     // array into a single object (or `null` when no row matches).
+ *     @QueryMethod('SELECT * FROM "user" WHERE id = $1 LIMIT 1', { singleResult: true })
+ *     declare findByIdRaw: (arg: QueryMethodArg<[id: string]>) => Promise<User | null>;
  * }
  * ```
  *

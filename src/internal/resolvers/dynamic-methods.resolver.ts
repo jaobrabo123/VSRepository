@@ -1000,7 +1000,7 @@ export class DynamicMethodsResolver<T, K> {
         for (const method of queryMethods) {
             const originalKey = method.propertyKey;
 
-            const modifyingQueryMethod = method.modifying;
+            const modifyingQueryMethod = method.modifying ?? false;
             const valueQueryMethod = method.value;
             const singleResult = method.singleResult;
 
@@ -1018,7 +1018,8 @@ export class DynamicMethodsResolver<T, K> {
                         modifying: modifyingQueryMethod,
                     });
 
-                    const resolved = singleResult && Array.isArray(result) ? result[0] : result;
+                    const resolved =
+                        singleResult && Array.isArray(result) ? (result[0] ?? null) : result;
 
                     this.logger.endPerformLog(start);
 

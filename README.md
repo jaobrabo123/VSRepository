@@ -598,12 +598,18 @@ class UserRepository extends VSRepository<User, string> {
 
     @QueryMethod('UPDATE "user" SET active = true WHERE id = $1', { modifying: true })
     declare activateUser: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
+
+    // Only one row is ever expected here, so `singleResult` collapses the
+    // array into a single object (or `null` when no row matches).
+    @QueryMethod('SELECT * FROM "user" WHERE id = $1 LIMIT 1', { singleResult: true })
+    declare findByIdRaw: (arg: QueryMethodArg<[id: string]>) => Promise<User | null>;
 }
 ```
 
-| Option      | Type      | Default | Description                                                                                                                                                                          |
-| ----------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `modifying` | `boolean` | `false` | When `true`, runs as `INSERT`/`UPDATE`/`DELETE` and the method resolves to the number of affected rows. When `false`, runs as a read query and resolves to the declared return type. |
+| Option         | Type      | Default | Description                                                                                                                                                                          |
+| -------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `modifying`    | `boolean` | `false` | When `true`, runs as `INSERT`/`UPDATE`/`DELETE` and the method resolves to the number of affected rows. When `false`, runs as a read query and resolves to the declared return type. |
+| `singleResult` | `boolean` | `false` | When `true`, collapses an array result into its first element (`null` if empty), so you can declare the return type as a single object instead of an array. Has no effect on non-array results (e.g. a `modifying` query's affected-row count). |
 
 Query methods accept `{ args, db? }` at the call site — `db` lets them participate in a `transaction()` block just like base and dynamic methods.
 
@@ -612,7 +618,7 @@ Query methods accept `{ args, db? }` at the call site — `db` lets them partici
 For one-off raw SQL that doesn't warrant declaring a `@QueryMethod` on the repository class, call `query()` directly — it's available on every `VSRepository` instance and goes through the same adapter's `query()` implementation under the hood:
 
 ```typescript
-query<T = any>(query: string, options?: { args?: any[]; db?: any; modifying?: boolean }): Promise<T>;
+query<T = any>(query: string, options?: { args?: any[]; db?: any; modifying?: boolean; singleResult?: boolean }): Promise<T>;
 ```
 
 ```typescript
@@ -624,13 +630,21 @@ const affectedRows = await userRepository.query<number>(
     'UPDATE "user" SET active = true WHERE id = $1',
     { args: ["123"], modifying: true },
 );
+
+// Only one row is ever expected here, so `singleResult` collapses the
+// array into a single object (or `null` when no row matches).
+const user = await userRepository.query<User | null>(
+    'SELECT * FROM "user" WHERE id = $1 LIMIT 1',
+    { args: ["123"], singleResult: true },
+);
 ```
 
-| Option      | Type      | Default                     | Description                                                                                                              |
-| ----------- | --------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `args`      | `any[]`   | `undefined`                 | Positional parameters injected into `$1`, `$2`, ... placeholders. Never interpolate values directly into the SQL string. |
-| `db`        | `any`     | Repository's default client | Database client or transaction to run this query in.                                                                     |
-| `modifying` | `boolean` | `false`                     | When `true`, treats the statement as `INSERT`/`UPDATE`/`DELETE`.                                                         |
+| Option         | Type      | Default                     | Description                                                                                                                                                        |
+| -------------- | --------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `args`         | `any[]`   | `undefined`                  | Positional parameters injected into `$1`, `$2`, ... placeholders. Never interpolate values directly into the SQL string.                                          |
+| `db`           | `any`     | Repository's default client  | Database client or transaction to run this query in.                                                                                                              |
+| `modifying`    | `boolean` | `false`                      | When `true`, treats the statement as `INSERT`/`UPDATE`/`DELETE`.                                                                                                   |
+| `singleResult` | `boolean` | `false`                      | When `true`, collapses an array result into its first element (`null` if empty). Has no effect on non-array results (e.g. a `modifying` query's affected-row count). |
 
 Just like base, dynamic and query methods, `query()` accepts `db` in `options` to participate in a `transaction()` block.
 

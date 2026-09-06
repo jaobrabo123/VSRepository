@@ -598,12 +598,18 @@ class UserRepository extends VSRepository<User, string> {
 
     @QueryMethod('UPDATE "user" SET active = true WHERE id = $1', { modifying: true })
     declare activateUser: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
+
+    // Aqui só se espera uma linha, então `singleResult` transforma o array
+    // em um único objeto (ou `null` quando nenhuma linha corresponde).
+    @QueryMethod('SELECT * FROM "user" WHERE id = $1 LIMIT 1', { singleResult: true })
+    declare findByIdRaw: (arg: QueryMethodArg<[id: string]>) => Promise<User | null>;
 }
 ```
 
-| Option      | Tipo      | Padrão  | Descrição                                                                                                                                                                                             |
-| ----------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `modifying` | `boolean` | `false` | Quando `true`, executa como `INSERT`/`UPDATE`/`DELETE` e o método resolve para o número de linhas afetadas. Quando `false`, executa como query de leitura e resolve para o tipo de retorno declarado. |
+| Option         | Tipo      | Padrão  | Descrição                                                                                                                                                                                             |
+| -------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modifying`    | `boolean` | `false` | Quando `true`, executa como `INSERT`/`UPDATE`/`DELETE` e o método resolve para o número de linhas afetadas. Quando `false`, executa como query de leitura e resolve para o tipo de retorno declarado. |
+| `singleResult` | `boolean` | `false` | Quando `true`, transforma um resultado em array no seu primeiro elemento (`null` se vazio), permitindo declarar o tipo de retorno como um objeto único em vez de array. Não tem efeito em resultados que não são array (ex.: o número de linhas afetadas de uma query `modifying`). |
 
 Query methods aceitam `{ args, db? }` na chamada — `db` permite que participem de um bloco `transaction()`, assim como os métodos base e dinâmicos.
 
@@ -612,7 +618,7 @@ Query methods aceitam `{ args, db? }` na chamada — `db` permite que participem
 Para SQL raw pontual que não justifica declarar um `@QueryMethod` na classe do repository, chame `query()` diretamente — ele está disponível em toda instância de `VSRepository` e passa pela mesma implementação de `query()` do adapter por baixo dos panos:
 
 ```typescript
-query<T = any>(query: string, options?: { args?: any[]; db?: any; modifying?: boolean }): Promise<T>;
+query<T = any>(query: string, options?: { args?: any[]; db?: any; modifying?: boolean; singleResult?: boolean }): Promise<T>;
 ```
 
 ```typescript
@@ -624,13 +630,21 @@ const linhasAfetadas = await userRepository.query<number>(
     'UPDATE "user" SET active = true WHERE id = $1',
     { args: ["123"], modifying: true },
 );
+
+// Aqui só se espera uma linha, então `singleResult` transforma o array
+// em um único objeto (ou `null` quando nenhuma linha corresponde).
+const user = await userRepository.query<User | null>(
+    'SELECT * FROM "user" WHERE id = $1 LIMIT 1',
+    { args: ["123"], singleResult: true },
+);
 ```
 
-| Option      | Tipo      | Padrão                      | Descrição                                                                                                            |
-| ----------- | --------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `args`      | `any[]`   | `undefined`                 | Parâmetros posicionais injetados nos placeholders `$1`, `$2`, ... Nunca interpole valores diretamente na string SQL. |
-| `db`        | `any`     | Client padrão do repository | Client ou transação do banco em que essa query deve rodar.                                                           |
-| `modifying` | `boolean` | `false`                     | Quando `true`, trata a instrução como `INSERT`/`UPDATE`/`DELETE`.                                                    |
+| Option         | Tipo      | Padrão                      | Descrição                                                                                                                                             |
+| -------------- | --------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `args`         | `any[]`   | `undefined`                  | Parâmetros posicionais injetados nos placeholders `$1`, `$2`, ... Nunca interpole valores diretamente na string SQL.                                  |
+| `db`           | `any`     | Client padrão do repository  | Client ou transação do banco em que essa query deve rodar.                                                                                             |
+| `modifying`    | `boolean` | `false`                      | Quando `true`, trata a instrução como `INSERT`/`UPDATE`/`DELETE`.                                                                                      |
+| `singleResult` | `boolean` | `false`                      | Quando `true`, transforma um resultado em array no seu primeiro elemento (`null` se vazio). Não tem efeito em resultados que não são array (ex.: o número de linhas afetadas de uma query `modifying`). |
 
 Assim como os métodos base, dinâmicos e query, `query()` aceita `db` em `options` para participar de um bloco `transaction()`.
 
