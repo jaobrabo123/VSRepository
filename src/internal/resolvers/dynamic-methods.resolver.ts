@@ -1013,7 +1013,7 @@ export class DynamicMethodsResolver<T, K> {
                 if (spreadArgsMode) {
                     const dbPos = args.at(-1);
                     if (dbPos instanceof DbArg) {
-                        db = dbPos;
+                        db = dbPos.getDb();
                         queryArgs = args.slice(0, -1);
                     } else {
                         queryArgs = args;
