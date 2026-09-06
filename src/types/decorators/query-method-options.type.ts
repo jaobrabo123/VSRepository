@@ -27,4 +27,6 @@ export type QueryMethodOptions = {
      * @default false
      */
     singleResult?: boolean;
+
+    spreadArgs?: boolean;
 };

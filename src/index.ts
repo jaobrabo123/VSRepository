@@ -5,6 +5,7 @@ export { VSRepository } from "./VSRepository.js";
 export { VSRepoAdapter } from "./VSRepoAdapter.js";
 export { VSRepoError } from "./errors/VSRepoError.js";
 export { VSRepoAdapterError } from "./errors/VSRepoAdapterError.js";
+export { DbArg } from "./internal/utils/db-arg.util.js";
 
 // Decorators
 export { DynamicMethod } from "./decorators/dynamic-method.decorator.js";
@@ -15,6 +16,9 @@ export { VSRepoErrorType } from "./internal/enums/vsrepo-error-type.enum.js";
 export { VSLogLevel } from "./internal/enums/vs-log-level.enum.js";
 export { TransactionIsolationLevel } from "./internal/enums/transaction-isolation-level.enum.js";
 export { AdapterErrorCode } from "./internal/enums/adapter-error-code.enum.js";
+
+// Public functions
+export { withDb } from "./internal/utils/with-db.util.js";
 
 // Public types
 export type { VSRepoOptions } from "./types/vsrepo/vsrepo-options.type.js";
@@ -48,6 +52,7 @@ export type { DecimalLike } from "./types/utils/decimal-like.type.js";
 export type { NumericKeys } from "./types/utils/numeric-keys.type.js";
 export type { NumericLike } from "./types/utils/numeric-like.type.js";
 export type { RestrictMethodOptions } from "./types/utils/restrict-method-options.type.js";
+export type { QueryArgs } from "./types/utils/query-args.type.js";
 
 // Internal features
 export { VSLogger } from "./internal/utils/vs-logger.util.js";

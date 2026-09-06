@@ -23,6 +23,7 @@ import { MergeWheresResolver } from "./merge-wheres.resolver";
 import merge from "deepmerge";
 import { VSRepoErrorType } from "../enums/vsrepo-error-type.enum";
 import { DEBUG_ARG_SYMBOL } from "../constants/debug-arg-symbol.constant";
+import { DbArg } from "../utils/db-arg.util";
 
 export class DynamicMethodsResolver<T, K> {
     constructor(
@@ -1003,10 +1004,35 @@ export class DynamicMethodsResolver<T, K> {
             const modifyingQueryMethod = method.modifying ?? false;
             const valueQueryMethod = method.value;
             const singleResult = method.singleResult;
+            const spreadArgsMode = method.spreadArgs;
 
-            (instance as any)[originalKey] = async (arg: unknown) => {
-                const queryArgValidated = this.validator.validateQueryMethodArg(arg);
-                queryArgValidated.db ??= this.adapter.getDbClient();
+            (instance as any)[originalKey] = async (...args: unknown[]) => {
+                let db: any;
+                let queryArgs: any[] | undefined;
+
+                if (spreadArgsMode) {
+                    const dbPos = args.at(-1);
+                    if (dbPos instanceof DbArg) {
+                        db = dbPos;
+                        queryArgs = args.slice(0, -1);
+                    } else {
+                        queryArgs = args;
+                    }
+                } else {
+                    if (args.length > 1) {
+                        const errorMessage = `This query method was declared without spreadArgs = true, use a single QueryMethodArg instead`;
+                        this.logger.logError(
+                            `Cannot run '${String(originalKey)}': ${errorMessage}`,
+                        );
+
+                        throw new VSRepoError(errorMessage, VSRepoErrorType.DYNAMIC);
+                    }
+                    const queryArgValidated = this.validator.validateQueryMethodArg(args[0]);
+                    db = queryArgValidated.db;
+                    queryArgs = queryArgValidated.args;
+                }
+
+                db ??= this.adapter.getDbClient();
 
                 const start = this.logger.startPerformLog(
                     `run ${String(originalKey)} (Modifying: ${modifyingQueryMethod})`,
@@ -1014,7 +1040,8 @@ export class DynamicMethodsResolver<T, K> {
 
                 try {
                     const result = await this.adapter.query(valueQueryMethod, {
-                        ...queryArgValidated,
+                        db,
+                        args: queryArgs,
                         modifying: modifyingQueryMethod,
                     });
 

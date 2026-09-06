@@ -119,14 +119,14 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         db: v.optional(v.any()),
     });
 
-    validateQueryMethodArg(arg?: unknown): QueryMethodArg<any> {
+    validateQueryMethodArg(arg?: unknown): QueryMethodArg<any[]> {
         const parsed = v.safeParse(this.queryArgSchema, arg ?? {});
 
         if (!parsed.success) {
             this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR);
         }
 
-        return parsed.output as QueryMethodArg<any>;
+        return parsed.output;
     }
 
     private queryOptionsSchema = v.object({

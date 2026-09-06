@@ -28,6 +28,7 @@ export class DecoratorsValidator {
     private static queryMethodOptionsSchema = v.object({
         modifying: v.optional(v.boolean(), false),
         singleResult: v.optional(v.boolean()),
+        spreadArgs: v.optional(v.boolean()),
     });
 
     static validateQueryMethodOptions(options: unknown): QueryMethodOptions {
