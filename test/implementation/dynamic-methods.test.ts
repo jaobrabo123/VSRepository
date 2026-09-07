@@ -10,6 +10,8 @@ import { VSRepoAdapter } from "../../src/VSRepoAdapter";
 import { createFakeAdapter } from "../helpers/fake-adapter";
 import { UserRepository } from "../helpers/user-repository";
 import { User, buildUser } from "../helpers/entities";
+import { withDb } from "../../src/internal/utils/with-db.util";
+import { VSRepoError } from "../../src/errors/VSRepoError";
 
 let fakeAdapter: jest.Mocked<VSRepoAdapter<User>>;
 let userRepository: UserRepository;
@@ -91,5 +93,82 @@ describe("@QueryMethod — query crua", () => {
             expect.objectContaining({ args: ["joao@email.com"], modifying: false }),
         );
         expect(result).toBe(users);
+    });
+
+    describe("'singleResult'", () => {
+        it("'findByIdRaw' (singleResult: true) resolve para o primeiro elemento do array retornado pelo adapter", async () => {
+            const user = buildUser();
+            fakeAdapter.query.mockResolvedValueOnce([user]);
+
+            const result = await userRepository.findByIdRaw({ args: ["user-1"] });
+
+            expect(fakeAdapter.query).toHaveBeenCalledWith(
+                'SELECT * FROM "user" WHERE id = $1 LIMIT 1',
+                expect.objectContaining({ args: ["user-1"], modifying: false }),
+            );
+            expect(result).toBe(user);
+        });
+
+        it("'findByIdRaw' (singleResult: true) resolve para 'null' quando o adapter retorna um array vazio", async () => {
+            fakeAdapter.query.mockResolvedValueOnce([]);
+
+            const result = await userRepository.findByIdRaw({ args: ["missing"] });
+
+            expect(result).toBeNull();
+        });
+
+        it("'activateUserRaw' (modifying + singleResult: true) mantém o valor original quando o resultado não é um array", async () => {
+            fakeAdapter.query.mockResolvedValueOnce(1);
+
+            const result = await userRepository.activateUserRaw({ args: ["user-1"] });
+
+            expect(fakeAdapter.query).toHaveBeenCalledWith(
+                'UPDATE "user" SET active = true WHERE id = $1',
+                expect.objectContaining({ args: ["user-1"], modifying: true }),
+            );
+            expect(result).toBe(1);
+        });
+    });
+
+    describe("'spreadArgs'", () => {
+        it("'findByEmailAndTypeRaw' recebe os placeholders como argumentos posicionais e usa o client padrão como 'db'", async () => {
+            const users = [buildUser()];
+            fakeAdapter.query.mockResolvedValueOnce(users);
+
+            const result = await userRepository.findByEmailAndTypeRaw("joao@email.com", "admin");
+
+            expect(fakeAdapter.query).toHaveBeenCalledWith(
+                'SELECT * FROM "user" WHERE email = $1 AND "userType" = $2',
+                expect.objectContaining({ args: ["joao@email.com", "admin"], modifying: false }),
+            );
+            expect(result).toBe(users);
+        });
+
+        it("um 'withDb(tx)' à direita é extraído dos 'args' e repassado como 'db' — desembrulhado, não a instância de 'DbArg'", async () => {
+            const users = [buildUser()];
+            fakeAdapter.query.mockResolvedValueOnce(users);
+            const fakeTx = { isFakeTx: true };
+
+            await userRepository.findByEmailAndTypeRaw(
+                "joao@email.com",
+                "admin",
+                withDb(fakeTx),
+            );
+
+            expect(fakeAdapter.query).toHaveBeenCalledWith(
+                'SELECT * FROM "user" WHERE email = $1 AND "userType" = $2',
+                expect.objectContaining({
+                    args: ["joao@email.com", "admin"],
+                    db: fakeTx,
+                    modifying: false,
+                }),
+            );
+        });
+
+        it("chamar um método declarado sem 'spreadArgs' com mais de um argumento lança 'VSRepoError'", async () => {
+            await expect(
+                (userRepository.findByEmailRaw as any)("joao@email.com", "extra"),
+            ).rejects.toThrow(VSRepoError);
+        });
     });
 });

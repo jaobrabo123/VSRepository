@@ -1,3 +1,5 @@
+import { VSRepoOrmTypes } from "../vsrepo/vsrepo-orm-types.type";
+
 /**
  * Single argument accepted by a method declared with `@QueryMethod`.
  *
@@ -19,9 +21,9 @@
  *
  * @publicApi
  */
-export type QueryMethodArg<T extends Array<any>> = {
+export type QueryMethodArg<T extends Array<any> = [], O extends VSRepoOrmTypes = VSRepoOrmTypes> = {
     /** Positional parameters injected into the SQL placeholders (`$1`, `$2`, ...). */
     args?: T;
     /** Database client or transaction to run this query in, instead of the repository's default client. */
-    db?: any;
+    db?: O["dbClient"] | O["dbTransaction"];
 };

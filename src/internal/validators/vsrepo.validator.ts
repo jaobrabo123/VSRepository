@@ -119,20 +119,21 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         db: v.optional(v.any()),
     });
 
-    validateQueryMethodArg(arg?: unknown): QueryMethodArg<any> {
+    validateQueryMethodArg(arg?: unknown): QueryMethodArg<any[]> {
         const parsed = v.safeParse(this.queryArgSchema, arg ?? {});
 
         if (!parsed.success) {
             this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR);
         }
 
-        return parsed.output as QueryMethodArg<any>;
+        return parsed.output;
     }
 
     private queryOptionsSchema = v.object({
         args: v.optional(v.array(v.any())),
         db: v.optional(v.any()),
         modifying: v.optional(v.boolean()),
+        singleResult: v.optional(v.boolean()),
     });
 
     validateQueryOptions(options?: unknown): VSRepoQueryOptions {
@@ -142,7 +143,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
             this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR);
         }
 
-        return parsed.output as VSRepoQueryOptions;
+        return parsed.output;
     }
 
     private transactionOptionsSchema = v.object({
@@ -157,7 +158,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
             this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR);
         }
 
-        return parsed.output as VSRepoTransactionOptions;
+        return parsed.output;
     }
 
     validateOrdering(value: unknown): Ordering<T> {
@@ -177,7 +178,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
             this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR, "pagination");
         }
 
-        return parsed.output as Pagination;
+        return parsed.output;
     }
 
     validateWhere(value: unknown): VSRepoWhere<T> {

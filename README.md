@@ -51,6 +51,7 @@ VSRepository lets you create strongly-typed repositories with:
     - [Ordering, pagination and distinct](#ordering-pagination-and-distinct)
     - [Decorator options](#decorator-options)
 - [Query methods (raw SQL)](#query-methods-raw-sql)
+    - [Spread arguments with `spreadArgs`](#spread-arguments-with-spreadargs)
     - [Ad-hoc raw queries with `query()`](#ad-hoc-raw-queries-with-query)
 - [Transactions](#transactions)
 - [Utility types](#utility-types)
@@ -598,21 +599,54 @@ class UserRepository extends VSRepository<User, string> {
 
     @QueryMethod('UPDATE "user" SET active = true WHERE id = $1', { modifying: true })
     declare activateUser: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
+
+    // Only one row is ever expected here, so `singleResult` collapses the
+    // array into a single object (or `null` when no row matches).
+    @QueryMethod('SELECT * FROM "user" WHERE id = $1 LIMIT 1', { singleResult: true })
+    declare findByIdRaw: (arg: QueryMethodArg<[id: string]>) => Promise<User | null>;
 }
 ```
 
-| Option      | Type      | Default | Description                                                                                                                                                                          |
-| ----------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `modifying` | `boolean` | `false` | When `true`, runs as `INSERT`/`UPDATE`/`DELETE` and the method resolves to the number of affected rows. When `false`, runs as a read query and resolves to the declared return type. |
+| Option         | Type      | Default | Description                                                                                                                                                                          |
+| -------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `modifying`    | `boolean` | `false` | When `true`, runs as `INSERT`/`UPDATE`/`DELETE` and the method resolves to the number of affected rows. When `false`, runs as a read query and resolves to the declared return type. |
+| `singleResult` | `boolean` | `false` | When `true`, collapses an array result into its first element (`null` if empty), so you can declare the return type as a single object instead of an array. Has no effect on non-array results (e.g. a `modifying` query's affected-row count). |
 
 Query methods accept `{ args, db? }` at the call site — `db` lets them participate in a `transaction()` block just like base and dynamic methods.
+
+### Spread arguments with `spreadArgs`
+
+By default, a `@QueryMethod` receives its placeholder values through a single `QueryMethodArg` object (`method({ args: [...] })`). Set `spreadArgs: true` to receive them as separate positional arguments instead, JpaRepository style:
+
+```typescript
+class UserRepository extends VSRepository<User, string> {
+    @QueryMethod('SELECT * FROM "user" WHERE email = $1 AND "userType" = $2', {
+        spreadArgs: true,
+    })
+    declare findByEmailAndType: (
+        ...args: QueryArgs<[email: string, userType: string]>
+    ) => Promise<User[]>;
+}
+
+const admins = await userRepository.findByEmailAndType("joao@email.com", "admin");
+```
+
+To run the query against a specific client or transaction instead of the repository's default one, pass `withDb(tx)` as the trailing argument — it wraps `tx` in a `DbArg`, which the resolver recognizes with `instanceof`, so it's never confused with a regular positional argument even if that argument happens to be an object:
+
+```typescript
+await userRepository.transaction(async (tx) => {
+    await userRepository.findByEmailAndType("joao@email.com", "admin", withDb(tx));
+});
+```
+
+`spreadArgs` only affects `@QueryMethod`-declared fields — it's `false` by default, and calling a method declared without it using more than one argument throws, since the single-`QueryMethodArg` call style is expected instead. It has no effect on `query()`, which always accepts `{ args, db? }`.
 
 ### Ad-hoc raw queries with `query()`
 
 For one-off raw SQL that doesn't warrant declaring a `@QueryMethod` on the repository class, call `query()` directly — it's available on every `VSRepository` instance and goes through the same adapter's `query()` implementation under the hood:
 
 ```typescript
-query<T = any>(query: string, options?: { args?: any[]; db?: any; modifying?: boolean }): Promise<T>;
+query<T = any>(query: string, options?: { args?: any[]; db?: any; modifying?: boolean; singleResult?: boolean }): Promise<T>;
 ```
 
 ```typescript
@@ -624,13 +658,21 @@ const affectedRows = await userRepository.query<number>(
     'UPDATE "user" SET active = true WHERE id = $1',
     { args: ["123"], modifying: true },
 );
+
+// Only one row is ever expected here, so `singleResult` collapses the
+// array into a single object (or `null` when no row matches).
+const user = await userRepository.query<User | null>(
+    'SELECT * FROM "user" WHERE id = $1 LIMIT 1',
+    { args: ["123"], singleResult: true },
+);
 ```
 
-| Option      | Type      | Default                     | Description                                                                                                              |
-| ----------- | --------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `args`      | `any[]`   | `undefined`                 | Positional parameters injected into `$1`, `$2`, ... placeholders. Never interpolate values directly into the SQL string. |
-| `db`        | `any`     | Repository's default client | Database client or transaction to run this query in.                                                                     |
-| `modifying` | `boolean` | `false`                     | When `true`, treats the statement as `INSERT`/`UPDATE`/`DELETE`.                                                         |
+| Option         | Type      | Default                     | Description                                                                                                                                                        |
+| -------------- | --------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `args`         | `any[]`   | `undefined`                  | Positional parameters injected into `$1`, `$2`, ... placeholders. Never interpolate values directly into the SQL string.                                          |
+| `db`           | `any`     | Repository's default client  | Database client or transaction to run this query in.                                                                                                              |
+| `modifying`    | `boolean` | `false`                      | When `true`, treats the statement as `INSERT`/`UPDATE`/`DELETE`.                                                                                                   |
+| `singleResult` | `boolean` | `false`                      | When `true`, collapses an array result into its first element (`null` if empty). Has no effect on non-array results (e.g. a `modifying` query's affected-row count). |
 
 Just like base, dynamic and query methods, `query()` accepts `db` in `options` to participate in a `transaction()` block.
 
@@ -691,6 +733,7 @@ import type {
     DeepPartial,
     CountResult,
     QueryMethodArg,
+    QueryArgs,
     KeysOfType,
     NumericKeys,
     NumericLike,
@@ -713,6 +756,7 @@ import type {
 | `DeepPartial<T>`                                    | Recursively makes every property of `T` optional, including nested objects and array elements.                                                                                                       | `save`, `saveList`, `patch`, `merge`, and every write method on `VSRepoAdapter`.                                                                              |
 | `CountResult`                                       | `{ count: number }` — the shape returned by batch operations.                                                                                                                                        | `removeList`, `softRemoveList`, `restoreList`, `createManyIgnoreConflicts`.                                                                                   |
 | `QueryMethodArg<T>`                                 | `{ args?: T, db? }` — positional SQL parameters (`$1`, `$2`, ...) and transaction client for `@QueryMethod`.                                                                                         | [Query methods (raw SQL)](#query-methods-raw-sql).                                                                                                            |
+| `QueryArgs<T, O>`                                   | Types the spread parameter list of a `@QueryMethod` declared with `{ spreadArgs: true }`: `T`'s values in order, followed by an optional trailing `DbArg<O>` built via `withDb()`.                  | [Spread arguments with `spreadArgs`](#spread-arguments-with-spreadargs).                                                                                      |
 | `KeysOfType<T, K>`                                  | Extracts the keys of `T` whose value type is assignable to `K`.                                                                                                                                      | Constrains `pkName` in [Constructor options](#constructor-options) to fields of the entity matching the configured primary-key type.                          |
 | `NumericKeys<T>`                                    | Extracts the keys of `T` whose (non-nullable) value type is assignable to `NumericLike`. Nullable numeric fields (`number \| null`) are included.                                                   | Constrains `field` in [Atomic and aggregate methods](#atomic-and-aggregate-methods) (`increment`, `sum`, etc).                                                |
 | `NumericLike`                                       | `number \| bigint \| DecimalLike`.                                                                                                                                                                    | [Atomic and aggregate methods](#atomic-and-aggregate-methods).                                                                                                 |
@@ -932,7 +976,7 @@ try {
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `DECORATOR`       | Invalid arguments were passed to `@DynamicMethod` or `@QueryMethod`.                                                       |
 | `RESOLVER`        | The library failed to resolve a dynamic/query method's configuration into a callable method (e.g. an unknown method name). |
-| `DYNAMIC`         | A resolved dynamic method failed at runtime (e.g. missing arguments).                                                      |
+| `DYNAMIC`         | A resolved dynamic/query method failed at runtime (e.g. missing arguments).                                                      |
 | `VALIDATOR`       | Invalid method options or arguments were detected during validation.                                                       |
 | `BASE`            | Invalid usage of a base method (`get`, `save`, `remove`, etc).                                                             |
 | `ADAPTER`         | A `VSRepoAdapter` failed while talking to the underlying ORM/database — always thrown as `VSRepoAdapterError`.             |

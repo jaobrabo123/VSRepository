@@ -8,7 +8,7 @@ export enum VSRepoErrorType {
     DECORATOR = "DECORATOR",
     /** Failure while resolving a dynamic or query method's configuration into a callable method. */
     RESOLVER = "RESOLVER",
-    /** Failure while executing a resolved dynamic method at runtime. */
+    /** Failure while executing a resolved dynamic/query method at runtime. */
     DYNAMIC = "DYNAMIC",
     /** Invalid method options or arguments detected during validation. */
     VALIDATOR = "VALIDATOR",

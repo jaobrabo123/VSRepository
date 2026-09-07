@@ -8,6 +8,7 @@ import { VSRepoAdapter } from "../../src/VSRepoAdapter";
 import { DynamicMethod } from "../../src/decorators/dynamic-method.decorator";
 import { QueryMethod } from "../../src/decorators/query-method.decorator";
 import { QueryMethodArg } from "../../src/types/utils/query-method-arg.type";
+import { QueryArgs } from "../../src/types/utils/query-args.type";
 import { VSLogLevel } from "../../src/internal/enums/vs-log-level.enum";
 import { User } from "./entities";
 
@@ -36,6 +37,22 @@ export class UserRepository extends VSRepository<User, string> {
 
     @QueryMethod('SELECT * FROM "user" WHERE email = $1')
     declare findByEmailRaw: (arg: QueryMethodArg<[email: string]>) => Promise<User[]>;
+
+    @QueryMethod('SELECT * FROM "user" WHERE id = $1 LIMIT 1', { singleResult: true })
+    declare findByIdRaw: (arg: QueryMethodArg<[id: string]>) => Promise<User | null>;
+
+    @QueryMethod('UPDATE "user" SET active = true WHERE id = $1', {
+        modifying: true,
+        singleResult: true,
+    })
+    declare activateUserRaw: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
+
+    @QueryMethod('SELECT * FROM "user" WHERE email = $1 AND "userType" = $2', {
+        spreadArgs: true,
+    })
+    declare findByEmailAndTypeRaw: (
+        ...args: QueryArgs<[email: string, userType: string]>
+    ) => Promise<User[]>;
 }
 
 export class SoftDeletableUserRepository extends VSRepository<User, string> {

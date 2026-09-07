@@ -210,6 +210,8 @@ export abstract class VSRepository<
      * Use `$1`, `$2`, ... placeholders for values passed via `options.args` —
      * never interpolate values directly into `query`, to avoid SQL injection.
      * Set `options.modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements.
+     * Set `options.singleResult: true` to collapse an array result into its
+     * first element (`null` if empty) — see {@link VSRepoQueryOptions.singleResult}.
      *
      * @example
      * ```typescript
@@ -221,6 +223,13 @@ export abstract class VSRepository<
      * const affected = await userRepository.query<number>(
      *     'UPDATE "user" SET active = true WHERE id = $1',
      *     { args: ["123"], modifying: true },
+     * );
+     *
+     * // Only one row is ever expected here, so `singleResult` collapses the
+     * // array into a single object (or `null` when no row matches).
+     * const user = await userRepository.query<User | null>(
+     *     'SELECT * FROM "user" WHERE id = $1 LIMIT 1',
+     *     { args: ["123"], singleResult: true },
      * );
      * ```
      */
@@ -241,9 +250,14 @@ export abstract class VSRepository<
                 modifying: optionsValidated.modifying ?? false,
             });
 
+            const resolved =
+                optionsValidated.singleResult && Array.isArray(result)
+                    ? (result[0] ?? null)
+                    : result;
+
             this.logger.endPerformLog(start);
 
-            return result;
+            return resolved;
         } catch (err) {
             this.logger.endPerformLog(start);
             // this.logger.logError(`Failed to run 'query' on ${this.constructor.name}`, err);

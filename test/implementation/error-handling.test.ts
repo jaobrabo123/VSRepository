@@ -161,21 +161,15 @@ describe("VSRepository — guard clauses dos métodos base", () => {
     const userRepository = new UserRepository(createFakeAdapter<User>());
 
     it("'removeList' é lançado quando 'pks' não é um array", async () => {
-        await expect(userRepository.removeList("not-an-array" as any)).rejects.toThrow(
-            VSRepoError,
-        );
+        await expect(userRepository.removeList("not-an-array" as any)).rejects.toThrow(VSRepoError);
     });
 
     it("'saveList' é lançado quando 'objs' não é um array", async () => {
-        await expect(userRepository.saveList("not-an-array" as any)).rejects.toThrow(
-            VSRepoError,
-        );
+        await expect(userRepository.saveList("not-an-array" as any)).rejects.toThrow(VSRepoError);
     });
 
     it("'getList' é lançado quando 'pks' não é um array", async () => {
-        await expect(userRepository.getList("not-an-array" as any)).rejects.toThrow(
-            VSRepoError,
-        );
+        await expect(userRepository.getList("not-an-array" as any)).rejects.toThrow(VSRepoError);
     });
 
     it("'transaction' é lançado quando 'fn' não é uma função", async () => {
@@ -200,6 +194,48 @@ describe("VSRepository — guard clauses dos métodos base", () => {
             expect(err instanceof VSRepoError).toBe(true);
             expect((err as VSRepoError).type).toBe(VSRepoErrorType.BASE);
         }
+    });
+});
+
+// =============================================================================
+// VSRepoErrorType.DYNAMIC — @QueryMethod chamado com uma assinatura que não
+// bate com 'spreadArgs' (o modo é decidido na declaração, não na chamada).
+// =============================================================================
+
+describe("@QueryMethod — validação da assinatura de chamada ('spreadArgs')", () => {
+    class UserRepository extends VSRepository<User, string> {
+        constructor(adapter: VSRepoAdapter<User>) {
+            super({ adapter, pkName: "id" });
+        }
+
+        @QueryMethod('SELECT * FROM "user" WHERE email = $1')
+        declare findByEmailRaw: (arg: any) => Promise<User[]>;
+    }
+
+    const userRepository = new UserRepository(createFakeAdapter<User>());
+
+    it("é lançado ao chamar um método declarado sem 'spreadArgs' com mais de um argumento posicional", async () => {
+        await expect(
+            (userRepository.findByEmailRaw as any)("joao@email.com", "extra"),
+        ).rejects.toThrow(VSRepoError);
+    });
+
+    it("tem type 'DYNAMIC'", async () => {
+        try {
+            await (userRepository.findByEmailRaw as any)("joao@email.com", "extra");
+            throw new Error("deveria ter lançado VSRepoError");
+        } catch (err) {
+            expect(err instanceof VSRepoError).toBe(true);
+            expect((err as VSRepoError).type).toBe(VSRepoErrorType.DYNAMIC);
+        }
+    });
+
+    it("não lança ao chamar com um único 'QueryMethodArg' (assinatura padrão)", async () => {
+        const fakeAdapter = createFakeAdapter<User>();
+        const repo = new UserRepository(fakeAdapter);
+        fakeAdapter.query.mockResolvedValueOnce([]);
+
+        await expect(repo.findByEmailRaw({ args: ["joao@email.com"] })).resolves.toEqual([]);
     });
 });
 
