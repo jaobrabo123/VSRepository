@@ -979,7 +979,7 @@ try {
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `DECORATOR`       | Argumentos inválidos foram passados para `@DynamicMethod` ou `@QueryMethod`.                                                               |
 | `RESOLVER`        | A biblioteca falhou ao resolver a configuração de um método dinâmico/de query em um método chamável (ex.: um nome de método desconhecido). |
-| `DYNAMIC`         | Um método dinâmico já resolvido falhou em tempo de execução (ex.: argumentos faltando).                                                    |
+| `DYNAMIC`         | Um dynamic/query method já resolvido falhou em tempo de execução (ex.: argumentos faltando).                                                    |
 | `VALIDATOR`       | Options ou argumentos de método inválidos foram detectados durante a validação.                                                            |
 | `BASE`            | Uso inválido de um método base (`get`, `save`, `remove`, etc).                                                                             |
 | `ADAPTER`         | Um `VSRepoAdapter` falhou ao falar com o ORM/banco subjacente — sempre é lançado como `VSRepoAdapterError`.                                |

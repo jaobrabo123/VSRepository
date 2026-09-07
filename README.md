@@ -976,7 +976,7 @@ try {
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `DECORATOR`       | Invalid arguments were passed to `@DynamicMethod` or `@QueryMethod`.                                                       |
 | `RESOLVER`        | The library failed to resolve a dynamic/query method's configuration into a callable method (e.g. an unknown method name). |
-| `DYNAMIC`         | A resolved dynamic method failed at runtime (e.g. missing arguments).                                                      |
+| `DYNAMIC`         | A resolved dynamic/query method failed at runtime (e.g. missing arguments).                                                      |
 | `VALIDATOR`       | Invalid method options or arguments were detected during validation.                                                       |
 | `BASE`            | Invalid usage of a base method (`get`, `save`, `remove`, etc).                                                             |
 | `ADAPTER`         | A `VSRepoAdapter` failed while talking to the underlying ORM/database — always thrown as `VSRepoAdapterError`.             |
