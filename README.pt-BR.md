@@ -51,6 +51,7 @@ O VSRepository permite criar repositories fortemente tipados com:
     - [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct)
     - [Options do decorador](#options-do-decorador)
 - [Query methods (SQL raw)](#query-methods-sql-raw)
+    - [Argumentos via spread com `spreadArgs`](#argumentos-via-spread-com-spreadargs)
     - [Queries raw pontuais com `query()`](#queries-raw-pontuais-com-query)
 - [Transações](#transações)
 - [Tipos utilitários](#tipos-utilitários)
@@ -613,6 +614,33 @@ class UserRepository extends VSRepository<User, string> {
 
 Query methods aceitam `{ args, db? }` na chamada — `db` permite que participem de um bloco `transaction()`, assim como os métodos base e dinâmicos.
 
+### Argumentos via spread com `spreadArgs`
+
+Por padrão, um `@QueryMethod` recebe seus valores de placeholder através de um único objeto `QueryMethodArg` (`method({ args: [...] })`). Defina `spreadArgs: true` para recebê-los como argumentos posicionais separados, no estilo do JpaRepository:
+
+```typescript
+class UserRepository extends VSRepository<User, string> {
+    @QueryMethod('SELECT * FROM "user" WHERE email = $1 AND "userType" = $2', {
+        spreadArgs: true,
+    })
+    declare findByEmailAndType: (
+        ...args: QueryArgs<[email: string, userType: string]>
+    ) => Promise<User[]>;
+}
+
+const admins = await userRepository.findByEmailAndType("joao@email.com", "admin");
+```
+
+Para rodar a query com um client ou transação específico em vez do client padrão do repository, passe `withDb(tx)` como argumento final — ele embrulha `tx` em um `DbArg`, que o resolver reconhece via `instanceof`, então nunca é confundido com um argumento posicional comum, mesmo que esse argumento seja um objeto:
+
+```typescript
+await userRepository.transaction(async (tx) => {
+    await userRepository.findByEmailAndType("joao@email.com", "admin", withDb(tx));
+});
+```
+
+`spreadArgs` afeta apenas campos declarados com `@QueryMethod` — o padrão é `false`, e chamar um método declarado sem essa opção usando mais de um argumento lança erro, já que se espera o estilo de chamada com um único `QueryMethodArg`. Não tem efeito sobre `query()`, que sempre aceita `{ args, db? }`.
+
 ### Queries raw pontuais com `query()`
 
 Para SQL raw pontual que não justifica declarar um `@QueryMethod` na classe do repository, chame `query()` diretamente — ele está disponível em toda instância de `VSRepository` e passa pela mesma implementação de `query()` do adapter por baixo dos panos:
@@ -708,6 +736,7 @@ import type {
     DeepPartial,
     CountResult,
     QueryMethodArg,
+    QueryArgs,
     KeysOfType,
     NumericKeys,
     NumericLike,
@@ -730,6 +759,7 @@ import type {
 | `DeepPartial<T>`                                    | Torna todas as propriedades de `T` opcionais recursivamente, incluindo objetos aninhados e elementos de array.                                                                                                      | `save`, `saveList`, `patch`, `merge`, e todo método de escrita do `VSRepoAdapter`.                                                                                  |
 | `CountResult`                                       | `{ count: number }` — o formato retornado por operações em lote.                                                                                                                                                    | `removeList`, `softRemoveList`, `restoreList`, `createManyIgnoreConflicts`.                                                                                         |
 | `QueryMethodArg<T>`                                 | `{ args?: T, db? }` — parâmetros posicionais do SQL (`$1`, `$2`, ...) e cliente de transação para o `@QueryMethod`.                                                                                                 | [Query methods (SQL raw)](#query-methods-sql-raw).                                                                                                                  |
+| `QueryArgs<T, O>`                                   | Tipa a lista de parâmetros via spread de um `@QueryMethod` declarado com `{ spreadArgs: true }`: os valores de `T`, em ordem, seguidos de um `DbArg<O>` opcional construído via `withDb()`.                       | [Argumentos via spread com `spreadArgs`](#argumentos-via-spread-com-spreadargs).                                                                                    |
 | `KeysOfType<T, K>`                                  | Extrai as chaves de `T` cujo tipo de valor é atribuível a `K`.                                                                                                                                                      | Restringe `pkName`, em [Options do construtor](#options-do-construtor), aos campos da entidade compatíveis com o tipo de chave primária configurado.                |
 | `NumericKeys<T>`                                    | Extrai as chaves de `T` cujo tipo de valor (ignorando `null`/`undefined`) é atribuível a `NumericLike`. Campos numéricos nullable (`number \| null`) são incluídos.                                                | Restringe `field` em [Métodos atômicos e de agregação](#métodos-atômicos-e-de-agregação) (`increment`, `sum`, etc).                                                 |
 | `NumericLike`                                       | `number \| bigint \| DecimalLike`.                                                                                                                                                                                   | [Métodos atômicos e de agregação](#métodos-atômicos-e-de-agregação).                                                                                                 |
