@@ -8,8 +8,8 @@ export { VSRepoAdapterError } from "./errors/VSRepoAdapterError.js";
 export { DbArg } from "./internal/utils/db-arg.util.js";
 
 // Decorators
-export { DynamicMethod, DynamicMethod as Dynamic } from "./decorators/dynamic-method.decorator.js";
-export { QueryMethod, QueryMethod as Query } from "./decorators/query-method.decorator.js";
+export { DynamicMethod } from "./decorators/dynamic-method.decorator.js";
+export { QueryMethod } from "./decorators/query-method.decorator.js";
 
 // Public enums
 export { VSRepoErrorType } from "./internal/enums/vsrepo-error-type.enum.js";
