@@ -6,6 +6,34 @@ All notable changes to this project will be documented in this file.
 
 ---
  
+## [2.2.0] - 2026-09-06
+
+### Added
+- **`singleResult` option** on `@QueryMethod` and `query()` — collapses an array result into its first element (`null` if the array is empty) instead of leaving it as an array. Has no effect on non-array results (e.g. a `modifying` query's affected-row count). Useful for queries known to return at most one row (a `SELECT ... LIMIT 1` or a lookup by a unique column)
+- **`spreadArgs` option** on `@QueryMethod` — receive SQL placeholder values as separate positional arguments (`method(a, b, c)`), JpaRepository style, instead of a single `QueryMethodArg` object (`method({ args: [a, b, c] })`). Calling a method declared without `spreadArgs` using more than one argument now throws a `VSRepoError` (`type: VALIDATOR`), since the single-object call style is expected instead
+- **`DbArg<T>` / `withDb()`** — wrap a database client or transaction (`withDb(tx)`) to pass it as the trailing argument of a `spreadArgs` call, running that query against `tx` instead of the repository's default client. Recognized via `instanceof`, so it never collides with a regular positional argument, even one that happens to be an object
+- New public type `QueryArgs<T, O>` — types the spread parameter list of a `@QueryMethod` declared with `{ spreadArgs: true }`: `T`'s values in order, followed by an optional trailing `DbArg<O>`
+- Implementation tests covering `singleResult` and `spreadArgs` (including the `DbArg`/`withDb` extraction and the call-arity guard), plus README docs and JSDoc for every new option, type and function
+
+### Changed
+- `QueryMethodOptions.modifying` is now optional (defaults to `false` at runtime, matching the decorator's existing behavior when `options` is omitted entirely) — previously required at the type level even though omitting it worked fine
+
+---
+
+## [2.2.0] - 2026-09-06 (Português)
+
+### Adicionado
+- **Option `singleResult`** no `@QueryMethod` e no `query()` — transforma um resultado em array no seu primeiro elemento (`null` se o array estiver vazio) em vez de deixá-lo como array. Não tem efeito em resultados que não são array (ex.: o número de linhas afetadas de uma query `modifying`). Útil para queries que já se sabe que retornam no máximo uma linha (um `SELECT ... LIMIT 1` ou uma busca por uma coluna única)
+- **Option `spreadArgs`** no `@QueryMethod` — recebe os valores dos placeholders SQL como argumentos posicionais separados (`method(a, b, c)`), no estilo do JpaRepository, em vez de um único objeto `QueryMethodArg` (`method({ args: [a, b, c] })`). Chamar um método declarado sem `spreadArgs` usando mais de um argumento agora lança um `VSRepoError` (`type: VALIDATOR`), já que o estilo de chamada com objeto único é o esperado
+- **`DbArg<T>` / `withDb()`** — embrulha um client ou transação do banco (`withDb(tx)`) para passá-lo como argumento final de uma chamada com `spreadArgs`, rodando aquela query contra `tx` em vez do client padrão do repository. Reconhecido via `instanceof`, então nunca é confundido com um argumento posicional comum, mesmo que esse argumento seja um objeto
+- Novo tipo público `QueryArgs<T, O>` — tipa a lista de parâmetros via spread de um `@QueryMethod` declarado com `{ spreadArgs: true }`: os valores de `T`, em ordem, seguidos de um `DbArg<O>` opcional
+- Testes de implementação cobrindo `singleResult` e `spreadArgs` (incluindo a extração de `DbArg`/`withDb` e o guard de arity da chamada), além de documentação nos READMEs e JSDoc para cada nova option, tipo e função
+
+### Alterado
+- `QueryMethodOptions.modifying` agora é opcional (default `false` em runtime, alinhado ao comportamento já existente do decorator quando `options` é omitido por completo) — antes era obrigatório no nível de tipos, mesmo que omiti-lo já funcionasse normalmente
+
+---
+
 ## [2.1.0] - 2026-09-04
 
 ### Added
