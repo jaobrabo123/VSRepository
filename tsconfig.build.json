@@ -7,7 +7,8 @@
     // sao geradas automaticamente pelo tsc a partir do proprio `src/`.
     "declaration": true,
     "declarationMap": false,
-    "sourceMap": false
+    "sourceMap": true,
+    "stripInternal": true
   },
   // Apenas o nucleo (core) ORM-agnostico e empacotado. O `src/test.ts` e um
   // script manual de smoke test que depende do Prisma gerado localmente e fica
