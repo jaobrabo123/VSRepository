@@ -21,6 +21,8 @@
     "experimentalDecorators": true,
     // "emitDecoratorMetadata": true,
 
+    "noImplicitOverride": true,
+
     // Style Options
     // "noImplicitReturns": true,
     // "noImplicitOverride": true,

@@ -5,7 +5,31 @@ All notable changes to this project will be documented in this file.
 (Português) Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
 ---
- 
+
+## [2.2.1] - 2026-09-09
+
+### Changed
+- Build now generates **sourcemap files** (`sourceMap: true`) for easier debugging of the published package
+- Added `stripInternal: true` to the build config — declarations for members marked `@internal` are now stripped from the published `.d.ts` files, keeping the public API surface clean
+- Added `noImplicitOverride: true` to the TypeScript config, enforcing the `override` keyword on subclass members that override a parent
+
+### Fixed
+- Documentation and JSDoc for `VSRepoErrorType.DYNAMIC` now correctly state that the error can be thrown by both **dynamic** and **query** methods (previously only mentioned dynamic methods)
+
+---
+
+## [2.2.1] - 2026-09-09 (Português)
+
+### Alterado
+- A build agora gera **arquivos sourcemap** (`sourceMap: true`) para facilitar a depuração do pacote publicado
+- Adicionado `stripInternal: true` na config de build — declarações de membros marcados com `@internal` agora são removidas dos arquivos `.d.ts` publicados, mantendo a superfície da API pública limpa
+- Adicionado `noImplicitOverride: true` no config do TypeScript, forçando a palavra-chave `override` em membros de subclasses que sobrescrevem um pai
+
+### Corrigido
+- A documentação e o JSDoc do `VSRepoErrorType.DYNAMIC` agora informam corretamente que o erro pode ser lançado tanto por métodos **dynamic** quanto por **query methods** (antes mencionava apenas métodos dinâmicos)
+
+---
+
 ## [2.2.0] - 2026-09-06
 
 ### Added
