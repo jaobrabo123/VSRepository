@@ -13,6 +13,11 @@ export enum AdapterErrorCode {
     UNKNOWN = "UNKNOWN",
 
     /**
+     * Some adapters might use this code for forced transaction rollbacks (like Drizzle's `tx.rollback()`)
+     */
+    TRANSACTION_ROLLED_BACK = "TRANSACTION_ROLLED_BACK",
+
+    /**
      * The database client (or connection pool) backing the adapter was not
      * provided or could not be resolved.
      */
