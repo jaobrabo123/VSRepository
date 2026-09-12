@@ -207,8 +207,9 @@ export abstract class VSRepository<
     /**
      * Executes a raw query/statement directly against the underlying database.
      *
-     * Use `$1`, `$2`, ... placeholders for values passed via `options.args` —
-     * never interpolate values directly into `query`, to avoid SQL injection.
+     * Use placeholders for values passed via `options.args` — never interpolate
+     * values directly into `query`, to avoid SQL injection. The placeholder
+     * syntax depends on the database/driver behind your adapter.
      * Set `options.modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements.
      * Set `options.singleResult: true` to collapse an array result into its
      * first element (`null` if empty) — see {@link VSRepoQueryOptions.singleResult}.
