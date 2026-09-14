@@ -11,11 +11,14 @@ import { VSRepoQuery } from "../types/vsrepo/vsrepo-query.type";
  *
  * Applied to a `declare` class field, it executes `value` directly through the
  * adapter's `query()` method, with parameters injected positionally via the
- * `args` array passed at the call site (`$1`, `$2`, ... placeholders) — or,
- * with `spreadArgs: true`, via separate positional arguments instead.
+ * `args` array passed at the call site (placeholders) — or, with
+ * `spreadArgs: true`, via separate positional arguments instead.
  *
- * @param value Raw SQL statement to execute. Use `$1`, `$2`, ... placeholders for
- * the values that will be passed via `args` — never interpolate values directly into `value`.
+ * The placeholder syntax depends on the database/driver behind your adapter. Check your adapter's
+ * documentation for the exact syntax before writing queries.
+ *
+ * @param value Raw SQL statement to execute. Use placeholders for the values
+ * that will be passed via `args` — never interpolate values directly into `value`.
  * @param options Optional configuration; set `modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements,
  * `singleResult: true` to collapse an array result into its first element, and
  * `spreadArgs: true` to receive placeholder values as separate arguments instead of a

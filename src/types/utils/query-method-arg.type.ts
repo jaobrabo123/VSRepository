@@ -3,9 +3,11 @@ import { VSRepoOrmTypes } from "../vsrepo/vsrepo-orm-types.type";
 /**
  * Single argument accepted by a method declared with `@QueryMethod`.
  *
- * `args` are injected positionally into the raw SQL statement (`$1`, `$2`, ...),
+ * `args` are injected positionally into the raw SQL statement's placeholders,
  * allowing safe parameter injection instead of string-concatenating values
  * directly into the query.
+ *
+ * The placeholder syntax depends on the database/driver behind your adapter.
  *
  * @template T Tuple type of the positional SQL parameters, e.g. `[email: string]`.
  *
@@ -22,7 +24,7 @@ import { VSRepoOrmTypes } from "../vsrepo/vsrepo-orm-types.type";
  * @publicApi
  */
 export type QueryMethodArg<T extends Array<any> = [], O extends VSRepoOrmTypes = VSRepoOrmTypes> = {
-    /** Positional parameters injected into the SQL placeholders (`$1`, `$2`, ...). */
+    /** Positional parameters injected into the SQL placeholders — the placeholder syntax depends on the database/driver behind your adapter. */
     args?: T;
     /** Database client or transaction to run this query in, instead of the repository's default client. */
     db?: O["dbClient"] | O["dbTransaction"];

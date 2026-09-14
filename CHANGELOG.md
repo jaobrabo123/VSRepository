@@ -6,6 +6,34 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2.3.0] - 2026-09-14
+
+### Added
+- **`AdapterErrorCode.TRANSACTION_ROLLED_BACK`** — new adapter error code to signal that a database transaction was rolled back. Adapters can now throw `VSRepoAdapterError` with this code to give callers a clear, typed signal that the transaction did not commit
+
+### Fixed
+- Documentation and JSDoc across READMEs and JavaDocs now correctly state that SQL placeholders are **database-specific** (e.g. `?` for MySQL, `$1`/`$2` for PostgreSQL) instead of implying a single universal syntax
+
+### Documentation
+- Documented the current state of `VSRepoDrizzleAdapter` — available features, limitations, and planned work
+- Documented the new `AdapterErrorCode.TRANSACTION_ROLLED_BACK` in all relevant READMEs and JSDoc
+
+---
+
+## [2.3.0] - 2026-09-14 (Português)
+
+### Adicionado
+- **`AdapterErrorCode.TRANSACTION_ROLLED_BACK`** — novo código de erro de adapter para sinalizar que uma transação no banco de dados foi revertida (*rolled back*). Adapters agora podem lançar `VSRepoAdapterError` com esse código para dar ao chamador um sinal claro e tipado de que a transação não foi commitada
+
+### Corrigido
+- A documentação e o JSDoc nos READMEs e JavaDocs agora informam corretamente que os placeholders de SQL são **específicos do banco de dados** (ex.: `?` para MySQL, `$1`/`$2` para PostgreSQL) em vez de implicar uma sintaxe universal única
+
+### Documentação
+- Documentado o estado atual do `VSRepoDrizzleAdapter` — funcionalidades disponíveis, limitações e trabalho planejado
+- Documentado o novo `AdapterErrorCode.TRANSACTION_ROLLED_BACK` em todos os READMEs e JSDoc relevantes
+
+---
+
 ## [2.2.1] - 2026-09-09
 
 ### Changed

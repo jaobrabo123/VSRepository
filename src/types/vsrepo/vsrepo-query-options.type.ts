@@ -6,7 +6,7 @@ import { VSRepoOrmTypes } from "./vsrepo-orm-types.type";
  * @publicApi
  */
 export type VSRepoQueryOptions<T extends VSRepoOrmTypes = VSRepoOrmTypes> = {
-    /** Positional parameters injected into the SQL placeholders (`$1`, `$2`, ...). */
+    /** Positional parameters injected into the SQL placeholders — the placeholder syntax depends on the database/driver behind your adapter. */
     args?: any[];
     /** Database client or transaction to run this query in, instead of the repository's default client. */
     db?: T["dbClient"] | T["dbTransaction"];
