@@ -38,15 +38,6 @@ export class VSLogger {
 
     private readonly useColors: boolean;
 
-    /**
-     * @param logLevel Minimum severity that this logger will emit.
-     * @param loggerName Label prepended to every log line, e.g. `"UserRepository"`.
-     * @param slowOperationThresholdMs Controls the slow-operation threshold:
-     *   - `number` — operations that take longer than this many milliseconds are
-     *     logged as `WARN` instead of `DEBUG`.
-     *   - `false` — disables slow-operation warnings entirely.
-     *   - `true` or `undefined` — uses the default 300 ms threshold.
-     */
     constructor(
         private readonly logLevel: VSLogLevel,
         private readonly loggerName: string,
