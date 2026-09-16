@@ -216,7 +216,7 @@ await userRepository.remove(user.id);
 | `softRemoveKey`      | `keyof T`          | Optional. When set, enables `softRemove`, `softRemoveList`, `restore` and `restoreList`.                            |
 | `defaultOrdering`    | `Ordering<T>`      | Optional. Default ordering applied automatically to queries that accept `order`, unless overridden per call.        |
 | `logLevel`           | `VSLogLevel`       | Optional. Minimum severity printed by the internal logger. Defaults to `VSLogLevel.WARN`.                           |
-| `logSlowThresholdMs` | `number`           | Optional. Duration (ms) above which a finished operation is logged as `WARN` instead of `DEBUG`. Defaults to 300ms. |
+| `logSlowThresholdMs` | `number \| boolean` | Optional. Duration (ms) above which a finished operation is logged as `WARN`. Defaults to 300ms. Pass `false` to disable slow-operation warnings entirely; pass `true` to use the 300ms default explicitly. |
 
 ---
 
@@ -949,7 +949,7 @@ export class MyOrmAdapter<T> extends VSRepoAdapter<T> {
 
 | Method                                               | Description                                                                                |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `new VSLogger(logLevel, name, slowThresholdMs?)`     | Creates a logger; `name` prefixes every line, `slowThresholdMs` defaults to 300.           |
+| `new VSLogger(logLevel, name, slowThresholdMs?)` | Creates a logger; `name` prefixes every line. `slowThresholdMs` controls the slow-operation threshold: a `number` sets it in ms (default 300), `false` disables slow-operation warnings entirely, `true` or omitted uses the 300ms default. |
 | `logDebug/logInfo/logWarn(text, obj?)`               | Logs at the given level if `logLevel` allows it; `obj` is appended as pretty-printed JSON. |
 | `logError(text, err?)`                               | Logs at `ERROR`; if `err` is an `Error`, only `name`/`message`/`stack`/`cause` are logged. |
 | `startPerformLog(operation)` / `endPerformLog(data)` | Bracket a block to log its duration, escalating to `WARN` if it exceeds `slowThresholdMs`. |
@@ -1088,7 +1088,8 @@ super({
     pkName: "id",
     adapter,
     logLevel: VSLogLevel.DEBUG,
-    logSlowThresholdMs: 200,
+    logSlowThresholdMs: 200,      // warn if any operation takes > 200ms
+    // logSlowThresholdMs: false, // disable slow-operation warnings entirely
 });
 ```
 

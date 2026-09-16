@@ -216,7 +216,7 @@ await userRepository.remove(usuario.id);
 | `softRemoveKey`      | `keyof T`          | Opcional. Quando definido, habilita `softRemove`, `softRemoveList`, `restore` e `restoreList`.                                              |
 | `defaultOrdering`    | `Ordering<T>`      | Opcional. Ordenação padrão aplicada automaticamente em queries que aceitam `order`, a menos que seja sobrescrita em uma chamada específica. |
 | `logLevel`           | `VSLogLevel`       | Opcional. Severidade mínima impressa pelo logger interno. Padrão: `VSLogLevel.WARN`.                                                        |
-| `logSlowThresholdMs` | `number`           | Opcional. Duração (ms) acima da qual uma operação concluída é logada como `WARN` em vez de `DEBUG`. Padrão: 300ms.                          |
+| `logSlowThresholdMs` | `number \| boolean` | Opcional. Duração (ms) acima da qual uma operação concluída é logada como `WARN`. Padrão: 300ms. Passe `false` para desabilitar completamente os avisos de operação lenta; passe `true` para usar explicitamente o threshold padrão de 300ms. |
 
 ---
 
@@ -952,7 +952,7 @@ export class MyOrmAdapter<T> extends VSRepoAdapter<T> {
 
 | Método                                               | Descrição                                                                                                  |
 | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `new VSLogger(logLevel, name, slowThresholdMs?)`     | Cria um logger; `name` prefixa cada linha, `slowThresholdMs` tem default 300.                              |
+| `new VSLogger(logLevel, name, slowThresholdMs?)` | Cria um logger; `name` prefixa cada linha. `slowThresholdMs` controla o threshold de operação lenta: um `number` define o valor em ms (padrão 300), `false` desabilita os avisos de operação lenta completamente, `true` ou omitido usa o padrão de 300ms. |
 | `logDebug/logInfo/logWarn(text, obj?)`               | Loga no nível dado se `logLevel` permitir; `obj` é anexado como JSON formatado.                            |
 | `logError(text, err?)`                               | Loga em `ERROR`; se `err` for uma `Error`, só `name`/`message`/`stack`/`cause` são logados.                |
 | `startPerformLog(operation)` / `endPerformLog(data)` | Envolve um trecho de código para logar sua duração, escalando pra `WARN` se ultrapassar `slowThresholdMs`. |
@@ -1091,7 +1091,8 @@ super({
     pkName: "id",
     adapter,
     logLevel: VSLogLevel.DEBUG,
-    logSlowThresholdMs: 200,
+    logSlowThresholdMs: 200,      // avisa se qualquer operação levar mais de 200ms
+    // logSlowThresholdMs: false, // desabilita os avisos de operação lenta completamente
 });
 ```
 

@@ -49,7 +49,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         pkName: v.string(),
         softRemoveKey: v.optional(v.string()),
         logLevel: v.optional(v.enum(VSLogLevel)),
-        logSlowThresholdMs: v.optional(v.pipe(v.number(), v.gtValue(0))),
+        logSlowThresholdMs: v.optional(v.union([v.pipe(v.number(), v.gtValue(0)), v.boolean()])),
         defaultOrdering: v.optional(orderingSchema),
     });
 
