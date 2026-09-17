@@ -622,6 +622,10 @@ class UserRepository extends VSRepository<User, string> {
     declare findByEmailAndType: (
         ...args: QueryArgs<[email: string, userType: string]>
     ) => Promise<User[]>;
+
+    // Instead of using `QueryArgs`, you can also simply set `DbArg` as the last parameter
+    @QueryMethod('SELECT * FROM "user" WHERE id = $1', { spreadArgs: true })
+    declare findById: (id: string, db?: DbArg) => Promise<User[]>;
 }
 
 const admins = await userRepository.findByEmailAndType("joao@email.com", "admin");
