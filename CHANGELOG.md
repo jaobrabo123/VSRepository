@@ -6,6 +6,36 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2.4.0] - 2026-09-16
+
+### Added
+- **`logSlowThresholdMs: false`** — passing `false` to `logSlowThresholdMs` (on `VSRepoOptions` or on the `VSLogger` constructor) now disables slow-operation warnings entirely, without having to set an arbitrarily large threshold. Passing `true` or omitting the option keeps the existing 300 ms default. The accepted type is now `number | boolean` instead of `number`
+
+### Changed
+- `@vsrepo/drizzle-adapter` is now available as an **alpha** release on npm — install it with `npm i @vsrepo/drizzle-adapter@alpha`. The API may still change before the stable release; check the [`DrizzleAdapter`](https://github.com/jaobrabo123/VSRepoDrizzleAdapter) repository for the current status and known limitations
+
+### Documentation
+- `proxyTo` decorator option now has a dedicated code example in both READMEs, showing the main use case: giving a method a custom name (e.g. a non-English name) while internally resolving it to a valid dynamic-method pattern
+- `groupBy` is documented as **not planned** for v2; `aggregate` as a dynamic-method prefix is also unlikely to be added since the most common aggregate operations are already available as dedicated base methods (`sum`, `average`, `min`, `max`, `increment`, `decrement`, `multiply`, `divide`) — `@QueryMethod` with raw SQL is the recommended escape hatch for anything more complex
+- Multiple README improvements: fixed and expanded the constructor-options table, corrected examples in the dynamic-methods section, improved descriptions across several utility-type entries, and removed the outdated TypeORM `relations` note from the `select`/`relations` section
+
+---
+
+## [2.4.0] - 2026-09-16 (Português)
+
+### Adicionado
+- **`logSlowThresholdMs: false`** — passar `false` em `logSlowThresholdMs` (no `VSRepoOptions` ou no construtor do `VSLogger`) agora desabilita completamente os avisos de operação lenta, sem precisar definir um threshold arbitrariamente grande. Passar `true` ou omitir a option mantém o padrão existente de 300 ms. O tipo aceito agora é `number | boolean` em vez de `number`
+
+### Alterado
+- `@vsrepo/drizzle-adapter` agora está disponível como versão **alpha** no npm — instale com `npm i @vsrepo/drizzle-adapter@alpha`. A API ainda pode mudar antes do release estável; veja o repositório do [`DrizzleAdapter`](https://github.com/jaobrabo123/VSRepoDrizzleAdapter) para o estado atual e limitações conhecidas
+
+### Documentação
+- A option `proxyTo` do decorador agora tem um exemplo de código dedicado em ambos os READMEs, mostrando o principal caso de uso: dar um nome customizado a um método (ex.: um nome em outro idioma) enquanto ele resolve internamente para um padrão de método dinâmico válido
+- `groupBy` está documentado como **não planejado** para a v2; `aggregate` como prefixo de método dinâmico também dificilmente será adicionado, já que as operações de agregação mais comuns já estão disponíveis como métodos base dedicados (`sum`, `average`, `min`, `max`, `increment`, `decrement`, `multiply`, `divide`) — `@QueryMethod` com SQL raw é o escape hatch recomendado para qualquer coisa mais complexa
+- Diversas melhorias nos READMEs: tabela de constructor options corrigida e expandida, exemplos na seção de métodos dinâmicos corrigidos, descrições melhoradas em várias entradas de tipos utilitários, e remoção da nota desatualizada sobre TypeORM e `relations` na seção `select`/`relations`
+
+---
+
 ## [2.3.0] - 2026-09-14
 
 ### Added

@@ -1,6 +1,6 @@
 {
   "name": "vsrepo",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "ORM-agnostic repository pattern library with full TypeScript support and automatic type inference.",
   "homepage": "https://github.com/jaobrabo123/VSRepository#readme",
   "repository": {
@@ -45,7 +45,11 @@
     "vsrepo",
     "vsrepository"
   ],
-  "author": "João Pedro Azevedo Freire Mecenas",
+  "author": {
+    "email": "joaodev.azevedo@outlook.com",
+    "url": "https://github.com/jaobrabo123",
+    "name": "João Pedro Azevedo Freire Mecenas"
+  },
   "license": "MIT",
   "devDependencies": {
     "@jest/globals": "^30.4.1",

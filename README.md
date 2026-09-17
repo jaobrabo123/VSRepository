@@ -13,16 +13,14 @@
 
 🇺🇸 You're reading the English version. [🇧🇷 Ler em português](./README.pt-BR.md)
 
-> ✅ **Released.** VSRepository v2.0.0 (the ORM-agnostic core) and the [`@vsrepo/prisma7-adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) are both published and ready to use. Prisma 7 is the first fully supported adapter; other ORMs (TypeORM, Drizzle, etc.) are still in progress — see [Adapter status](#adapter-status). If you need the previous Prisma-only release, use the [`v1`](https://github.com/jaobrabo123/VSRepository/tree/v1) code/docs instead.
-
-**ORM-agnostic** repository pattern library, with full **TypeScript** support and automatic **type inference**. VSRepository v2 is a rewrite of the [v1](https://github.com/jaobrabo123/VSRepository/tree/v1) library: instead of talking to Prisma directly, the core now delegates every operation to a pluggable **adapter**, so the same repository API can work against Prisma, TypeORM, or any other ORM/database that implements the adapter contract.
+**ORM-agnostic** repository pattern library, with full **TypeScript** support and automatic **type inference**. VSRepository v2 is a rewrite of the [v1](https://github.com/jaobrabo123/VSRepository/tree/v1) library: instead of talking to Prisma directly, the core now delegates every operation to a pluggable **adapter**, so the same repository API can work against Prisma, Drizzle, or any other ORM/database that implements the adapter contract.
 
 VSRepository lets you create strongly-typed repositories with:
 
 - Automatic **base methods**: `get`, `getOrThrow`, `getList`, `save`, `saveList`, `remove`, `removeList`, `patch`, `merge`, `getAll`, `total`, `has`
 - **Native soft-delete**: `softRemove`, `softRemoveList`, `restore`, `restoreList`
 - **Dynamic methods** inferred from a `declare` field name via the `@DynamicMethod` decorator: `findByEmail`, `findManyByStatusPaginated`, `updateById`
-- **Raw SQL query methods** via the new `@QueryMethod` decorator, bypassing the name-parsing engine entirely
+- **Raw SQL query methods** via the `@QueryMethod` decorator, bypassing the name-parsing engine entirely
 - Ad-hoc **`select`/`relations`** per call — no more pre-declared named projections
 - **Type safety** across 100% of operations
 - Native ORM **transactions**, shared across repositories
@@ -71,16 +69,16 @@ If you're coming from the [v1](https://github.com/jaobrabo123/VSRepository/tree/
 
 | Area                                         | v1                                                                                                              | v2                                                                                                                                                                                                                                   |
 | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Database access                              | Talks to **Prisma** directly, bundled in the core package                                                       | Talks to a **`VSRepoAdapter`**; ORM support ships as separate packages (`@vsrepo/prisma7-adapter`, `@vsrepo/typeorm-adapter`, ...) instead of being bundled in the core `vsrepo` package                                             |
+| Database access                              | Talks to **Prisma** directly, bundled in the core package                                                       | Talks to a **`VSRepoAdapter`**; ORM support ships as separate packages (`@vsrepo/prisma7-adapter`, `@vsrepo/drizzle-adapter`, ...) instead of being bundled in the core `vsrepo` package                                             |
 | Defining a repository                        | Functional `setupVSRepo<T, M>()({...}).build(prisma)`, **or** a `DynamicRepository` class                       | A single **class-based** API: `extends VSRepository<Entity, PKType, OrmTypes>`                                                                                                                                                       |
 | Dynamic methods                              | `methods: { findByEmail: { map: true } }` config object                                                         | `@DynamicMethod()` decorator on a `declare` field                                                                                                                                                                                    |
 | Data projections                             | Named, reusable `selectModels` + `defaultSelectModel`                                                           | Ad-hoc `select`/`relations` passed per call (no named models)                                                                                                                                                                        |
 | Eager loading                                | `include`/`includeModels` (Prisma-specific)                                                                     | ORM-agnostic `relations` option                                                                                                                                                                                                      |
-| Global filters                               | `requiredWhere` (any arbitrary filter, always applied)                                                          | **Removed**; Now it only accepts `softRemoveKey` + `see: "active" \| "removed" \| "all"`                                                                                                                                             |
+| Global filters                               | `requiredWhere` and `pushWhere`                                                                                 | **Removed**; Now it only accepts `softRemoveKey` + `see: "active" \| "removed" \| "all"`                                                                                                                                             |
 | Case-insensitive filter suffix               | `Insensitive`                                                                                                   | `IgnoreCase`                                                                                                                                                                                                                         |
 | Inline ordering in method name               | Not supported (`order` had to be passed as an argument via `Ordered`/`Paginated`)                               | `OrderBy<Field>Asc`/`OrderBy<Field>Desc` chains baked directly into the method name                                                                                                                                                  |
 | Duplicate handling on `createMany`           | `SkipDuplicates` suffix                                                                                         | `IgnoreConflicts` suffix                                                                                                                                                                                                             |
-| `aggregate` / `groupBy`                      | Supported (Prisma-native passthrough)                                                                           | **Not implemented yet**                                                                                                                                                                                                              |
+| `aggregate` / `groupBy`                      | Supported (Prisma-native passthrough)                                                                           | `groupBy` is **not planned** for v2. `aggregate` as a prefix is also unlikely: the most common operations are already covered by dedicated base methods (`sum`, `average`, `min`, `max`, `increment`, `decrement`, `multiply`, `divide`) — see [Atomic and aggregate methods](#atomic-and-aggregate-methods). For anything more complex, use `@QueryMethod`.                                                                                                                                                                                                                                                           |
 | Error types                                  | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | A base `VSRepoError` class with a `type: VSRepoErrorType` field (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`), plus a `VSRepoAdapterError` subclass carrying an `AdapterErrorCode` and the original ORM error |
 | Debug logging                                | `showWorking: true` boolean                                                                                     | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` for slow-query warnings                                                                                                                                |
 | `vsrepo generate` CLI (type generation step) | Required before use                                                                                             | Not part of the v2 core — types come directly from your entity/ORM types                                                                                                                                                             |
@@ -97,17 +95,16 @@ VSRepository v2 is **ORM-agnostic by design**. The core package (`vsrepo`) only 
 - `@vsrepo/typeorm-adapter`
 - `@vsrepo/drizzle-adapter`
 
-The Prisma 7 adapter has now been published to npm as `@vsrepo/prisma7-adapter` — it's currently the **only** published adapter. Adapters for the other ORMs listed above (Prisma 8, TypeORM, Drizzle) are **planned**; they just haven't been published yet. Until an official `@vsrepo/*-adapter` package exists for your ORM, you're welcome to write your own for your project, and if you'd like, publish it and open a PR to help grow the ecosystem — contributions here are very welcome.
+The Prisma 7 adapter has now been published to npm as `@vsrepo/prisma7-adapter`. The Drizzle adapter is available as an **alpha** release — install it with `@vsrepo/drizzle-adapter@alpha`. Adapters for other ORMs are **planned** but not published yet. Until an official `@vsrepo/*-adapter` package exists for your ORM, you're welcome to write your own for your project, and if you'd like, publish it and open a PR to help grow the ecosystem — contributions here are very welcome.
 
 | Adapter                              | Status                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Prisma 7 (`@vsrepo/prisma7-adapter`) | 🟢 **Released** — published to npm, implements the `VSRepoAdapter` contract (CRUD, relations, transactions, `merge`, logging) with tests; see [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) for source and docs. **Note:** the atomic/aggregate methods (`incrementOne`, `decrementOne`, `multiplyOne`, `divideOne`, `sum`, `average`, `min`, `max` — see [Atomic and aggregate methods](#atomic-and-aggregate-methods)) were added to the `VSRepoAdapter` contract after this adapter's last release; confirm its changelog/version implements them before relying on `increment`/`sum`/etc. against Prisma 7. |
-| Drizzle (`@vsrepo/drizzle-adapter`)  | 🔵 **In development** — The adapter for Drizzle ORM is currently under development and accepts community contributions; check the current status of the [`DrizzleAdapter`](https://github.com/jaobrabo123/VSRepoDrizzleAdapter)                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| TypeORM (`@vsrepo/typeorm-adapter`)  | 🟡 **Planned, not published yet.** Only a reference `where`-clause parser (`parseVSRepoWhere`) was written to validate the design; it's the planned starting point for the future `@vsrepo/typeorm-adapter` package. Community contributions toward this are welcome.                                                                                                                                                                                                                                                                                                                                                                           |
-| Other ORMs (Prisma 8, Drizzle, etc.) | 🟡 **Planned, not published yet.** No official package exists yet — write your own adapter for now (see [Writing your own adapter](#writing-your-own-adapter)), and consider publishing/contributing it back.                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Drizzle (`@vsrepo/drizzle-adapter`)  | 🔵 **Alpha** — an early release is available on npm; install it with `npm i @vsrepo/drizzle-adapter@alpha`. The API may still change before the stable release. Check the [`DrizzleAdapter`](https://github.com/jaobrabo123/VSRepoDrizzleAdapter) repository for the current status and known limitations, and feel free to contribute.                                                                                                                                                                                                                                                                                                        |
+| Other ORMs (Prisma 8, TypeORM, etc.) | 🟡 **Planned, not published yet.** No official package exists yet — write your own adapter for now (see [Writing your own adapter](#writing-your-own-adapter)), and consider publishing/contributing it back.                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Custom adapters                      | 🟢 Fully supported today — implement the [`VSRepoAdapter`](#writing-your-own-adapter) abstract class yourself for any ORM/database you need, in your own project or package, following the same shape as `@vsrepo/*-adapter` is expected to have.                                                                                                                                                                                                                                                                                                                                                                                               |
 
-In short: the repository class, the `@DynamicMethod`/`@QueryMethod` decorators, the name-parsing engine, error handling and logging are all working end-to-end, and Prisma 7 support is now a released, published adapter. Official adapters for the remaining ORMs are on the roadmap and will ship as separate `@vsrepo/*-adapter` packages rather than as part of the core `vsrepo` package — but you don't have to wait for that: writing (and optionally publishing) your own adapter in the meantime is a fully supported way to use v2 today and to contribute back to the project.
+In short: the repository class, the `@DynamicMethod`/`@QueryMethod` decorators, the name-parsing engine, error handling and logging are all working end-to-end, and Prisma 7 support is now a released, published adapter. The Drizzle adapter is available in alpha. Official adapters for the remaining ORMs are on the roadmap and will ship as separate `@vsrepo/*-adapter` packages rather than as part of the core `vsrepo` package — but you don't have to wait for that: writing (and optionally publishing) your own adapter in the meantime is a fully supported way to use v2 today and to contribute back to the project.
 
 ---
 
@@ -209,14 +206,14 @@ await userRepository.remove(user.id);
 
 `VSRepoOptions<T, K>`, passed to `super(...)` inside your repository's constructor:
 
-| Option               | Type               | Description                                                                                                         |
-| -------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `adapter`            | `VSRepoAdapter<T>` | **Required.** The adapter instance that translates repository calls into calls against the underlying ORM/database. |
-| `pkName`             | `keyof T`          | **Required.** Name of the field that represents the entity's primary key.                                           |
-| `softRemoveKey`      | `keyof T`          | Optional. When set, enables `softRemove`, `softRemoveList`, `restore` and `restoreList`.                            |
-| `defaultOrdering`    | `Ordering<T>`      | Optional. Default ordering applied automatically to queries that accept `order`, unless overridden per call.        |
-| `logLevel`           | `VSLogLevel`       | Optional. Minimum severity printed by the internal logger. Defaults to `VSLogLevel.WARN`.                           |
-| `logSlowThresholdMs` | `number`           | Optional. Duration (ms) above which a finished operation is logged as `WARN` instead of `DEBUG`. Defaults to 300ms. |
+| Option               | Type                | Description                                                                                                                                                                                                 |
+| -------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `adapter`            | `VSRepoAdapter<T>`  | **Required.** The adapter instance that translates repository calls into calls against the underlying ORM/database.                                                                                         |
+| `pkName`             | `keyof T`           | **Required.** Name of the field that represents the entity's primary key.                                                                                                                                   |
+| `softRemoveKey`      | `keyof T`           | Optional. When set, enables `softRemove`, `softRemoveList`, `restore` and `restoreList`.                                                                                                                    |
+| `defaultOrdering`    | `Ordering<T>`       | Optional. Default ordering applied automatically to queries that accept `order`, unless overridden per call.                                                                                                |
+| `logLevel`           | `VSLogLevel`        | Optional. Minimum severity printed by the internal logger. Defaults to `VSLogLevel.WARN`.                                                                                                                   |
+| `logSlowThresholdMs` | `number \| boolean` | Optional. Duration (ms) above which a finished operation is logged as `WARN`. Defaults to 300ms. Pass `false` to disable slow-operation warnings entirely; pass `true` to use the 300ms default explicitly. |
 
 ---
 
@@ -247,7 +244,7 @@ Available automatically on every `VSRepository` subclass:
 | `min(field, where?, options?)`          | Minimum value of a numeric field across every matching record; `null` if none match.                                                 |
 | `max(field, where?, options?)`          | Maximum value of a numeric field across every matching record; `null` if none match.                                                 |
 | `transaction(fn, options?)`             | Runs `fn` inside a native transaction of the underlying ORM.                                                                         |
-| `getDbClient()`                         | Returns the underlying ORM client instance used outside of transactions.                                                             |
+| `getDbClient()`                         | Returns the ORM client instance.                                                                                                     |
 | `query<T>(query, options?)`             | Executes a raw SQL statement directly against the database. See [Ad-hoc raw queries with `query()`](#ad-hoc-raw-queries-with-query). |
 
 Most of the above accept a `MethodOptions<Entity, OrmTypes>` object as their last argument (`select`, `relations`, `see`, `db`). A few — `total`, `has`, `removeList`, `sum`, `average`, `min`, `max`, and the soft-delete batch methods (`softRemoveList`/`restoreList`) — don't return/shape an `Entity`, so they accept the narrower `RestrictMethodOptions<Entity, OrmTypes>` instead (`see`, `db` only; no `select`/`relations`). `transaction`, `query`, and `getDbClient` accept their own options or none at all.
@@ -256,7 +253,7 @@ Most of the above accept a `MethodOptions<Entity, OrmTypes>` object as their las
 
 ## Soft-delete
 
-Soft-delete is now a **first-class, built-in concept**. Configure `softRemoveKey` once on the repository:
+Soft-delete is a **first-class, built-in concept**. Configure `softRemoveKey` once on the repository:
 
 ```typescript
 super({
@@ -363,14 +360,6 @@ const userWithAddress = await userRepository.get(id, {
 >
 > The core only forwards `MethodOptions.select` and `MethodOptions.relations` to the adapter — each adapter decides how to translate them to the underlying ORM:
 >
-> - **TypeORM (`@vsrepo/typeorm-adapter`)** — `relations` is **required** to load any relation, even when you only want a nested projection via `select`. TypeORM will not JOIN/emit the relation unless it is listed in `relations`:
->     ```typescript
->     // TypeORM: select alone is NOT enough
->     await userRepository.get(id, {
->         select: { id: true, address: { city: true } },
->         relations: { address: true }, // ← required in TypeORM
->     });
->     ```
 > - **Prisma 7 (`@vsrepo/prisma7-adapter` / `VSRepoPrisma7Adapter`)** — `relations` is converted to Prisma `include` (`parsePrismaInclude`). **If `select` is present, `relations` is ignored** because Prisma does not allow `select` + `include` in the same query:
 >     ```typescript
 >     // Prisma7: relations is ignored when select exists
@@ -391,7 +380,7 @@ Dynamic methods are declared as a `declare` field annotated with `@DynamicMethod
 ```typescript
 class UserRepository extends VSRepository<User, string> {
     @DynamicMethod()
-    declare findByEmail: (email: string) => Promise<User[]>;
+    declare findByEmail: (email: string, options?: MethodOptions<User>) => Promise<User[]>;
 
     @DynamicMethod()
     declare findOneByEmail: (email: string) => Promise<User | null>;
@@ -407,12 +396,11 @@ class UserRepository extends VSRepository<User, string> {
         options?: MethodOptions<User>,
     ) => Promise<User[]>;
 
-    // OrderedAndPaginated: field filters, then order, then pagination, then MethodOptions
+    // field filters, then pagination, then MethodOptions
     @DynamicMethod()
     declare findByNameIgnoreCaseOrAgeBetweenOrderByCreatedAtAscPaginated: (
         name: string,
         age: [number, number],
-        order: Ordering<User>,
         pagination: Pagination,
         options?: MethodOptions<User>,
     ) => Promise<User[]>;
@@ -421,40 +409,40 @@ class UserRepository extends VSRepository<User, string> {
 
 ### Available prefixes
 
-| Prefix                     | Adapter method        | Notes                                                                                                                    |
-| -------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `findBy`                   | `findMany`            | Field filters follow the prefix.                                                                                         |
-| `findOneBy`                | `findOne`             | Field filters follow the prefix; single result.                                                                          |
-| `findOneOrThrowBy`         | `findOneOrThrow`      | Throws if no record is found.                                                                                            |
-| `findOneOrThrow`           | `findOneOrThrow`      | No field filters; applies only soft-delete/`see`.                                                                        |
-| `findOneOrThrowWhere`      | `findOneOrThrow`      | Receives a `VSRepoWhere<T>` as the first argument.                                                                       |
-| `findWhere`                | `findMany`            | Receives a `VSRepoWhere<T>` as the first argument.                                                                       |
-| `findOneWhere`             | `findOne`             | Receives a `VSRepoWhere<T>` as the first argument.                                                                       |
-| `findOne`                  | `findOne`             | No field filters; applies only soft-delete/`see`.                                                                        |
-| `countBy`                  | `count`               | Field filters follow the prefix.                                                                                         |
-| `countWhere`               | `count`               | Receives a `VSRepoWhere<T>` as the first argument.                                                                       |
-| `count`                    | `count`               | No field filters.                                                                                                        |
-| `existsBy`                 | `exists`              | Returns `boolean`.                                                                                                       |
-| `existsWhere`              | `exists`              | Receives a `VSRepoWhere<T>` as the first argument.                                                                       |
-| `create`                   | `create`              | Receives `data` as argument.                                                                                             |
-| `createMany`               | `createMany`          | Receives `data[]` as argument; supports `IgnoreConflicts`.                                                               |
-| `createManyReturning`      | `createManyReturning` | Receives `data[]` as argument; supports `IgnoreConflicts`; returns the created records (`T[]`) instead of `CountResult`. |
-| `updateBy`                 | `update`              | Field filters + `data` as argument.                                                                                      |
-| `updateWhere`              | `update`              | Receives a `VSRepoWhere<T>` as the first argument, then `data`.                                                          |
-| `updateManyBy`             | `updateMany`          | Field filters + `data`.                                                                                                  |
-| `updateManyWhere`          | `updateMany`          | Receives a `VSRepoWhere<T>` as the first argument, then `data`.                                                          |
-| `updateManyReturningBy`    | `updateManyReturning` | Field filters + `data`; returns updated records.                                                                         |
-| `updateManyReturningWhere` | `updateManyReturning` | Receives a `VSRepoWhere<T>` as the first argument, then `data`; returns updated records.                                 |
-| `upsertBy`                 | `upsert`              | Field filters + `create`/`update` payloads.                                                                              |
-| `upsertWhere`              | `upsert`              | Receives a `VSRepoWhere<T>` as the first argument, then `create`/`update` payloads.                                      |
-| `deleteBy`                 | `delete`              | Field filters follow the prefix.                                                                                         |
-| `deleteWhere`              | `delete`              | Receives a `VSRepoWhere<T>` as the first argument.                                                                       |
-| `deleteManyBy`             | `deleteMany`          | Field filters follow the prefix.                                                                                         |
-| `deleteManyWhere`          | `deleteMany`          | Receives a `VSRepoWhere<T>` as the first argument.                                                                       |
-| `deleteManyReturningBy`    | `deleteManyReturning` | Field filters follow the prefix; returns deleted records.                                                                |
-| `deleteManyReturningWhere` | `deleteManyReturning` | Receives a `VSRepoWhere<T>` as the first argument; returns deleted records.                                              |
+| Prefix                     | Adapter method        | Notes                                                                                                                                   |
+| -------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `findBy`                   | `findMany`            | Field filters follow the prefix.                                                                                                        |
+| `findOneBy`                | `findOne`             | Field filters follow the prefix; single result.                                                                                         |
+| `findOneOrThrowBy`         | `findOneOrThrow`      | Throws if no record is found.                                                                                                           |
+| `findOneOrThrow`           | `findOneOrThrow`      | No field filters; applies only soft-delete/`see`.                                                                                       |
+| `findOneOrThrowWhere`      | `findOneOrThrow`      | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
+| `findWhere`                | `findMany`            | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
+| `findOneWhere`             | `findOne`             | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
+| `findOne`                  | `findOne`             | No field filters; applies only soft-delete/`see`.                                                                                       |
+| `countBy`                  | `count`               | Field filters follow the prefix.                                                                                                        |
+| `countWhere`               | `count`               | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
+| `count`                    | `count`               | No field filters.                                                                                                                       |
+| `existsBy`                 | `exists`              | Returns `boolean`.                                                                                                                      |
+| `existsWhere`              | `exists`              | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
+| `create`                   | `create`              | Receives `DeepPartial<Entity>` as argument.                                                                                             |
+| `createMany`               | `createMany`          | Receives `DeepPartial<Entity>[]` as argument; supports `IgnoreConflicts`.                                                               |
+| `createManyReturning`      | `createManyReturning` | Receives `DeepPartial<Entity>[]` as argument; supports `IgnoreConflicts`; returns the created records (`T[]`) instead of `CountResult`. |
+| `updateBy`                 | `update`              | Field filters + `DeepPartial<Entity>` as argument.                                                                                      |
+| `updateWhere`              | `update`              | Receives a `VSRepoWhere<T>` as the first argument, then `DeepPartial<Entity>`.                                                          |
+| `updateManyBy`             | `updateMany`          | Field filters + `DeepPartial<Entity>`.                                                                                                  |
+| `updateManyWhere`          | `updateMany`          | Receives a `VSRepoWhere<T>` as the first argument, then `DeepPartial<Entity>`.                                                          |
+| `updateManyReturningBy`    | `updateManyReturning` | Field filters + `DeepPartial<Entity>`; returns updated records.                                                                         |
+| `updateManyReturningWhere` | `updateManyReturning` | Receives a `VSRepoWhere<T>` as the first argument, then `DeepPartial<Entity>`; returns updated records.                                 |
+| `upsertBy`                 | `upsert`              | Field filters + `create`/`update` payloads.                                                                                             |
+| `upsertWhere`              | `upsert`              | Receives a `VSRepoWhere<T>` as the first argument, then `create`/`update` payloads.                                                     |
+| `deleteBy`                 | `delete`              | Field filters follow the prefix.                                                                                                        |
+| `deleteWhere`              | `delete`              | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
+| `deleteManyBy`             | `deleteMany`          | Field filters follow the prefix.                                                                                                        |
+| `deleteManyWhere`          | `deleteMany`          | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
+| `deleteManyReturningBy`    | `deleteManyReturning` | Field filters follow the prefix; returns deleted records.                                                                               |
+| `deleteManyReturningWhere` | `deleteManyReturning` | Receives a `VSRepoWhere<T>` as the first argument; returns deleted records.                                                             |
 
-> `aggregate` and `groupBy` are **not implemented yet** in v2 (they existed in v1). This is planned but not currently available.
+> `groupBy` is **not planned** for v2 — it doesn't map cleanly onto the ORM-agnostic contract. `aggregate` as a separate prefix is also unlikely to be implemented: the most common aggregate operations (`sum`, `average`, `min`, `max`, `increment`, `decrement`, `multiply`, `divide`) are already available as dedicated base methods — see [Atomic and aggregate methods](#atomic-and-aggregate-methods). For anything more complex, use a `@QueryMethod` with raw SQL.
 
 ### Field filters
 
@@ -585,6 +573,11 @@ declare findOne: (options?: MethodOptions<User>) => Promise<User | null>;
 | `injectOrdering` | `Ordering<T>` | Fixed ordering automatically injected, overriding the repository's `defaultOrdering`.                                            |
 
 ```typescript
+// proxyTo: gives the method a custom name while reusing an existing pattern
+@DynamicMethod<User>({ proxyTo: "findByEmail" })
+declare buscarPorEmail: (email: string, options?: MethodOptions<User>) => Promise<User[]>;
+
+// injectOrdering: always sorts by createdAt desc, overriding defaultOrdering
 @DynamicMethod<User>({ injectOrdering: { createdAt: "desc" } })
 declare findByStatus: (status: string) => Promise<User[]>;
 ```
@@ -612,7 +605,7 @@ class UserRepository extends VSRepository<User, string> {
 
 | Option         | Type      | Default | Description                                                                                                                                                                                                                                     |
 | -------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `modifying`    | `boolean` | `false` | When `true`, runs as `INSERT`/`UPDATE`/`DELETE` and the method resolves to the number of affected rows. When `false`, runs as a read query and resolves to the declared return type.                                                            |
+| `modifying`    | `boolean` | `false` | When `true`, the method resolves to the number of affected rows. When `false`, runs as a read query and resolves to the declared return type.                                                                                                   |
 | `singleResult` | `boolean` | `false` | When `true`, collapses an array result into its first element (`null` if empty), so you can declare the return type as a single object instead of an array. Has no effect on non-array results (e.g. a `modifying` query's affected-row count). |
 
 Query methods accept `{ args, db? }` at the call site — `db` lets them participate in a `transaction()` block just like base and dynamic methods.
@@ -629,6 +622,10 @@ class UserRepository extends VSRepository<User, string> {
     declare findByEmailAndType: (
         ...args: QueryArgs<[email: string, userType: string]>
     ) => Promise<User[]>;
+
+    // Instead of using `QueryArgs`, you can also simply set `DbArg` as the last parameter
+    @QueryMethod('SELECT * FROM "user" WHERE id = $1', { spreadArgs: true })
+    declare findById: (id: string, db?: DbArg) => Promise<User[]>;
 }
 
 const admins = await userRepository.findByEmailAndType("joao@email.com", "admin");
@@ -674,7 +671,7 @@ const user = await userRepository.query<User | null>('SELECT * FROM "user" WHERE
 | -------------- | --------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `args`         | `any[]`   | `undefined`                 | Positional parameters injected into the SQL placeholders — the placeholder syntax depends on the database/driver behind your adapter. Never interpolate values directly into the SQL string. |
 | `db`           | `any`     | Repository's default client | Database client or transaction to run this query in.                                                                                                                                         |
-| `modifying`    | `boolean` | `false`                     | When `true`, treats the statement as `INSERT`/`UPDATE`/`DELETE`.                                                                                                                             |
+| `modifying`    | `boolean` | `false`                     | When `true`, returns the number of affected rows.                                                                                                                                            |
 | `singleResult` | `boolean` | `false`                     | When `true`, collapses an array result into its first element (`null` if empty). Has no effect on non-array results (e.g. a `modifying` query's affected-row count).                         |
 
 Just like base, dynamic and query methods, `query()` accepts `db` in `options` to participate in a `transaction()` block.
@@ -751,12 +748,12 @@ import type {
 
 | Type                                                | Description                                                                                                                                                                                                                           | Used by                                                                                                                                                       |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MethodOptions<T, K>`                               | Options accepted as the last argument of most base and dynamic methods: `select`, `relations`, `see`, `db`.                                                                                                                           | [Base methods](#base-methods), [Dynamic methods](#dynamic-methods).                                                                                           |
+| `MethodOptions<T, K>`                               | Options accepted as the last argument by all dynamic methods and most base methods: `select`, `relations`, `see`, `db`.                                                                                                               | [Base methods](#base-methods), [Dynamic methods](#dynamic-methods).                                                                                           |
 | `RestrictMethodOptions<T, K>`                       | Narrowed `MethodOptions<T, K>` exposing only `see`/`db` — used by methods that don't shape/return an `Entity` (`total`, `has`, `sum`, `average`, `min`, `max`, `removeList`, `softRemoveList`, `restoreList`).                        | [Base methods](#base-methods), [Atomic and aggregate methods](#atomic-and-aggregate-methods).                                                                 |
 | `Pagination`                                        | `{ limit?, offset? }` accepted by `getAll` and by `Paginated` dynamic methods.                                                                                                                                                        | [Base methods](#base-methods), [Ordering, pagination and distinct](#ordering-pagination-and-distinct).                                                        |
 | `Ordering<T>` / `OrderByField<T>` / `SortDirection` | Ordering shape accepted by `getAll`, `defaultOrdering` and `injectOrdering`, and by `Ordered` dynamic methods. A single object or a chained array; nested objects order to-one relations.                                             | [Constructor options](#constructor-options), [Decorator options](#decorator-options), [Ordering, pagination and distinct](#ordering-pagination-and-distinct). |
 | `SeeMode`                                           | `"active" \| "removed" \| "all"` — controls visibility of soft-deleted records.                                                                                                                                                       | [Soft-delete](#soft-delete).                                                                                                                                  |
-| `DeepPartial<T>`                                    | Recursively makes every property of `T` optional, including nested objects and array elements.                                                                                                                                        | `save`, `saveList`, `patch`, `merge`, and every write method on `VSRepoAdapter`.                                                                              |
+| `DeepPartial<T>`                                    | Recursively makes every property of `T` optional, including nested objects and array elements.                                                                                                                                        | `save`, `saveList`, `patch`, `merge`, and all the dynamic writing methods.                                                                                    |
 | `CountResult`                                       | `{ count: number }` — the shape returned by batch operations.                                                                                                                                                                         | `removeList`, `softRemoveList`, `restoreList`, `createManyIgnoreConflicts`.                                                                                   |
 | `QueryMethodArg<T>`                                 | `{ args?: T, db? }` — positional SQL parameters (the placeholder syntax depends on the database/driver behind your adapter: `$1`, `$2`, ... for PostgreSQL, `?` for MySQL) and transaction client for `@QueryMethod`.                 | [Query methods (raw SQL)](#query-methods-raw-sql).                                                                                                            |
 | `QueryArgs<T, O>`                                   | Types the spread parameter list of a `@QueryMethod` declared with `{ spreadArgs: true }`: `T`'s values in order, followed by an optional trailing `DbArg<O>` built via `withDb()`.                                                    | [Spread arguments with `spreadArgs`](#spread-arguments-with-spreadargs).                                                                                      |
@@ -764,7 +761,7 @@ import type {
 | `NumericKeys<T>`                                    | Extracts the keys of `T` whose (non-nullable) value type is assignable to `NumericLike`. Nullable numeric fields (`number \| null`) are included.                                                                                     | Constrains `field` in [Atomic and aggregate methods](#atomic-and-aggregate-methods) (`increment`, `sum`, etc).                                                |
 | `NumericLike`                                       | `number \| bigint \| DecimalLike`.                                                                                                                                                                                                    | [Atomic and aggregate methods](#atomic-and-aggregate-methods).                                                                                                |
 | `DecimalLike`                                       | Structural shape of an arbitrary-precision decimal value (`{ toNumber(): number; decimalPlaces(): number }`), matching e.g. Prisma's `Prisma.Decimal` without importing it directly.                                                  | [Which fields are eligible](#which-fields-are-eligible).                                                                                                      |
-| `Primitive`                                         | Union of scalar types (`string \| number \| boolean \| bigint \| symbol \| undefined \| null \| Date`) treated as leaves — not relations — when walking an entity's shape.                                                            | Used by `Ordering<T>` to tell scalar fields apart from relation fields.                                                                                       |
+| `Primitive`                                         | Union of scalar types (`string \| number \| boolean \| bigint \| symbol \| undefined \| null \| Date \| DecimalLike`) treated as leaves — not relations — when walking an entity's shape.                                             | Used by `Ordering<T>` to tell scalar fields apart from relation fields.                                                                                       |
 | `VSRepoWhere<T>`                                    | ORM-agnostic filter type accepted by `*Where` dynamic methods (e.g. `findWhere`, `findOneWhere`, `updateWhere`). Supports field filters, logical operators (`AND`/`OR`/`NOT`), and relation filters.                                  | [`findWhere`, `findOneWhere` and other `*Where` prefixes](#available-prefixes).                                                                               |
 | `VSRepoOrmTypes`                                    | `{ dbClient; dbTransaction }` — describes your ORM's client/transaction types. Passed as the third generic to `VSRepository<Entity, PKType, OrmTypes>` to type `getDbClient()`, `transaction()` and the `db` option instead of `any`. | [Creating a repository](#creating-a-repository).                                                                                                              |
 | `VSRepoTransactionOptions`                          | `{ isolationLevel?, timeoutMs? }` — options accepted as the second argument of `transaction()`.                                                                                                                                       | [Transactions](#transactions).                                                                                                                                |
@@ -947,13 +944,13 @@ export class MyOrmAdapter<T> extends VSRepoAdapter<T> {
 }
 ```
 
-| Method                                               | Description                                                                                |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `new VSLogger(logLevel, name, slowThresholdMs?)`     | Creates a logger; `name` prefixes every line, `slowThresholdMs` defaults to 300.           |
-| `logDebug/logInfo/logWarn(text, obj?)`               | Logs at the given level if `logLevel` allows it; `obj` is appended as pretty-printed JSON. |
-| `logError(text, err?)`                               | Logs at `ERROR`; if `err` is an `Error`, only `name`/`message`/`stack`/`cause` are logged. |
-| `startPerformLog(operation)` / `endPerformLog(data)` | Bracket a block to log its duration, escalating to `WARN` if it exceeds `slowThresholdMs`. |
-| `getLogLevel()`                                      | Returns the logger's configured `VSLogLevel`.                                              |
+| Method                                               | Description                                                                                                                                                                                                                                 |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `new VSLogger(logLevel, name, slowThresholdMs?)`     | Creates a logger; `name` prefixes every line. `slowThresholdMs` controls the slow-operation threshold: a `number` sets it in ms (default 300), `false` disables slow-operation warnings entirely, `true` or omitted uses the 300ms default. |
+| `logDebug/logInfo/logWarn(text, obj?)`               | Logs at the given level if `logLevel` allows it; `obj` is appended as pretty-printed JSON.                                                                                                                                                  |
+| `logError(text, err?)`                               | Logs at `ERROR`; if `err` is an `Error`, only `name`/`message`/`stack`/`cause` are logged.                                                                                                                                                  |
+| `startPerformLog(operation)` / `endPerformLog(data)` | Bracket a block to log its duration, escalating to `WARN` if it exceeds `slowThresholdMs`.                                                                                                                                                  |
+| `getLogLevel()`                                      | Returns the logger's configured `VSLogLevel`.                                                                                                                                                                                               |
 
 This is purely a convenience for adapter authors — nothing in the core requires your adapter to use it.
 
@@ -1088,7 +1085,8 @@ super({
     pkName: "id",
     adapter,
     logLevel: VSLogLevel.DEBUG,
-    logSlowThresholdMs: 200,
+    logSlowThresholdMs: 200, // warn if any operation takes > 200ms
+    // logSlowThresholdMs: false, // disable slow-operation warnings entirely
 });
 ```
 
@@ -1150,11 +1148,11 @@ Notes:
 
 ## Contributing
 
-Contributions are welcome, especially towards finishing the Prisma and TypeORM adapters! (**[GitHub repository](https://github.com/jaobrabo123/VSRepository)**):
+Contributions are welcome, especially for improving the Prisma adapter and finishing the Drizzle one! (**[GitHub repository](https://github.com/jaobrabo123/VSRepository)**):
 
 1. **Fork** the project.
-2. Create a branch off `v2` for your change: `git checkout -b v2-my-change`.
+2. Create a branch for your change: `git checkout -b v2-my-change`.
 3. Push your branch: `git push origin v2-my-change`.
-4. Open a **Pull Request** against `v2`.
+4. Open a **Pull Request**.
 
 To report issues or suggest features, open an **Issue**.

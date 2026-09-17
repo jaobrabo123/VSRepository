@@ -34,14 +34,20 @@ const LEVEL_COLOR: Record<VSLogLevel, string> = {
 export class VSLogger {
     // * Acima disso, uma operação concluída é logada como WARN ao invés de DEBUG
     private static readonly DEFAULT_SLOW_OPERATION_MS = 300;
+    private readonly slowOperationThresholdMs: number | false;
 
     private readonly useColors: boolean;
 
     constructor(
         private readonly logLevel: VSLogLevel,
         private readonly loggerName: string,
-        private readonly slowOperationThresholdMs: number = VSLogger.DEFAULT_SLOW_OPERATION_MS,
+        slowOperationThresholdMs?: number | boolean,
     ) {
+        this.slowOperationThresholdMs =
+            typeof slowOperationThresholdMs === "number" || slowOperationThresholdMs === false
+                ? slowOperationThresholdMs
+                : VSLogger.DEFAULT_SLOW_OPERATION_MS;
+
         this.useColors = !process.env.NO_COLOR && !!process.stdout?.isTTY;
     }
 
@@ -154,7 +160,7 @@ export class VSLogger {
         const timeTook = end - data.start;
         const timeTookLabel = timeTook.toFixed(2);
 
-        if (timeTook >= this.slowOperationThresholdMs) {
+        if (this.slowOperationThresholdMs !== false && timeTook >= this.slowOperationThresholdMs) {
             this.logWarn(
                 `Took ${timeTookLabel}ms to ${data.operation} (slower than the ${this.slowOperationThresholdMs}ms threshold)`,
             );

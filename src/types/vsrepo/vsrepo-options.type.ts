@@ -28,8 +28,11 @@ export type VSRepoOptions<T, K> = {
     /**
      * Duration (in ms) above which a finished operation is logged as WARN
      * instead of DEBUG, flagging potentially slow queries. Defaults to 300ms.
+     *
+     * Pass `false` to disable slow-operation warnings entirely.
+     * Pass `true` to use the default 300ms threshold explicitly.
      */
-    logSlowThresholdMs?: number;
+    logSlowThresholdMs?: number | boolean;
     /** Default ordering automatically applied to queries that accept `order`, unless the call overrides it. */
     defaultOrdering?: Ordering<T>;
 };
