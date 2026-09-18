@@ -209,7 +209,7 @@ await userRepository.remove(usuario.id);
 | Option               | Tipo                | Descrição                                                                                                                                                                                                                                     |
 | -------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `adapter`            | `VSRepoAdapter<T>`  | **Obrigatório.** A instância do adapter que traduz as chamadas do repository em chamadas contra o ORM/banco por trás dele.                                                                                                                    |
-| `pkName`             | `keyof T`           | **Obrigatório.** Nome do campo que representa a primary key da entidade.                                                                                                                                                                      |
+| `pkName`             | `keyof T`           | Opcional. Nome do campo que representa a primary key da entidade. Quando omitido, o repository usa o `getPkName()` do adapter. Se o adapter também não implementar, o construtor lança um `VSRepoError`.                                     |
 | `softRemoveKey`      | `keyof T`           | Opcional. Quando definido, habilita `softRemove`, `softRemoveList`, `restore` e `restoreList`.                                                                                                                                                |
 | `defaultOrdering`    | `Ordering<T>`       | Opcional. Ordenação padrão aplicada automaticamente em queries que aceitam `order`, a menos que seja sobrescrita em uma chamada específica.                                                                                                   |
 | `logLevel`           | `VSLogLevel`        | Opcional. Severidade mínima impressa pelo logger interno. Padrão: `VSLogLevel.WARN`.                                                                                                                                                          |
@@ -917,8 +917,11 @@ export abstract class VSRepoAdapter<T> {
         where?: VSRepoWhere<T>,
         options?: AdapterMethodOptions<T>,
     ): Promise<number | null>;
+    getPkName?(): string;
 }
 ```
+
+O `getPkName()` opcional permite que o adapter declare ao repository qual campo é a primary key da entidade. Ao instanciar um `VSRepository`, você pode omitir o `pkName` das options do construtor e ele será lido do `adapter.getPkName()`. Se você omitir e o adapter não implementar o `getPkName()`, o construtor lança um `VSRepoError`.
 
 O `VSRepository` nunca fala diretamente com o ORM — ele só chama esses métodos com um `VSRepoWhere<T>` e um `AdapterMethodOptions<T>` já resolvidos. Uma vez que um adapter implemente esse contrato, todo método base, método dinâmico e query method passa a funcionar com ele automaticamente. Pra uma implementação completa e funcional, veja o repositório externo [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter).
 
@@ -980,7 +983,7 @@ try {
 | `DECORATOR`       | Argumentos inválidos foram passados para `@DynamicMethod` ou `@QueryMethod`.                                                               |
 | `RESOLVER`        | A biblioteca falhou ao resolver a configuração de um método dinâmico/de query em um método chamável (ex.: um nome de método desconhecido). |
 | `DYNAMIC`         | Um dynamic/query method já resolvido falhou em tempo de execução (ex.: argumentos faltando).                                               |
-| `VALIDATOR`       | Options ou argumentos de método inválidos foram detectados durante a validação.                                                            |
+| `VALIDATOR`       | Options ou argumentos de método inválidos foram detectados durante a validação (ex.: `pkName` ausente quando o adapter não tem `getPkName()`). |
 | `BASE`            | Uso inválido de um método base (`get`, `save`, `remove`, etc).                                                                             |
 | `ADAPTER`         | Um `VSRepoAdapter` falhou ao falar com o ORM/banco subjacente — sempre é lançado como `VSRepoAdapterError`.                                |
 

@@ -209,7 +209,7 @@ await userRepository.remove(user.id);
 | Option               | Type                | Description                                                                                                                                                                                                 |
 | -------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `adapter`            | `VSRepoAdapter<T>`  | **Required.** The adapter instance that translates repository calls into calls against the underlying ORM/database.                                                                                         |
-| `pkName`             | `keyof T`           | **Required.** Name of the field that represents the entity's primary key.                                                                                                                                   |
+| `pkName`             | `keyof T`           | Optional. Name of the field that represents the entity's primary key. When omitted, the repository falls back to the adapter's `getPkName()`. If the adapter does not implement it either, the constructor throws a `VSRepoError`. |
 | `softRemoveKey`      | `keyof T`           | Optional. When set, enables `softRemove`, `softRemoveList`, `restore` and `restoreList`.                                                                                                                    |
 | `defaultOrdering`    | `Ordering<T>`       | Optional. Default ordering applied automatically to queries that accept `order`, unless overridden per call.                                                                                                |
 | `logLevel`           | `VSLogLevel`        | Optional. Minimum severity printed by the internal logger. Defaults to `VSLogLevel.WARN`.                                                                                                                   |
@@ -914,8 +914,11 @@ export abstract class VSRepoAdapter<T> {
         where?: VSRepoWhere<T>,
         options?: AdapterMethodOptions<T>,
     ): Promise<number | null>;
+    getPkName?(): string;
 }
 ```
+
+The optional `getPkName()` lets the adapter declare the entity's primary-key field to the repository. When instantiating a `VSRepository`, you can omit `pkName` from the constructor options and it will be read from `adapter.getPkName()`. If you omit it and the adapter doesn't implement `getPkName()`, the constructor throws a `VSRepoError`.
 
 `VSRepository` never talks to the ORM directly — it only calls these methods with an already-resolved `VSRepoWhere<T>` and `AdapterMethodOptions<T>`. Once an adapter implements this contract, every base method, dynamic method, and query method works against it automatically. For a full, working implementation, see the external [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) repo.
 
@@ -977,7 +980,7 @@ try {
 | `DECORATOR`       | Invalid arguments were passed to `@DynamicMethod` or `@QueryMethod`.                                                       |
 | `RESOLVER`        | The library failed to resolve a dynamic/query method's configuration into a callable method (e.g. an unknown method name). |
 | `DYNAMIC`         | A resolved dynamic/query method failed at runtime (e.g. missing arguments).                                                |
-| `VALIDATOR`       | Invalid method options or arguments were detected during validation.                                                       |
+| `VALIDATOR`       | Invalid method options or arguments were detected during validation (e.g. a missing `pkName` when the adapter has no `getPkName()`).         |
 | `BASE`            | Invalid usage of a base method (`get`, `save`, `remove`, etc).                                                             |
 | `ADAPTER`         | A `VSRepoAdapter` failed while talking to the underlying ORM/database — always thrown as `VSRepoAdapterError`.             |
 
