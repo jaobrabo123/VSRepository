@@ -219,4 +219,7 @@ export abstract class VSRepoAdapter<T> {
         where?: VSRepoWhere<T>,
         options?: AdapterMethodOptions<T>,
     ): Promise<number | null>;
+
+    /** Optional method for the adapter itself to return the "pkName", instead of the user having to configure it manually in the VSRepository constructor. */
+    public getPkName?(): string;
 }

@@ -87,7 +87,18 @@ export abstract class VSRepository<
         const optionsValidated = this.validator.validateConstructorOptions(options);
 
         this.adapter = optionsValidated.adapter;
-        this.pkName = optionsValidated.pkName;
+
+        if (optionsValidated.pkName) {
+            this.pkName = optionsValidated.pkName;
+        } else if (this.adapter.getPkName) {
+            this.pkName = this.adapter.getPkName() as KeysOfType<Entity, PKType>;
+        } else {
+            throw new VSRepoError(
+                "Your adapter did not implement the 'getPkName' method; try updating your adapter to a newer version or manually configure 'pkName' in the constructor's 'options'.",
+                VSRepoErrorType.VALIDATOR,
+            );
+        }
+
         this.softRemoveKey = optionsValidated.softRemoveKey;
         this.defaultOrdering = optionsValidated.defaultOrdering;
         this.mergeWheresResolver = new MergeWheresResolver<Entity>(this.softRemoveKey);

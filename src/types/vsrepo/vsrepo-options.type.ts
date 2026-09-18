@@ -15,7 +15,7 @@ export type VSRepoOptions<T, K> = {
     /** Adapter that translates the repository's operations into calls against the underlying ORM/database. */
     adapter: VSRepoAdapter<T>;
     /** Name of the field that represents the entity's primary key (PK). */
-    pkName: KeysOfType<T, K>;
+    pkName?: KeysOfType<T, K>;
     /**
      * Name of the field used for soft-delete.
      *
