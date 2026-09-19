@@ -41,7 +41,7 @@ VSRepository lets you create strongly-typed repositories with:
     - [Which fields are eligible](#which-fields-are-eligible)
     - [Writing an adapter](#writing-an-adapter)
 - [`select` and `relations`](#select-and-relations)
-    - [Strict return typing with `InferMethodReturn`](#strict-return-typing-with-infermethodreturn)
+    - [Strict return typing with `InferMethodReturn` (BETA)](#strict-return-typing-with-infermethodreturn-beta)
 - [Dynamic methods](#dynamic-methods)
     - [Available prefixes](#available-prefixes)
     - [Field filters](#field-filters)
@@ -49,7 +49,7 @@ VSRepository lets you create strongly-typed repositories with:
     - [Relation filters](#relation-filters)
     - [Ordering, pagination and distinct](#ordering-pagination-and-distinct)
     - [Decorator options](#decorator-options)
-    - [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype)
+    - [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype-beta)
 - [Query methods (raw SQL)](#query-methods-raw-sql)
     - [Spread arguments with `spreadArgs`](#spread-arguments-with-spreadargs)
     - [Ad-hoc raw queries with `query()`](#ad-hoc-raw-queries-with-query)
@@ -101,10 +101,10 @@ The Prisma 7 adapter has now been published to npm as `@vsrepo/prisma7-adapter`.
 
 | Adapter                              | Status                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Prisma 7 (`@vsrepo/prisma7-adapter`) | 🟢 **Released** — published to npm, implements the `VSRepoAdapter` contract (CRUD, relations, transactions, `merge`, logging) with tests; see [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) for source and docs. **Note:** the atomic/aggregate methods (`incrementOne`, `decrementOne`, `multiplyOne`, `divideOne`, `sum`, `average`, `min`, `max` — see [Atomic and aggregate methods](#atomic-and-aggregate-methods)) were added to the `VSRepoAdapter` contract after this adapter's last release; confirm its changelog/version implements them before relying on `increment`/`sum`/etc. against Prisma 7. |
+| Prisma 7 (`@vsrepo/prisma7-adapter`) | 🟢 **Released** — published to npm, implements the `VSRepoAdapter` contract (CRUD, relations, transactions, `merge`, logging, etc.) with tests; see [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) for source and docs. |
 | Drizzle (`@vsrepo/drizzle-adapter`)  | 🔵 **Alpha** — an early release is available on npm; install it with `npm i @vsrepo/drizzle-adapter@alpha`. The API may still change before the stable release. Check the [`DrizzleAdapter`](https://github.com/jaobrabo123/VSRepoDrizzleAdapter) repository for the current status and known limitations, and feel free to contribute.                                                                                                                                                                                                                                                                                                         |
 | Other ORMs (Prisma 8, TypeORM, etc.) | 🟡 **Planned, not published yet.** No official package exists yet — write your own adapter for now (see [Writing your own adapter](#writing-your-own-adapter)), and consider publishing/contributing it back.                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| Custom adapters                      | 🟢 Fully supported today — implement the [`VSRepoAdapter`](#writing-your-own-adapter) abstract class yourself for any ORM/database you need, in your own project or package, following the same shape as `@vsrepo/*-adapter` is expected to have.                                                                                                                                                                                                                                                                                                                                                                                               |
+| Custom adapters                      | 🟢 Fully supported today — implement the [`VSRepoAdapter`](#writing-your-own-adapter) abstract class yourself for any ORM/database you need, in your own project or package.                                                                                                                                                                                                                                                                                                                                                                                               |
 
 In short: the repository class, the `@DynamicMethod`/`@QueryMethod` decorators, the name-parsing engine, error handling and logging are all working end-to-end, and Prisma 7 support is now a released, published adapter. The Drizzle adapter is available in alpha. Official adapters for the remaining ORMs are on the roadmap and will ship as separate `@vsrepo/*-adapter` packages rather than as part of the core `vsrepo` package — but you don't have to wait for that: writing (and optionally publishing) your own adapter in the meantime is a fully supported way to use v2 today and to contribute back to the project.
 
@@ -117,8 +117,6 @@ v2 is installed as the core package plus one adapter package for your ORM, for e
 ```bash
 npm i vsrepo @vsrepo/prisma7-adapter
 ```
-
-> `vsrepo` v2.0.0 and `@vsrepo/prisma7-adapter` are both published to npm and ready to use. For any ORM other than Prisma 7, no adapter package exists yet — install the core and write your own adapter (see [Writing your own adapter](#writing-your-own-adapter)).
 
 ---
 
@@ -169,14 +167,16 @@ class UserRepository extends VSRepository<User, string> {
 export default new UserRepository();
 ```
 
-> The core API (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums and types) is imported from the single `vsrepo` entry point. The concrete adapter comes from a **separate** package (`@vsrepo/*-adapter`). On Prisma 7, install the published [`@vsrepo/prisma7-adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) (its constructor takes a config object — `tableName`, `pkName`, optional `relations`/`logLevel` — as shown above). Official adapters for other ORMs are planned but not published yet; until they are, you can implement the `VSRepoAdapter` contract yourself (see [Writing your own adapter](#writing-your-own-adapter)) — and publishing it to help the project is very welcome.
+> The core API (`VSRepository`, `VSRepoAdapter`, `DynamicMethod`, `QueryMethod`, `VSRepoError`, enums and types) is imported from the single `vsrepo` entry point. The concrete adapter comes from a **separate** package (`@vsrepo/*-adapter`). On Prisma 7, install the [`@vsrepo/prisma7-adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter).
 
 > **The third generic parameter (`OrmTypes`):** `VSRepository<Entity, PKType, OrmTypes>` accepts an optional third type parameter describing your ORM's client/transaction types, via `VSRepoOrmTypes` (`{ dbClient; dbTransaction }`). Supplying it gives you a correctly-typed `getDbClient()`, `transaction()` callback, and `db` option on every method, instead of `any`:
 >
 > ```typescript
-> type PrismaOrmTypes = { dbClient: PrismaClient; dbTransaction: Prisma.TransactionClient };
+> import { Prisma7OrmTypes } from "@vsrepo/prisma7-adapter";
+> 
+> type MyOrmTypes = Prisma7OrmTypes<PrismaClient>;
 >
-> class UserRepository extends VSRepository<User, string, PrismaOrmTypes> {
+> class UserRepository extends VSRepository<User, string, MyOrmTypes> {
 >     // getDbClient() now returns PrismaClient, and transaction(fn) types `tx` as Prisma.TransactionClient
 > }
 > ```
@@ -286,7 +286,7 @@ await userRepository.getAll({ see: "all" }); // everything, ignoring soft-delete
 
 ## Atomic and aggregate methods
 
-Every `VSRepository` subclass gets 8 extra methods for working with numeric fields, split into two groups:
+Every `VSRepository` subclass gets 8 methods for working with numeric fields, split into two groups:
 
 **Atomic updates** — evaluated server-side against the row's _current_ value (`UPDATE ... SET field = field + value`), not a client-side read-modify-write:
 
@@ -373,7 +373,7 @@ const userWithAddress = await userRepository.get(id, {
 >
 > Custom adapters may map `relations` differently — consult the adapter's documentation for the exact semantics.
 
-### Strict return typing with `InferMethodReturn`
+### Strict return typing with `InferMethodReturn` [BETA]
 
 By default, methods are typed as returning the **whole entity**, ignoring the `select` and `relations` you pass (the same approach TypeORM takes). If you prefer a stricter type, `InferMethodReturn<T, Options>` narrows it to what was actually requested. It is opt-in and purely a type-level utility — nothing changes at runtime.
 
@@ -411,13 +411,13 @@ const users: InferMethodReturn<User[], typeof options> = await userRepository.ge
 - `see` and `db` don't affect the result.
 - Keep the options' literal types, using `satisfies MethodOptions<T>` (as above) or passing them inline. If they are typed as a plain `MethodOptions<T>` (e.g. `const options: MethodOptions<User> = ...`), nothing is known at compile time and `T` is returned unchanged.
 - Optional (`?`) fields and relations of the entity stay optional.
-- To get this inference directly on dynamic methods, see [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype).
+- To get this inference directly on dynamic methods, see [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype-beta).
 
 ---
 
 ## Dynamic methods
 
-Dynamic methods are declared as a `declare` field annotated with `@DynamicMethod()`. Their behavior — which adapter method to call, which filters to apply, and how arguments map to them — is inferred entirely from the field's **name**, following the same convention-over-configuration philosophy as v1.
+Dynamic methods are declared as a `declare` field annotated with `@DynamicMethod()`. Their behavior — which adapter method to call, which filters to apply, and how arguments map to them — is inferred entirely from the field's **name**.
 
 ```typescript
 class UserRepository extends VSRepository<User, string> {
@@ -449,7 +449,7 @@ class UserRepository extends VSRepository<User, string> {
 }
 ```
 
-> Want the return type to follow the `select`/`relations` you pass, instead of always being the whole entity? Declare the method with [`InferMethodType`](#strict-return-typing-with-infermethodtype).
+> Want the return type to follow the `select`/`relations` you pass, instead of always being the whole entity? Declare the method with [`InferMethodType`](#strict-return-typing-with-infermethodtype-beta).
 
 ### Available prefixes
 
@@ -568,7 +568,7 @@ declare findByProductsSome: () => Promise<User[]>;
 | `Ordered`                                  | Injects an `order: Ordering<T>` argument as the **penultimate** parameter (before the optional `MethodOptions`).                                                   |
 | `OrderedAndPaginated`                      | Injects `order` as the antepenultimate, then `pagination` as the penultimate — both before `MethodOptions`.                                                        |
 | `PaginatedAndOrdered`                      | Injects `pagination` as the antepenultimate, then `order` as the penultimate — both before `MethodOptions`.                                                        |
-| `OrderBy<Field>Asc` / `OrderBy<Field>Desc` | **New in v2.** Bakes a fixed ordering directly into the method name — chain fields with `And` (e.g. `OrderByCreatedAtAscAndNameDesc`). No `order` argument needed. |
+| `OrderBy<Field>Asc` / `OrderBy<Field>Desc` | Bakes a fixed ordering directly into the method name — chain fields with `And` (e.g. `OrderByCreatedAtAscAndNameDesc`). No `order` argument needed. *Note: If you do not specify `Asc` or `Desc`, it defaults to `Asc`.* |
 | `Distinct<Field>And<Field>...`             | Bakes fixed `distinct` fields directly into the method name (only valid on `findBy`/`findWhere`-family methods).                                                   |
 | `IgnoreConflicts`                          | On `createMany`/`createManyReturning`, skips records that would violate a unique constraint instead of throwing. _(Renamed from v1's `SkipDuplicates`.)_           |
 
@@ -626,9 +626,9 @@ declare buscarPorEmail: (email: string, options?: MethodOptions<User>) => Promis
 declare findByStatus: (status: string) => Promise<User[]>;
 ```
 
-### Strict return typing with `InferMethodType`
+### Strict return typing with `InferMethodType` [BETA]
 
-Normally you write a dynamic method's signature by hand, and its return is whatever you declare (usually the whole entity). `InferMethodType<Args, Return, OrmTypes?>` declares the method for you and infers the return **on each call** from the `select`/`relations` you pass — with the same rules as [`InferMethodReturn`](#strict-return-typing-with-infermethodreturn):
+Normally you write a dynamic method's signature by hand, and its return is whatever you declare (usually the whole entity). `InferMethodType<Args, Return, OrmTypes?>` declares the method for you and infers the return **on each call** from the `select`/`relations` you pass — with the same rules as [`InferMethodReturn`](#strict-return-typing-with-infermethodreturn-beta):
 
 ```typescript
 class UserRepository extends VSRepository<User, string, MyOrmTypes> {
@@ -657,7 +657,7 @@ await userRepository.findOneByEmail("john@example.com", { relations: { address: 
 | `OrmTypes` | _Optional._ `VSRepoOrmTypes` for your ORM, used to type the `db` option (see [Creating a repository](#creating-a-repository)). Defaults to `VSRepoOrmTypes`. |
 
 - `options` (`MethodOptions<Entity, OrmTypes>`) is always the **last**, optional parameter, after every argument in `Args`. If one of those arguments is optional, pass `undefined` explicitly to reach `options`.
-- Without `options` the result has only the scalar fields; with them it follows the [same rules](#strict-return-typing-with-infermethodreturn) as `InferMethodReturn` (including `select` winning over `relations`).
+- Without `options` the result has only the scalar fields; with them it follows the [same rules](#strict-return-typing-with-infermethodreturn-beta) as `InferMethodReturn` (including `select` winning over `relations`).
 - Unknown keys in `select`/`relations` (at any depth) are rejected at compile time, and the editor autocompletes them — just like with a plain `MethodOptions<Entity>` parameter.
 - It works together with the [decorator options](#decorator-options) (`proxyTo`, `injectOrdering`).
 - It is meant for dynamic methods that return entities (`findBy…`, `findOneBy…`, `findWhere…`, …). Methods that don't — `countBy…`, `existsBy…` — keep their regular signature.
@@ -723,10 +723,10 @@ await userRepository.transaction(async tx => {
 
 ### Ad-hoc raw queries with `query()`
 
-For one-off raw SQL that doesn't warrant declaring a `@QueryMethod` on the repository class, call `query()` directly — it's available on every `VSRepository` instance and goes through the same adapter's `query()` implementation under the hood:
+For one-off raw SQL that doesn't warrant declaring a `@QueryMethod` on the repository class, call `query()` directly — it's available on every `VSRepository` instance and uses the adapter's `query()` under the hood:
 
 ```typescript
-query<T = any>(query: string, options?: { args?: any[]; db?: any; modifying?: boolean; singleResult?: boolean }): Promise<T>;
+query<T = any>(query: string, options?: VSRepoQueryOptions<OrmTypes>): Promise<T>;
 ```
 
 ```typescript
@@ -832,10 +832,10 @@ import type {
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MethodOptions<T, K>`                               | Options accepted as the last argument by all dynamic methods and most base methods: `select`, `relations`, `see`, `db`.                                                                                                               | [Base methods](#base-methods), [Dynamic methods](#dynamic-methods).                                                                                           |
 | `RestrictMethodOptions<T, K>`                       | Narrowed `MethodOptions<T, K>` exposing only `see`/`db` — used by methods that don't shape/return an `Entity` (`total`, `has`, `sum`, `average`, `min`, `max`, `removeList`, `softRemoveList`, `restoreList`).                        | [Base methods](#base-methods), [Atomic and aggregate methods](#atomic-and-aggregate-methods).                                                                 |
-| `InferMethodReturn<T, Options>`                     | Opt-in strict return typing: narrows `T` (`Entity`, `Entity \| null` or `Entity[]`) to the fields and relations actually requested through `select`/`relations`. `select` wins over `relations`.                                      | [Strict return typing with `InferMethodReturn`](#strict-return-typing-with-infermethodreturn).                                                                |
-| `InferMethodType<Args, Return, OrmTypes?>`          | Declares a dynamic method whose return is inferred on each call from the `select`/`relations` passed as `options`. `OrmTypes` is optional and types the `db` option.                                                                  | [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype).                                                                    |
+| `InferMethodReturn<T, Options>`                     | Opt-in strict return typing: narrows `T` (`Entity`, `Entity \| null` or `Entity[]`) to the fields and relations actually requested through `select`/`relations`. `select` wins over `relations`.                                      | [Strict return typing with `InferMethodReturn`](#strict-return-typing-with-infermethodreturn-beta).                                                                |
+| `InferMethodType<Args, Return, OrmTypes?>`          | Declares a dynamic method whose return is inferred on each call from the `select`/`relations` passed as `options`. `OrmTypes` is optional and types the `db` option.                                                                  | [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype-beta).                                                                    |
 | `Pagination`                                        | `{ limit?, offset? }` accepted by `getAll` and by `Paginated` dynamic methods.                                                                                                                                                        | [Base methods](#base-methods), [Ordering, pagination and distinct](#ordering-pagination-and-distinct).                                                        |
-| `Ordering<T>` / `OrderByField<T>` / `SortDirection` | Ordering shape accepted by `getAll`, `defaultOrdering` and `injectOrdering`, and by `Ordered` dynamic methods. A single object or a chained array; nested objects order to-one relations.                                             | [Constructor options](#constructor-options), [Decorator options](#decorator-options), [Ordering, pagination and distinct](#ordering-pagination-and-distinct). |
+| `Ordering<T>` / `OrderByField<T>` / `SortDirection` | Ordering shape accepted by `getAll`, `defaultOrdering`, `injectOrdering` and by `Ordered` dynamic methods. A single object or a chained array.                                             | [Constructor options](#constructor-options), [Decorator options](#decorator-options), [Ordering, pagination and distinct](#ordering-pagination-and-distinct). |
 | `SeeMode`                                           | `"active" \| "removed" \| "all"` — controls visibility of soft-deleted records.                                                                                                                                                       | [Soft-delete](#soft-delete).                                                                                                                                  |
 | `DeepPartial<T>`                                    | Recursively makes every property of `T` optional, including nested objects and array elements.                                                                                                                                        | `save`, `saveList`, `patch`, `merge`, and all the dynamic writing methods.                                                                                    |
 | `CountResult`                                       | `{ count: number }` — the shape returned by batch operations.                                                                                                                                                                         | `removeList`, `softRemoveList`, `restoreList`, `createManyIgnoreConflicts`.                                                                                   |
@@ -953,7 +953,6 @@ export abstract class VSRepoAdapter<T> {
         update: DeepPartial<T>,
         options?: AdapterMethodOptions<T>,
     ): Promise<T>;
-
     abstract incrementOne<K extends NumericKeys<T>>(
         field: K,
         value: NonNullable<T[K]>,
@@ -1204,14 +1203,13 @@ npm pack --dry-run
 npm pack
 
 # 5. Consume it locally in another project
-npm install ../path/to/vsrepo-1.4.0.tgz
+npm install ../path/to/vsrepo-*.tgz
 ```
 
 Notes:
 
 - `pnpm build` runs `tsc -p tsconfig.build.json`, which outputs the compiled JS and generated type declarations into `dist/` with `rootDir: src`.
 - The published package contains **only** the `dist/` folder plus the READMEs and `LICENSE` (see `files` in `package.json`). The adapters will live in their own `@vsrepo/*-adapter` packages.
-- The core is ORM-agnostic and has no `@prisma/client` peer dependency.
 
 ---
 
@@ -1238,8 +1236,8 @@ Notes:
 Contributions are welcome, especially for improving the Prisma adapter and finishing the Drizzle one! (**[GitHub repository](https://github.com/jaobrabo123/VSRepository)**):
 
 1. **Fork** the project.
-2. Create a branch for your change: `git checkout -b v2-my-change`.
-3. Push your branch: `git push origin v2-my-change`.
+2. Create a branch for your change: `git checkout -b my-change`.
+3. Push your branch: `git push origin my-change`.
 4. Open a **Pull Request**.
 
 To report issues or suggest features, open an **Issue**.
