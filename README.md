@@ -41,6 +41,7 @@ VSRepository lets you create strongly-typed repositories with:
     - [Which fields are eligible](#which-fields-are-eligible)
     - [Writing an adapter](#writing-an-adapter)
 - [`select` and `relations`](#select-and-relations)
+    - [Strict return typing with `InferMethodReturn`](#strict-return-typing-with-infermethodreturn)
 - [Dynamic methods](#dynamic-methods)
     - [Available prefixes](#available-prefixes)
     - [Field filters](#field-filters)
@@ -48,6 +49,7 @@ VSRepository lets you create strongly-typed repositories with:
     - [Relation filters](#relation-filters)
     - [Ordering, pagination and distinct](#ordering-pagination-and-distinct)
     - [Decorator options](#decorator-options)
+    - [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype)
 - [Query methods (raw SQL)](#query-methods-raw-sql)
     - [Spread arguments with `spreadArgs`](#spread-arguments-with-spreadargs)
     - [Ad-hoc raw queries with `query()`](#ad-hoc-raw-queries-with-query)
@@ -67,22 +69,22 @@ VSRepository lets you create strongly-typed repositories with:
 
 If you're coming from the [v1](https://github.com/jaobrabo123/VSRepository/tree/v1) code/docs, here's the short version. See each linked section for details.
 
-| Area                                         | v1                                                                                                              | v2                                                                                                                                                                                                                                   |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Database access                              | Talks to **Prisma** directly, bundled in the core package                                                       | Talks to a **`VSRepoAdapter`**; ORM support ships as separate packages (`@vsrepo/prisma7-adapter`, `@vsrepo/drizzle-adapter`, ...) instead of being bundled in the core `vsrepo` package                                             |
-| Defining a repository                        | Functional `setupVSRepo<T, M>()({...}).build(prisma)`, **or** a `DynamicRepository` class                       | A single **class-based** API: `extends VSRepository<Entity, PKType, OrmTypes>`                                                                                                                                                       |
-| Dynamic methods                              | `methods: { findByEmail: { map: true } }` config object                                                         | `@DynamicMethod()` decorator on a `declare` field                                                                                                                                                                                    |
-| Data projections                             | Named, reusable `selectModels` + `defaultSelectModel`                                                           | Ad-hoc `select`/`relations` passed per call (no named models)                                                                                                                                                                        |
-| Eager loading                                | `include`/`includeModels` (Prisma-specific)                                                                     | ORM-agnostic `relations` option                                                                                                                                                                                                      |
-| Global filters                               | `requiredWhere` and `pushWhere`                                                                                 | **Removed**; Now it only accepts `softRemoveKey` + `see: "active" \| "removed" \| "all"`                                                                                                                                             |
-| Case-insensitive filter suffix               | `Insensitive`                                                                                                   | `IgnoreCase`                                                                                                                                                                                                                         |
-| Inline ordering in method name               | Not supported (`order` had to be passed as an argument via `Ordered`/`Paginated`)                               | `OrderBy<Field>Asc`/`OrderBy<Field>Desc` chains baked directly into the method name                                                                                                                                                  |
-| Duplicate handling on `createMany`           | `SkipDuplicates` suffix                                                                                         | `IgnoreConflicts` suffix                                                                                                                                                                                                             |
-| `aggregate` / `groupBy`                      | Supported (Prisma-native passthrough)                                                                           | `groupBy` is **not planned** for v2. `aggregate` as a prefix is also unlikely: the most common operations are already covered by dedicated base methods (`sum`, `average`, `min`, `max`, `increment`, `decrement`, `multiply`, `divide`) — see [Atomic and aggregate methods](#atomic-and-aggregate-methods). For anything more complex, use `@QueryMethod`.                                                                                                                                                                                                                                                           |
-| Error types                                  | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | A base `VSRepoError` class with a `type: VSRepoErrorType` field (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`), plus a `VSRepoAdapterError` subclass carrying an `AdapterErrorCode` and the original ORM error |
-| Debug logging                                | `showWorking: true` boolean                                                                                     | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` for slow-query warnings                                                                                                                                |
-| `vsrepo generate` CLI (type generation step) | Required before use                                                                                             | Not part of the v2 core — types come directly from your entity/ORM types                                                                                                                                                             |
-| CRUD extras                                  | `patchList`, raw `options.select`/`options.include`                                                             | `select`/`relations` are the default (always "raw"); `patch`/`merge` keep the same semantics. **`patchList` was removed** — for a batch partial update, use a `updateManyBy`/`updateManyWhere` dynamic method instead                |
+| Area                                         | v1                                                                                                              | v2                                                                                                                                                                                                                                                                                                                                                           |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Database access                              | Talks to **Prisma** directly, bundled in the core package                                                       | Talks to a **`VSRepoAdapter`**; ORM support ships as separate packages (`@vsrepo/prisma7-adapter`, `@vsrepo/drizzle-adapter`, ...) instead of being bundled in the core `vsrepo` package                                                                                                                                                                     |
+| Defining a repository                        | Functional `setupVSRepo<T, M>()({...}).build(prisma)`, **or** a `DynamicRepository` class                       | A single **class-based** API: `extends VSRepository<Entity, PKType, OrmTypes>`                                                                                                                                                                                                                                                                               |
+| Dynamic methods                              | `methods: { findByEmail: { map: true } }` config object                                                         | `@DynamicMethod()` decorator on a `declare` field                                                                                                                                                                                                                                                                                                            |
+| Data projections                             | Named, reusable `selectModels` + `defaultSelectModel`                                                           | Ad-hoc `select`/`relations` passed per call (no named models)                                                                                                                                                                                                                                                                                                |
+| Eager loading                                | `include`/`includeModels` (Prisma-specific)                                                                     | ORM-agnostic `relations` option                                                                                                                                                                                                                                                                                                                              |
+| Global filters                               | `requiredWhere` and `pushWhere`                                                                                 | **Removed**; Now it only accepts `softRemoveKey` + `see: "active" \| "removed" \| "all"`                                                                                                                                                                                                                                                                     |
+| Case-insensitive filter suffix               | `Insensitive`                                                                                                   | `IgnoreCase`                                                                                                                                                                                                                                                                                                                                                 |
+| Inline ordering in method name               | Not supported (`order` had to be passed as an argument via `Ordered`/`Paginated`)                               | `OrderBy<Field>Asc`/`OrderBy<Field>Desc` chains baked directly into the method name                                                                                                                                                                                                                                                                          |
+| Duplicate handling on `createMany`           | `SkipDuplicates` suffix                                                                                         | `IgnoreConflicts` suffix                                                                                                                                                                                                                                                                                                                                     |
+| `aggregate` / `groupBy`                      | Supported (Prisma-native passthrough)                                                                           | `groupBy` is **not planned** for v2. `aggregate` as a prefix is also unlikely: the most common operations are already covered by dedicated base methods (`sum`, `average`, `min`, `max`, `increment`, `decrement`, `multiply`, `divide`) — see [Atomic and aggregate methods](#atomic-and-aggregate-methods). For anything more complex, use `@QueryMethod`. |
+| Error types                                  | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | A base `VSRepoError` class with a `type: VSRepoErrorType` field (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`), plus a `VSRepoAdapterError` subclass carrying an `AdapterErrorCode` and the original ORM error                                                                                                                         |
+| Debug logging                                | `showWorking: true` boolean                                                                                     | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` for slow-query warnings                                                                                                                                                                                                                                                        |
+| `vsrepo generate` CLI (type generation step) | Required before use                                                                                             | Not part of the v2 core — types come directly from your entity/ORM types                                                                                                                                                                                                                                                                                     |
+| CRUD extras                                  | `patchList`, raw `options.select`/`options.include`                                                             | `select`/`relations` are the default (always "raw"); `patch`/`merge` keep the same semantics. **`patchList` was removed** — for a batch partial update, use a `updateManyBy`/`updateManyWhere` dynamic method instead                                                                                                                                        |
 
 ---
 
@@ -100,7 +102,7 @@ The Prisma 7 adapter has now been published to npm as `@vsrepo/prisma7-adapter`.
 | Adapter                              | Status                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Prisma 7 (`@vsrepo/prisma7-adapter`) | 🟢 **Released** — published to npm, implements the `VSRepoAdapter` contract (CRUD, relations, transactions, `merge`, logging) with tests; see [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter) for source and docs. **Note:** the atomic/aggregate methods (`incrementOne`, `decrementOne`, `multiplyOne`, `divideOne`, `sum`, `average`, `min`, `max` — see [Atomic and aggregate methods](#atomic-and-aggregate-methods)) were added to the `VSRepoAdapter` contract after this adapter's last release; confirm its changelog/version implements them before relying on `increment`/`sum`/etc. against Prisma 7. |
-| Drizzle (`@vsrepo/drizzle-adapter`)  | 🔵 **Alpha** — an early release is available on npm; install it with `npm i @vsrepo/drizzle-adapter@alpha`. The API may still change before the stable release. Check the [`DrizzleAdapter`](https://github.com/jaobrabo123/VSRepoDrizzleAdapter) repository for the current status and known limitations, and feel free to contribute.                                                                                                                                                                                                                                                                                                        |
+| Drizzle (`@vsrepo/drizzle-adapter`)  | 🔵 **Alpha** — an early release is available on npm; install it with `npm i @vsrepo/drizzle-adapter@alpha`. The API may still change before the stable release. Check the [`DrizzleAdapter`](https://github.com/jaobrabo123/VSRepoDrizzleAdapter) repository for the current status and known limitations, and feel free to contribute.                                                                                                                                                                                                                                                                                                         |
 | Other ORMs (Prisma 8, TypeORM, etc.) | 🟡 **Planned, not published yet.** No official package exists yet — write your own adapter for now (see [Writing your own adapter](#writing-your-own-adapter)), and consider publishing/contributing it back.                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Custom adapters                      | 🟢 Fully supported today — implement the [`VSRepoAdapter`](#writing-your-own-adapter) abstract class yourself for any ORM/database you need, in your own project or package, following the same shape as `@vsrepo/*-adapter` is expected to have.                                                                                                                                                                                                                                                                                                                                                                                               |
 
@@ -206,14 +208,14 @@ await userRepository.remove(user.id);
 
 `VSRepoOptions<T, K>`, passed to `super(...)` inside your repository's constructor:
 
-| Option               | Type                | Description                                                                                                                                                                                                 |
-| -------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `adapter`            | `VSRepoAdapter<T>`  | **Required.** The adapter instance that translates repository calls into calls against the underlying ORM/database.                                                                                         |
+| Option               | Type                | Description                                                                                                                                                                                                                        |
+| -------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `adapter`            | `VSRepoAdapter<T>`  | **Required.** The adapter instance that translates repository calls into calls against the underlying ORM/database.                                                                                                                |
 | `pkName`             | `keyof T`           | Optional. Name of the field that represents the entity's primary key. When omitted, the repository falls back to the adapter's `getPkName()`. If the adapter does not implement it either, the constructor throws a `VSRepoError`. |
-| `softRemoveKey`      | `keyof T`           | Optional. When set, enables `softRemove`, `softRemoveList`, `restore` and `restoreList`.                                                                                                                    |
-| `defaultOrdering`    | `Ordering<T>`       | Optional. Default ordering applied automatically to queries that accept `order`, unless overridden per call.                                                                                                |
-| `logLevel`           | `VSLogLevel`        | Optional. Minimum severity printed by the internal logger. Defaults to `VSLogLevel.WARN`.                                                                                                                   |
-| `logSlowThresholdMs` | `number \| boolean` | Optional. Duration (ms) above which a finished operation is logged as `WARN`. Defaults to 300ms. Pass `false` to disable slow-operation warnings entirely; pass `true` to use the 300ms default explicitly. |
+| `softRemoveKey`      | `keyof T`           | Optional. When set, enables `softRemove`, `softRemoveList`, `restore` and `restoreList`.                                                                                                                                           |
+| `defaultOrdering`    | `Ordering<T>`       | Optional. Default ordering applied automatically to queries that accept `order`, unless overridden per call.                                                                                                                       |
+| `logLevel`           | `VSLogLevel`        | Optional. Minimum severity printed by the internal logger. Defaults to `VSLogLevel.WARN`.                                                                                                                                          |
+| `logSlowThresholdMs` | `number \| boolean` | Optional. Duration (ms) above which a finished operation is logged as `WARN`. Defaults to 300ms. Pass `false` to disable slow-operation warnings entirely; pass `true` to use the 300ms default explicitly.                        |
 
 ---
 
@@ -371,6 +373,46 @@ const userWithAddress = await userRepository.get(id, {
 >
 > Custom adapters may map `relations` differently — consult the adapter's documentation for the exact semantics.
 
+### Strict return typing with `InferMethodReturn`
+
+By default, methods are typed as returning the **whole entity**, ignoring the `select` and `relations` you pass (the same approach TypeORM takes). If you prefer a stricter type, `InferMethodReturn<T, Options>` narrows it to what was actually requested. It is opt-in and purely a type-level utility — nothing changes at runtime.
+
+```typescript
+import type { InferMethodReturn, MethodOptions } from "vsrepo";
+
+type Address = { id: string; city: string };
+type Product = { id: string; name: string };
+type User = {
+    id: string;
+    name: string;
+    email: string;
+    address: Address | null;
+    products: Product[];
+};
+
+const options = {
+    select: { id: true, name: true, products: { id: true } },
+} satisfies MethodOptions<User>;
+
+const users: InferMethodReturn<User[], typeof options> = await userRepository.getAll(options);
+// { id: string; name: string; products: { id: string }[] }[]
+```
+
+- The **first** type argument is what the method returns: `User`, `User | null` or `User[]`. `null` and array-ness are preserved — also on relation fields (`address: Address | null`).
+- The **second** is the options object passed to the method (`typeof options`). It can be omitted, which is the same as passing no options.
+
+| Options passed         | Inferred result                                                                                                                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| None (or `{}`)         | Only the scalar fields of the entity — no relations.                                                                                                                                         |
+| `relations`            | The scalar fields plus the requested relations (nested ones included); each relation brings all of its scalar fields.                                                                        |
+| `select`               | Only the selected fields. A relation set to `true` brings all of its scalar fields; a nested `select` restricts it further. Relations selected this way are loaded even without `relations`. |
+| `select` + `relations` | `select` wins and `relations` is ignored.                                                                                                                                                    |
+
+- `see` and `db` don't affect the result.
+- Keep the options' literal types, using `satisfies MethodOptions<T>` (as above) or passing them inline. If they are typed as a plain `MethodOptions<T>` (e.g. `const options: MethodOptions<User> = ...`), nothing is known at compile time and `T` is returned unchanged.
+- Optional (`?`) fields and relations of the entity stay optional.
+- To get this inference directly on dynamic methods, see [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype).
+
 ---
 
 ## Dynamic methods
@@ -406,6 +448,8 @@ class UserRepository extends VSRepository<User, string> {
     ) => Promise<User[]>;
 }
 ```
+
+> Want the return type to follow the `select`/`relations` you pass, instead of always being the whole entity? Declare the method with [`InferMethodType`](#strict-return-typing-with-infermethodtype).
 
 ### Available prefixes
 
@@ -582,6 +626,42 @@ declare buscarPorEmail: (email: string, options?: MethodOptions<User>) => Promis
 declare findByStatus: (status: string) => Promise<User[]>;
 ```
 
+### Strict return typing with `InferMethodType`
+
+Normally you write a dynamic method's signature by hand, and its return is whatever you declare (usually the whole entity). `InferMethodType<Args, Return, OrmTypes?>` declares the method for you and infers the return **on each call** from the `select`/`relations` you pass — with the same rules as [`InferMethodReturn`](#strict-return-typing-with-infermethodreturn):
+
+```typescript
+class UserRepository extends VSRepository<User, string, MyOrmTypes> {
+    @DynamicMethod()
+    declare findByName: InferMethodType<[name: string], User[], MyOrmTypes>;
+
+    // the third generic (OrmTypes) is optional
+    @DynamicMethod()
+    declare findOneByEmail: InferMethodType<[email: string], User | null>;
+}
+
+await userRepository.findByName("John");
+// { id: string; name: string; email: string }[]  (only the scalar fields)
+
+await userRepository.findByName("John", { select: { id: true, products: { id: true } } });
+// { id: string; products: { id: string }[] }[]
+
+await userRepository.findOneByEmail("john@example.com", { relations: { address: true } });
+// { id: string; name: string; email: string; address: Address | null } | null
+```
+
+| Generic    | Description                                                                                                                                                  |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Args`     | Tuple with the method's positional arguments, **without** `options` — e.g. `[name: string]` or `[where: VSRepoWhere<User>, pagination: Pagination]`.         |
+| `Return`   | What the method resolves to: `Entity`, `Entity \| null` or `Entity[]`. The entity type used for `select`/`relations` is taken from here.                     |
+| `OrmTypes` | _Optional._ `VSRepoOrmTypes` for your ORM, used to type the `db` option (see [Creating a repository](#creating-a-repository)). Defaults to `VSRepoOrmTypes`. |
+
+- `options` (`MethodOptions<Entity, OrmTypes>`) is always the **last**, optional parameter, after every argument in `Args`. If one of those arguments is optional, pass `undefined` explicitly to reach `options`.
+- Without `options` the result has only the scalar fields; with them it follows the [same rules](#strict-return-typing-with-infermethodreturn) as `InferMethodReturn` (including `select` winning over `relations`).
+- Unknown keys in `select`/`relations` (at any depth) are rejected at compile time, and the editor autocompletes them — just like with a plain `MethodOptions<Entity>` parameter.
+- It works together with the [decorator options](#decorator-options) (`proxyTo`, `injectOrdering`).
+- It is meant for dynamic methods that return entities (`findBy…`, `findOneBy…`, `findWhere…`, …). Methods that don't — `countBy…`, `existsBy…` — keep their regular signature.
+
 ---
 
 ## Query methods (raw SQL)
@@ -725,6 +805,8 @@ Beyond the entity-shaping types covered above (`VSRepoSelect`, `VSRepoRelations`
 import type {
     MethodOptions,
     RestrictMethodOptions,
+    InferMethodReturn,
+    InferMethodType,
     Pagination,
     Ordering,
     OrderByField,
@@ -750,6 +832,8 @@ import type {
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MethodOptions<T, K>`                               | Options accepted as the last argument by all dynamic methods and most base methods: `select`, `relations`, `see`, `db`.                                                                                                               | [Base methods](#base-methods), [Dynamic methods](#dynamic-methods).                                                                                           |
 | `RestrictMethodOptions<T, K>`                       | Narrowed `MethodOptions<T, K>` exposing only `see`/`db` — used by methods that don't shape/return an `Entity` (`total`, `has`, `sum`, `average`, `min`, `max`, `removeList`, `softRemoveList`, `restoreList`).                        | [Base methods](#base-methods), [Atomic and aggregate methods](#atomic-and-aggregate-methods).                                                                 |
+| `InferMethodReturn<T, Options>`                     | Opt-in strict return typing: narrows `T` (`Entity`, `Entity \| null` or `Entity[]`) to the fields and relations actually requested through `select`/`relations`. `select` wins over `relations`.                                      | [Strict return typing with `InferMethodReturn`](#strict-return-typing-with-infermethodreturn).                                                                |
+| `InferMethodType<Args, Return, OrmTypes?>`          | Declares a dynamic method whose return is inferred on each call from the `select`/`relations` passed as `options`. `OrmTypes` is optional and types the `db` option.                                                                  | [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype).                                                                    |
 | `Pagination`                                        | `{ limit?, offset? }` accepted by `getAll` and by `Paginated` dynamic methods.                                                                                                                                                        | [Base methods](#base-methods), [Ordering, pagination and distinct](#ordering-pagination-and-distinct).                                                        |
 | `Ordering<T>` / `OrderByField<T>` / `SortDirection` | Ordering shape accepted by `getAll`, `defaultOrdering` and `injectOrdering`, and by `Ordered` dynamic methods. A single object or a chained array; nested objects order to-one relations.                                             | [Constructor options](#constructor-options), [Decorator options](#decorator-options), [Ordering, pagination and distinct](#ordering-pagination-and-distinct). |
 | `SeeMode`                                           | `"active" \| "removed" \| "all"` — controls visibility of soft-deleted records.                                                                                                                                                       | [Soft-delete](#soft-delete).                                                                                                                                  |
@@ -975,14 +1059,14 @@ try {
 }
 ```
 
-| `VSRepoErrorType` | Raised when                                                                                                                |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `DECORATOR`       | Invalid arguments were passed to `@DynamicMethod` or `@QueryMethod`.                                                       |
-| `RESOLVER`        | The library failed to resolve a dynamic/query method's configuration into a callable method (e.g. an unknown method name). |
-| `DYNAMIC`         | A resolved dynamic/query method failed at runtime (e.g. missing arguments).                                                |
-| `VALIDATOR`       | Invalid method options or arguments were detected during validation (e.g. a missing `pkName` when the adapter has no `getPkName()`).         |
-| `BASE`            | Invalid usage of a base method (`get`, `save`, `remove`, etc).                                                             |
-| `ADAPTER`         | A `VSRepoAdapter` failed while talking to the underlying ORM/database — always thrown as `VSRepoAdapterError`.             |
+| `VSRepoErrorType` | Raised when                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `DECORATOR`       | Invalid arguments were passed to `@DynamicMethod` or `@QueryMethod`.                                                                 |
+| `RESOLVER`        | The library failed to resolve a dynamic/query method's configuration into a callable method (e.g. an unknown method name).           |
+| `DYNAMIC`         | A resolved dynamic/query method failed at runtime (e.g. missing arguments).                                                          |
+| `VALIDATOR`       | Invalid method options or arguments were detected during validation (e.g. a missing `pkName` when the adapter has no `getPkName()`). |
+| `BASE`            | Invalid usage of a base method (`get`, `save`, `remove`, etc).                                                                       |
+| `ADAPTER`         | A `VSRepoAdapter` failed while talking to the underlying ORM/database — always thrown as `VSRepoAdapterError`.                       |
 
 ### `VSRepoAdapterError` and `AdapterErrorCode`
 
