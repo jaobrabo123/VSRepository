@@ -11,22 +11,12 @@ export type SortDirection = "asc" | "desc" | "ASC" | "DESC";
 /**
  * Ordering shape for a single level of an entity's fields.
  *
- * Scalar fields accept a `SortDirection` directly; nested object (to-one
- * relation) fields accept a nested `Ordering`. Array (to-many relation)
- * fields are not orderable and are excluded.
- *
  * @template T Entity type being ordered.
  *
  * @publicApi
  */
 export type OrderByField<T> = {
-    [P in keyof T]?: NonNullable<T[P]> extends Primitive
-        ? SortDirection
-        : NonNullable<T[P]> extends Array<any>
-          ? never
-          : NonNullable<T[P]> extends object
-            ? Ordering<NonNullable<T[P]>>
-            : SortDirection;
+    [P in keyof T as NonNullable<T[P]> extends Primitive ? P : never]?: SortDirection;
 };
 
 /**
