@@ -41,7 +41,7 @@ O VSRepository permite criar repositories fortemente tipados com:
     - [Quais campos são elegíveis](#quais-campos-são-elegíveis)
     - [Escrevendo um adapter](#escrevendo-um-adapter)
 - [`select` e `relations`](#select-e-relations)
-    - [Tipagem de retorno restrita com `InferMethodReturn` (BETA)](#tipagem-de-retorno-restrita-com-infermethodreturn-beta)
+    - [Tipagem de retorno restrita com `InferMethodReturn`](#tipagem-de-retorno-restrita-com-infermethodreturn)
 - [Métodos dinâmicos](#métodos-dinâmicos)
     - [Prefixos disponíveis](#prefixos-disponíveis)
     - [Filtros de campo](#filtros-de-campo)
@@ -49,7 +49,7 @@ O VSRepository permite criar repositories fortemente tipados com:
     - [Filtros de relação](#filtros-de-relação)
     - [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct)
     - [Options do decorador](#options-do-decorador)
-    - [Tipagem de retorno restrita com `InferMethodType` (BETA)](#tipagem-de-retorno-restrita-com-infermethodtype-beta)
+    - [Tipagem de retorno restrita com `InferMethodType`](#tipagem-de-retorno-restrita-com-infermethodtype)
 - [Query methods (SQL raw)](#query-methods-sql-raw)
     - [Argumentos via spread com `spreadArgs`](#argumentos-via-spread-com-spreadargs)
     - [Queries raw pontuais com `query()`](#queries-raw-pontuais-com-query)
@@ -373,7 +373,7 @@ const usuarioComEndereco = await userRepository.get(id, {
 >
 > Adapters customizados podem mapear `relations` de forma diferente — consulte a documentação do adapter para a semântica exata.
 
-### Tipagem de retorno restrita com `InferMethodReturn` [BETA]
+### Tipagem de retorno restrita com `InferMethodReturn`
 
 Por padrão, os métodos são tipados como se retornassem a **entidade inteira**, ignorando o `select` e o `relations` que você passa (a mesma abordagem do TypeORM). Se você prefere uma tipagem mais restrita, `InferMethodReturn<T, Options>` a estreita para o que foi realmente pedido. É opt-in e puramente em nível de tipos — nada muda em runtime.
 
@@ -411,7 +411,7 @@ const users: InferMethodReturn<User[], typeof options> = await userRepository.ge
 - `see` e `db` não afetam o resultado.
 - Mantenha os tipos literais das options, usando `satisfies MethodOptions<T>` (como acima) ou passando-as inline. Se estiverem tipadas como um `MethodOptions<T>` genérico (ex.: `const options: MethodOptions<User> = ...`), nada é conhecido em tempo de compilação e `T` é retornado sem alterações.
 - Campos e relações opcionais (`?`) da entidade continuam opcionais.
-- Para ter essa inferência direto nos métodos dinâmicos, veja [Tipagem de retorno restrita com `InferMethodType`](#tipagem-de-retorno-restrita-com-infermethodtype-beta).
+- Para ter essa inferência direto nos métodos dinâmicos, veja [Tipagem de retorno restrita com `InferMethodType`](#tipagem-de-retorno-restrita-com-infermethodtype).
 
 ---
 
@@ -449,7 +449,7 @@ class UserRepository extends VSRepository<User, string> {
 }
 ```
 
-> Quer que o tipo de retorno acompanhe o `select`/`relations` passados, em vez de ser sempre a entidade inteira? Declare o método com [`InferMethodType`](#tipagem-de-retorno-restrita-com-infermethodtype-beta).
+> Quer que o tipo de retorno acompanhe o `select`/`relations` passados, em vez de ser sempre a entidade inteira? Declare o método com [`InferMethodType`](#tipagem-de-retorno-restrita-com-infermethodtype).
 
 ### Prefixos disponíveis
 
@@ -626,9 +626,9 @@ declare buscarPorEmail: (email: string, options?: MethodOptions<User>) => Promis
 declare findByStatus: (status: string) => Promise<User[]>;
 ```
 
-### Tipagem de retorno restrita com `InferMethodType` [BETA]
+### Tipagem de retorno restrita com `InferMethodType`
 
-Normalmente você escreve à mão a assinatura de um método dinâmico, e o retorno é o que você declarar (em geral a entidade inteira). `InferMethodType<Args, Return, OrmTypes?>` declara o método para você e infere o retorno **a cada chamada** a partir do `select`/`relations` passados — com as mesmas regras do [`InferMethodReturn`](#tipagem-de-retorno-restrita-com-infermethodreturn-beta):
+Normalmente você escreve à mão a assinatura de um método dinâmico, e o retorno é o que você declarar (em geral a entidade inteira). `InferMethodType<Args, Return, OrmTypes?>` declara o método para você e infere o retorno **a cada chamada** a partir do `select`/`relations` passados — com as mesmas regras do [`InferMethodReturn`](#tipagem-de-retorno-restrita-com-infermethodreturn):
 
 ```typescript
 class UserRepository extends VSRepository<User, string, MyOrmTypes> {
@@ -657,7 +657,7 @@ await userRepository.findOneByEmail("john@example.com", { relations: { address: 
 | `OrmTypes` | _Opcional._ `VSRepoOrmTypes` do seu ORM, usado para tipar a option `db` (veja [Criando um repository](#criando-um-repository)). Padrão: `VSRepoOrmTypes`. |
 
 - `options` (`MethodOptions<Entity, OrmTypes>`) é sempre o **último** parâmetro, opcional, depois de todos os argumentos de `Args`. Se algum desses argumentos for opcional, passe `undefined` explicitamente para alcançar `options`.
-- Sem `options` o resultado tem apenas os campos escalares; com elas, segue as [mesmas regras](#tipagem-de-retorno-restrita-com-infermethodreturn-beta) do `InferMethodReturn` (inclusive `select` vencendo `relations`).
+- Sem `options` o resultado tem apenas os campos escalares; com elas, segue as [mesmas regras](#tipagem-de-retorno-restrita-com-infermethodreturn) do `InferMethodReturn` (inclusive `select` vencendo `relations`).
 - Chaves inexistentes em `select`/`relations` (em qualquer profundidade) são rejeitadas em tempo de compilação, e o editor as sugere via autocomplete — igual a um parâmetro `MethodOptions<Entity>` comum.
 - Funciona junto com as [options do decorador](#options-do-decorador) (`proxyTo`, `injectOrdering`).
 - Foi pensado para métodos dinâmicos que retornam entidades (`findBy…`, `findOneBy…`, `findWhere…`, …). Os que não retornam — `countBy…`, `existsBy…` — mantêm a assinatura normal.
@@ -835,8 +835,8 @@ import type {
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MethodOptions<T, K>`                               | Options aceitas como último argumento por todos os métodos dinâmicos e pela maioria dos métodos base: `select`, `relations`, `see`, `db`.                                                                                                  | [Métodos base](#métodos-base), [Métodos Dinâmicos](#métodos-dinâmicos).                                                                                             |
 | `RestrictMethodOptions<T, K>`                       | `MethodOptions<T, K>` restrito, expondo só `see`/`db` — usado pelos métodos que não retornam/moldam uma `Entity` (`total`, `has`, `sum`, `average`, `min`, `max`, `removeList`, `softRemoveList`, `restoreList`).                          | [Métodos base](#métodos-base), [Métodos atômicos e de agregação](#métodos-atômicos-e-de-agregação).                                                                 |
-| `InferMethodReturn<T, Options>`                     | Tipagem de retorno restrita (opt-in): estreita `T` (`Entity`, `Entity \| null` ou `Entity[]`) para os campos e relações realmente pedidos via `select`/`relations`. `select` vence `relations`.                                            | [Tipagem de retorno restrita com `InferMethodReturn`](#tipagem-de-retorno-restrita-com-infermethodreturn-beta).                                                          |
-| `InferMethodType<Args, Return, OrmTypes?>`          | Declara um método dinâmico cujo retorno é inferido a cada chamada a partir do `select`/`relations` passados como `options`. `OrmTypes` é opcional e tipa a option `db`.                                                                    | [Tipagem de retorno restrita com `InferMethodType`](#tipagem-de-retorno-restrita-com-infermethodtype-beta).                                                              |
+| `InferMethodReturn<T, Options>`                     | Tipagem de retorno restrita (opt-in): estreita `T` (`Entity`, `Entity \| null` ou `Entity[]`) para os campos e relações realmente pedidos via `select`/`relations`. `select` vence `relations`.                                            | [Tipagem de retorno restrita com `InferMethodReturn`](#tipagem-de-retorno-restrita-com-infermethodreturn).                                                          |
+| `InferMethodType<Args, Return, OrmTypes?>`          | Declara um método dinâmico cujo retorno é inferido a cada chamada a partir do `select`/`relations` passados como `options`. `OrmTypes` é opcional e tipa a option `db`.                                                                    | [Tipagem de retorno restrita com `InferMethodType`](#tipagem-de-retorno-restrita-com-infermethodtype).                                                              |
 | `Pagination`                                        | `{ limit?, offset? }` aceito por `getAll` e pelos métodos dinâmicos com `Paginated`.                                                                                                                                                       | [Métodos base](#métodos-base), [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct).                                                                  |
 | `Ordering<T>` / `OrderByField<T>` / `SortDirection` | Formato de ordenação aceito por `getAll`, `defaultOrdering`, `injectOrdering` e pelos métodos dinâmicos com `Ordered`. Pode ser um único objeto ou um array encadeado.                        | [Options do construtor](#options-do-construtor), [Options do decorador](#options-do-decorador), [Ordenação, paginação e distinct](#ordenação-paginação-e-distinct). |
 | `SeeMode`                                           | `"active" \| "removed" \| "all"` — controla a visibilidade de registros com soft-delete.                                                                                                                                                   | [Soft-delete](#soft-delete).                                                                                                                                        |

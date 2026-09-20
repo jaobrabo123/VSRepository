@@ -41,7 +41,7 @@ VSRepository lets you create strongly-typed repositories with:
     - [Which fields are eligible](#which-fields-are-eligible)
     - [Writing an adapter](#writing-an-adapter)
 - [`select` and `relations`](#select-and-relations)
-    - [Strict return typing with `InferMethodReturn` (BETA)](#strict-return-typing-with-infermethodreturn-beta)
+    - [Strict return typing with `InferMethodReturn`](#strict-return-typing-with-infermethodreturn)
 - [Dynamic methods](#dynamic-methods)
     - [Available prefixes](#available-prefixes)
     - [Field filters](#field-filters)
@@ -49,7 +49,7 @@ VSRepository lets you create strongly-typed repositories with:
     - [Relation filters](#relation-filters)
     - [Ordering, pagination and distinct](#ordering-pagination-and-distinct)
     - [Decorator options](#decorator-options)
-    - [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype-beta)
+    - [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype)
 - [Query methods (raw SQL)](#query-methods-raw-sql)
     - [Spread arguments with `spreadArgs`](#spread-arguments-with-spreadargs)
     - [Ad-hoc raw queries with `query()`](#ad-hoc-raw-queries-with-query)
@@ -373,7 +373,7 @@ const userWithAddress = await userRepository.get(id, {
 >
 > Custom adapters may map `relations` differently — consult the adapter's documentation for the exact semantics.
 
-### Strict return typing with `InferMethodReturn` [BETA]
+### Strict return typing with `InferMethodReturn`
 
 By default, methods are typed as returning the **whole entity**, ignoring the `select` and `relations` you pass (the same approach TypeORM takes). If you prefer a stricter type, `InferMethodReturn<T, Options>` narrows it to what was actually requested. It is opt-in and purely a type-level utility — nothing changes at runtime.
 
@@ -411,7 +411,7 @@ const users: InferMethodReturn<User[], typeof options> = await userRepository.ge
 - `see` and `db` don't affect the result.
 - Keep the options' literal types, using `satisfies MethodOptions<T>` (as above) or passing them inline. If they are typed as a plain `MethodOptions<T>` (e.g. `const options: MethodOptions<User> = ...`), nothing is known at compile time and `T` is returned unchanged.
 - Optional (`?`) fields and relations of the entity stay optional.
-- To get this inference directly on dynamic methods, see [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype-beta).
+- To get this inference directly on dynamic methods, see [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype).
 
 ---
 
@@ -449,7 +449,7 @@ class UserRepository extends VSRepository<User, string> {
 }
 ```
 
-> Want the return type to follow the `select`/`relations` you pass, instead of always being the whole entity? Declare the method with [`InferMethodType`](#strict-return-typing-with-infermethodtype-beta).
+> Want the return type to follow the `select`/`relations` you pass, instead of always being the whole entity? Declare the method with [`InferMethodType`](#strict-return-typing-with-infermethodtype).
 
 ### Available prefixes
 
@@ -626,9 +626,9 @@ declare buscarPorEmail: (email: string, options?: MethodOptions<User>) => Promis
 declare findByStatus: (status: string) => Promise<User[]>;
 ```
 
-### Strict return typing with `InferMethodType` [BETA]
+### Strict return typing with `InferMethodType`
 
-Normally you write a dynamic method's signature by hand, and its return is whatever you declare (usually the whole entity). `InferMethodType<Args, Return, OrmTypes?>` declares the method for you and infers the return **on each call** from the `select`/`relations` you pass — with the same rules as [`InferMethodReturn`](#strict-return-typing-with-infermethodreturn-beta):
+Normally you write a dynamic method's signature by hand, and its return is whatever you declare (usually the whole entity). `InferMethodType<Args, Return, OrmTypes?>` declares the method for you and infers the return **on each call** from the `select`/`relations` you pass — with the same rules as [`InferMethodReturn`](#strict-return-typing-with-infermethodreturn):
 
 ```typescript
 class UserRepository extends VSRepository<User, string, MyOrmTypes> {
@@ -657,7 +657,7 @@ await userRepository.findOneByEmail("john@example.com", { relations: { address: 
 | `OrmTypes` | _Optional._ `VSRepoOrmTypes` for your ORM, used to type the `db` option (see [Creating a repository](#creating-a-repository)). Defaults to `VSRepoOrmTypes`. |
 
 - `options` (`MethodOptions<Entity, OrmTypes>`) is always the **last**, optional parameter, after every argument in `Args`. If one of those arguments is optional, pass `undefined` explicitly to reach `options`.
-- Without `options` the result has only the scalar fields; with them it follows the [same rules](#strict-return-typing-with-infermethodreturn-beta) as `InferMethodReturn` (including `select` winning over `relations`).
+- Without `options` the result has only the scalar fields; with them it follows the [same rules](#strict-return-typing-with-infermethodreturn) as `InferMethodReturn` (including `select` winning over `relations`).
 - Unknown keys in `select`/`relations` (at any depth) are rejected at compile time, and the editor autocompletes them — just like with a plain `MethodOptions<Entity>` parameter.
 - It works together with the [decorator options](#decorator-options) (`proxyTo`, `injectOrdering`).
 - It is meant for dynamic methods that return entities (`findBy…`, `findOneBy…`, `findWhere…`, …). Methods that don't — `countBy…`, `existsBy…` — keep their regular signature.
@@ -832,8 +832,8 @@ import type {
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MethodOptions<T, K>`                               | Options accepted as the last argument by all dynamic methods and most base methods: `select`, `relations`, `see`, `db`.                                                                                                               | [Base methods](#base-methods), [Dynamic methods](#dynamic-methods).                                                                                           |
 | `RestrictMethodOptions<T, K>`                       | Narrowed `MethodOptions<T, K>` exposing only `see`/`db` — used by methods that don't shape/return an `Entity` (`total`, `has`, `sum`, `average`, `min`, `max`, `removeList`, `softRemoveList`, `restoreList`).                        | [Base methods](#base-methods), [Atomic and aggregate methods](#atomic-and-aggregate-methods).                                                                 |
-| `InferMethodReturn<T, Options>`                     | Opt-in strict return typing: narrows `T` (`Entity`, `Entity \| null` or `Entity[]`) to the fields and relations actually requested through `select`/`relations`. `select` wins over `relations`.                                      | [Strict return typing with `InferMethodReturn`](#strict-return-typing-with-infermethodreturn-beta).                                                                |
-| `InferMethodType<Args, Return, OrmTypes?>`          | Declares a dynamic method whose return is inferred on each call from the `select`/`relations` passed as `options`. `OrmTypes` is optional and types the `db` option.                                                                  | [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype-beta).                                                                    |
+| `InferMethodReturn<T, Options>`                     | Opt-in strict return typing: narrows `T` (`Entity`, `Entity \| null` or `Entity[]`) to the fields and relations actually requested through `select`/`relations`. `select` wins over `relations`.                                      | [Strict return typing with `InferMethodReturn`](#strict-return-typing-with-infermethodreturn).                                                                |
+| `InferMethodType<Args, Return, OrmTypes?>`          | Declares a dynamic method whose return is inferred on each call from the `select`/`relations` passed as `options`. `OrmTypes` is optional and types the `db` option.                                                                  | [Strict return typing with `InferMethodType`](#strict-return-typing-with-infermethodtype).                                                                    |
 | `Pagination`                                        | `{ limit?, offset? }` accepted by `getAll` and by `Paginated` dynamic methods.                                                                                                                                                        | [Base methods](#base-methods), [Ordering, pagination and distinct](#ordering-pagination-and-distinct).                                                        |
 | `Ordering<T>` / `OrderByField<T>` / `SortDirection` | Ordering shape accepted by `getAll`, `defaultOrdering`, `injectOrdering` and by `Ordered` dynamic methods. A single object or a chained array.                                             | [Constructor options](#constructor-options), [Decorator options](#decorator-options), [Ordering, pagination and distinct](#ordering-pagination-and-distinct). |
 | `SeeMode`                                           | `"active" \| "removed" \| "all"` — controls visibility of soft-deleted records.                                                                                                                                                       | [Soft-delete](#soft-delete).                                                                                                                                  |
