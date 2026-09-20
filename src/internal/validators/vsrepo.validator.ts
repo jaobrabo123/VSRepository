@@ -46,7 +46,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
     private readonly constructorOptionsSchema = v.object({
         // * Usando any ao invés de instanceof para não ter erro de referencia
         adapter: v.any(),
-        pkName: v.string(),
+        pkName: v.optional(v.string()),
         softRemoveKey: v.optional(v.string()),
         logLevel: v.optional(v.enum(VSLogLevel)),
         logSlowThresholdMs: v.optional(v.union([v.pipe(v.number(), v.gtValue(0)), v.boolean()])),

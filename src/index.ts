@@ -43,6 +43,8 @@ export type { CountResult } from "./types/utils/count-result.type.js";
 export type { DeepPartial } from "./types/utils/deep-partial.type.js";
 export type { KeysOfType } from "./types/utils/keys-of-type.type.js";
 export type { MethodOptions } from "./types/utils/methods-options.type.js";
+export type { InferMethodReturn } from "./types/utils/infer-method-return.type.js";
+export type { InferMethodType } from "./types/utils/infer-method-type.type.js";
 export type { Ordering, OrderByField, SortDirection } from "./types/utils/ordering.type.js";
 export type { Pagination } from "./types/utils/pagination.type.js";
 export type { Primitive } from "./types/utils/primitive.type.js";
