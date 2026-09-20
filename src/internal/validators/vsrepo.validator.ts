@@ -28,14 +28,8 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         this.logger = logger;
     }
 
-    private failValidation(
-        issue: v.GenericIssue | undefined,
-        type: VSRepoErrorType,
-        fallbackPath = "options",
-    ): never {
-        const path = issue?.path?.length
-            ? issue.path.map(p => String(p.key)).join(".")
-            : fallbackPath;
+    private failValidation(issue: v.GenericIssue | undefined, type: VSRepoErrorType, fallbackPath = "options"): never {
+        const path = issue?.path?.length ? issue.path.map(p => String(p.key)).join(".") : fallbackPath;
         const message = `${path}: ${issue?.message ?? "validation failed"}`;
 
         this.logger?.logError(`Validation failed (${type}): ${message}`);

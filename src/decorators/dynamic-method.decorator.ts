@@ -27,11 +27,9 @@ import { VSRepoMethod } from "../types/vsrepo/vsrepo-method.type";
  * @publicApi
  */
 export function DynamicMethod<T = any>(options?: DynamicMethodOptions<T>): PropertyDecorator {
-    const validatedOptions = options
-        ? DecoratorsValidator.validateDynamicMethodOptions(options)
-        : undefined;
+    const validatedOptions = options ? DecoratorsValidator.validateDynamicMethodOptions(options) : undefined;
 
-    return (target: Object, propertyKey: string | symbol) => {
+    return (target: object, propertyKey: string | symbol) => {
         const methods: VSRepoMethod[] = Reflect.getMetadata(DYNAMIC_METHODS_KEY, target) ?? [];
 
         methods.push({ ...validatedOptions, propertyKey });

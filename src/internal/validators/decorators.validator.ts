@@ -16,9 +16,7 @@ export class DecoratorsValidator {
 
         if (!parsed.success) {
             const firstIssue = parsed.issues[0];
-            const path = firstIssue.path?.length
-                ? firstIssue.path.map(p => String(p.key)).join(".")
-                : "options";
+            const path = firstIssue.path?.length ? firstIssue.path.map(p => String(p.key)).join(".") : "options";
             throw new VSRepoError(`${path}: ${firstIssue.message}`, VSRepoErrorType.DECORATOR);
         }
 
@@ -36,9 +34,7 @@ export class DecoratorsValidator {
 
         if (!parsed.success) {
             const firstIssue = parsed.issues[0];
-            const path = firstIssue.path?.length
-                ? firstIssue.path.map(p => String(p.key)).join(".")
-                : "options";
+            const path = firstIssue.path?.length ? firstIssue.path.map(p => String(p.key)).join(".") : "options";
             throw new VSRepoError(`${path}: ${firstIssue.message}`, VSRepoErrorType.DECORATOR);
         }
 

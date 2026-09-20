@@ -20,10 +20,7 @@ import { VSRepoWhere } from "./types/vsrepo/vsrepo-where.type";
  */
 export abstract class VSRepoAdapter<T> {
     /** Runs `fn` inside a native transaction of the underlying ORM/database. */
-    public abstract runInTransaction<R>(
-        fn: (tx: any) => Promise<R>,
-        options?: VSRepoTransactionOptions,
-    ): Promise<R>;
+    public abstract runInTransaction<R>(fn: (tx: any) => Promise<R>, options?: VSRepoTransactionOptions): Promise<R>;
 
     /** Returns the underlying ORM client instance used outside of transactions. */
     public abstract getDbClient(): any;
@@ -32,16 +29,10 @@ export abstract class VSRepoAdapter<T> {
     public abstract query<T = any>(query: string, options?: AdapterQueryOptions): Promise<T>;
 
     /** Fetches a single record matching `where`. */
-    public abstract findOne(
-        where: VSRepoWhere<T>,
-        options?: AdapterMethodOptions<T>,
-    ): Promise<T | null>;
+    public abstract findOne(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T | null>;
 
     /** Fetches a single record matching `where`, throwing if none is found. */
-    public abstract findOneOrThrow(
-        where: VSRepoWhere<T>,
-        options?: AdapterMethodOptions<T>,
-    ): Promise<T>;
+    public abstract findOneOrThrow(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T>;
 
     /** Fetches all records matching `where`. */
     public abstract findMany(
@@ -53,10 +44,7 @@ export abstract class VSRepoAdapter<T> {
     public abstract save(obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;
 
     /** Creates or updates (upsert) multiple records in a single operation. */
-    public abstract saveMany(
-        objs: DeepPartial<T>[],
-        options?: AdapterMethodOptions<T>,
-    ): Promise<T[]>;
+    public abstract saveMany(objs: DeepPartial<T>[], options?: AdapterMethodOptions<T>): Promise<T[]>;
 
     /** Creates a single record. */
     public abstract create(objs: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;
@@ -77,23 +65,13 @@ export abstract class VSRepoAdapter<T> {
     public abstract delete(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T>;
 
     /** Deletes every record matching `where`, returning the count of affected rows. */
-    public abstract deleteMany(
-        where: VSRepoWhere<T>,
-        options?: AdapterMethodOptions<T>,
-    ): Promise<CountResult>;
+    public abstract deleteMany(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<CountResult>;
 
     /** Deletes every record matching `where`, returning the deleted records. */
-    public abstract deleteManyReturning(
-        where: VSRepoWhere<T>,
-        options?: AdapterMethodOptions<T>,
-    ): Promise<T[]>;
+    public abstract deleteManyReturning(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<T[]>;
 
     /** Updates a single record matching `where`. */
-    public abstract update(
-        where: VSRepoWhere<T>,
-        obj: DeepPartial<T>,
-        options?: AdapterMethodOptions<T>,
-    ): Promise<T>;
+    public abstract update(where: VSRepoWhere<T>, obj: DeepPartial<T>, options?: AdapterMethodOptions<T>): Promise<T>;
 
     /** Updates every record matching `where`, returning the count of affected rows. */
     public abstract updateMany(
@@ -110,16 +88,10 @@ export abstract class VSRepoAdapter<T> {
     ): Promise<T[]>;
 
     /** Returns the number of records matching `where`. */
-    public abstract count(
-        where: VSRepoWhere<T>,
-        options?: AdapterMethodOptions<T>,
-    ): Promise<number>;
+    public abstract count(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<number>;
 
     /** Checks whether at least one record matching `where` exists. */
-    public abstract exists(
-        where: VSRepoWhere<T>,
-        options?: AdapterMethodOptions<T>,
-    ): Promise<boolean>;
+    public abstract exists(where: VSRepoWhere<T>, options?: AdapterMethodOptions<T>): Promise<boolean>;
 
     /**
      * Fetches a single record matching `where` and returns it deep-merged, in

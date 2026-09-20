@@ -149,11 +149,7 @@ describe("@QueryMethod — query crua", () => {
             fakeAdapter.query.mockResolvedValueOnce(users);
             const fakeTx = { isFakeTx: true };
 
-            await userRepository.findByEmailAndTypeRaw(
-                "joao@email.com",
-                "admin",
-                withDb(fakeTx),
-            );
+            await userRepository.findByEmailAndTypeRaw("joao@email.com", "admin", withDb(fakeTx));
 
             expect(fakeAdapter.query).toHaveBeenCalledWith(
                 'SELECT * FROM "user" WHERE email = $1 AND "userType" = $2',
@@ -166,9 +162,9 @@ describe("@QueryMethod — query crua", () => {
         });
 
         it("chamar um método declarado sem 'spreadArgs' com mais de um argumento lança 'VSRepoError'", async () => {
-            await expect(
-                (userRepository.findByEmailRaw as any)("joao@email.com", "extra"),
-            ).rejects.toThrow(VSRepoError);
+            await expect((userRepository.findByEmailRaw as any)("joao@email.com", "extra")).rejects.toThrow(
+                VSRepoError,
+            );
         });
     });
 });

@@ -96,6 +96,6 @@ tipagem falha rápido, antes mesmo de instanciar qualquer repository.
 
 ## CI
 
-O workflow `.github/workflows/ci.yml` roda `pnpm test` (tipagem + implementação) a cada push e
+O workflow `.github/workflows/ci.yml` roda `bun run test` (tipagem + implementação) a cada push e
 pull request para `main`. Diferente da v1, não há serviço Postgres nem passos de migration/build
 — o core não precisa de nada disso para ser testado.

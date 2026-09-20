@@ -115,11 +115,7 @@ describe("save / saveList / patch", () => {
 
         const result = await userRepository.patch("user-1", { name: "Novo nome" });
 
-        expect(fakeAdapter.update).toHaveBeenCalledWith(
-            { id: "user-1" },
-            { name: "Novo nome" },
-            expect.anything(),
-        );
+        expect(fakeAdapter.update).toHaveBeenCalledWith({ id: "user-1" }, { name: "Novo nome" }, expect.anything());
         expect(result).toBe(patched);
     });
 });

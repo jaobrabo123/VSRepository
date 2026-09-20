@@ -75,11 +75,7 @@ type ExactOptions<O, E> = {
  *
  * @publicApi
  */
-export type InferMethodType<
-    Args extends unknown[],
-    R,
-    K extends VSRepoOrmTypes = VSRepoOrmTypes,
-> = {
+export type InferMethodType<Args extends unknown[], R, K extends VSRepoOrmTypes = VSRepoOrmTypes> = {
     (...args: Args): Promise<InferMethodReturn<R, {}>>;
 
     // IMPORTANT: `Options` must NOT have a default (e.g. `= {}`) to cover the "no options" case.

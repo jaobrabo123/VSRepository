@@ -173,9 +173,7 @@ describe("VSRepository — guard clauses dos métodos base", () => {
     });
 
     it("'transaction' é lançado quando 'fn' não é uma função", async () => {
-        await expect(userRepository.transaction("not-a-function" as any)).rejects.toThrow(
-            VSRepoError,
-        );
+        await expect(userRepository.transaction("not-a-function" as any)).rejects.toThrow(VSRepoError);
     });
 
     it("'softRemove' é lançado quando 'softRemoveKey' não foi configurado no repository", async () => {
@@ -215,9 +213,7 @@ describe("@QueryMethod — validação da assinatura de chamada ('spreadArgs')",
     const userRepository = new UserRepository(createFakeAdapter<User>());
 
     it("é lançado ao chamar um método declarado sem 'spreadArgs' com mais de um argumento posicional", async () => {
-        await expect(
-            (userRepository.findByEmailRaw as any)("joao@email.com", "extra"),
-        ).rejects.toThrow(VSRepoError);
+        await expect((userRepository.findByEmailRaw as any)("joao@email.com", "extra")).rejects.toThrow(VSRepoError);
     });
 
     it("tem type 'DYNAMIC'", async () => {

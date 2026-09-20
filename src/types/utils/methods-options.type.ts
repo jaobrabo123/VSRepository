@@ -12,7 +12,7 @@ import { VSRepoSelect } from "../vsrepo/vsrepo-select.type";
  *
  * @publicApi
  */
-export type MethodOptions<T, K extends VSRepoOrmTypes= VSRepoOrmTypes> = {
+export type MethodOptions<T, K extends VSRepoOrmTypes = VSRepoOrmTypes> = {
     /** Fields (and nested relation fields) to select in the result. */
     select?: VSRepoSelect<T>;
     /** Relations to eagerly load alongside the result. */

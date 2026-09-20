@@ -1,6 +1,6 @@
 // Testes de tipagem (compile-time only) do utilitário `InferMethodType`.
 // Não são executados pelo Jest — só precisam compilar limpo com `tsc --noEmit`
-// (ver `pnpm test:typing`). `Expect<Equal<A, B>>` só compila se A e B forem
+// (ver `bun run test:typing`). `Expect<Equal<A, B>>` só compila se A e B forem
 // exatamente o mesmo tipo, e cada `@ts-expect-error` documenta um uso que DEVE
 // falhar a compilar (se passar a compilar, o TS2578 quebra o `test:typing`).
 
@@ -11,8 +11,7 @@ import { InferMethodType } from "../../src/types/utils/infer-method-type.type";
 import { MethodOptions } from "../../src/types/utils/methods-options.type";
 import { User as HelperUser } from "../helpers/entities";
 
-type Equal<X, Y> =
-    (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2 ? true : false;
+type Equal<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2 ? true : false;
 type Expect<T extends true> = T;
 
 type Tag = { id: string; name: string };
@@ -60,16 +59,11 @@ declare const adapter: VSRepoAdapter<User>;
 const repo = new UserRepository(adapter as never);
 
 // Tudo dentro de uma função async nunca chamada — só precisa compilar, não rodar.
-async function typeChecks(): Promise<void> {
+async function _typeChecks(): Promise<void> {
     // --- sem options: só escalares ------------------------------------------
     {
         const result = await repo.findByName("John");
-        type _ = Expect<
-            Equal<
-                typeof result,
-                { id: string; name: string; email: string; deletedAt: Date | null }[]
-            >
-        >;
+        type _ = Expect<Equal<typeof result, { id: string; name: string; email: string; deletedAt: Date | null }[]>>;
     }
 
     // --- relations ------------------------------------------------------------
@@ -95,10 +89,7 @@ async function typeChecks(): Promise<void> {
             select: { id: true, products: { id: true, tags: true } },
         });
         type _ = Expect<
-            Equal<
-                typeof result,
-                { id: string; products: { id: string; tags: { id: string; name: string }[] }[] }[]
-            >
+            Equal<typeof result, { id: string; products: { id: string; tags: { id: string; name: string }[] }[] }[]>
         >;
     }
 
@@ -107,21 +98,14 @@ async function typeChecks(): Promise<void> {
         const result = await repo.findOneByEmail("a@b.com", {
             select: { id: true, address: true },
         });
-        type _ = Expect<
-            Equal<
-                typeof result,
-                { id: string; address: { id: string; city: string } | null } | null
-            >
-        >;
+        type _ = Expect<Equal<typeof result, { id: string; address: { id: string; city: string } | null } | null>>;
     }
 
     // --- vários argumentos: options depois de todos ----------------------------
     {
         const r1 = await repo.findByNameAndEmail("John");
         const r2 = await repo.findByNameAndEmail("John", "a@b.com", { select: { id: true } });
-        type _1 = Expect<
-            Equal<typeof r1, { id: string; name: string; email: string; deletedAt: Date | null }[]>
-        >;
+        type _1 = Expect<Equal<typeof r1, { id: string; name: string; email: string; deletedAt: Date | null }[]>>;
         type _2 = Expect<Equal<typeof r2, { id: string }[]>>;
 
         // @ts-expect-error `options` não pode ocupar a posição do argumento opcional 'email'
@@ -201,14 +185,11 @@ declare const helperRepo: {
     findById: InferMethodType<[id: string], HelperUser | null>;
 };
 
-async function optionalModifiers(): Promise<void> {
+async function _optionalModifiers(): Promise<void> {
     const result = await helperRepo.findById("1", {
         select: { id: true, address: { city: true }, products: { id: true } },
     });
     type _ = Expect<
-        Equal<
-            typeof result,
-            { id: string; address?: { city: string } | null; products?: { id: string }[] } | null
-        >
+        Equal<typeof result, { id: string; address?: { city: string } | null; products?: { id: string }[] } | null>
     >;
 }
