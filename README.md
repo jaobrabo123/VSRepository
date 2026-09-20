@@ -1191,15 +1191,15 @@ The v2 core is built and packed from this branch as a standard npm package:
 
 ```bash
 # 1. Install dependencies
-pnpm install
+bun install
 
 # 2. Compile the TypeScript sources into dist/ (removes a previous dist/ first)
-pnpm build
+bun run build
 
 # 3. (Optional) Inspect what would be published without writing a tarball
 npm pack --dry-run
 
-# 4. Produce the installable tarball (runs `prepack` -> `pnpm build` automatically)
+# 4. Produce the installable tarball (runs `prepack` -> `bun run build` automatically)
 npm pack
 
 # 5. Consume it locally in another project
@@ -1208,7 +1208,7 @@ npm install ../path/to/vsrepo-*.tgz
 
 Notes:
 
-- `pnpm build` runs `tsc -p tsconfig.build.json`, which outputs the compiled JS and generated type declarations into `dist/` with `rootDir: src`.
+- `bun run build` runs `tsc -p tsconfig.build.json`, which outputs the compiled JS and generated type declarations into `dist/` with `rootDir: src`.
 - The published package contains **only** the `dist/` folder plus the READMEs and `LICENSE` (see `files` in `package.json`). The adapters will live in their own `@vsrepo/*-adapter` packages.
 
 ---

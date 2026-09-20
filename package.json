@@ -32,13 +32,16 @@
   },
   "scripts": {
     "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\"",
-    "build": "pnpm run clean && tsc -p tsconfig.build.json",
-    "prepack": "pnpm build",
+    "build": "bun run clean && tsc -p tsconfig.build.json",
+    "prepack": "bun run build",
     "typecheck": "tsc --noEmit -p tsconfig.build.json",
     "test:typing": "tsc --noEmit -p test/tsconfig.json",
     "test:implementation": "jest",
     "test:implementation:watch": "jest --watch",
-    "test": "pnpm run test:typing && pnpm run test:implementation"
+    "test": "bun run test:typing && bun run test:implementation",
+    "lint": "oxlint --type-aware src/ test/",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\""
   },
   "keywords": [
     "prisma",
@@ -59,14 +62,14 @@
   "license": "MIT",
   "devDependencies": {
     "@jest/globals": "^30.4.1",
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.6.0",
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "jest": "^30.4.2",
-    "prisma": "^7.8.0",
+    "oxlint": "^1.83.0",
+    "oxlint-tsgolint": "^7.0.2002",
+    "prettier": "^3.9.8",
     "ts-jest": "^29.4.12",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
@@ -76,5 +79,9 @@
     "deepmerge": "^4.3.1",
     "reflect-metadata": "^0.2.2",
     "valibot": "^1.4.2"
-  }
+  },
+  "trustedDependencies": [
+    "@parcel/watcher",
+    "unrs-resolver"
+  ]
 }
