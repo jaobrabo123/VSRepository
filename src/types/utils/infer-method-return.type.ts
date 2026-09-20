@@ -82,11 +82,7 @@ type Shape<T, Spec, Mode extends SpecMode> = Simplify<
     {
         [K in keyof T as K extends ResultScalarKeys<T, Spec, Mode> ? K : never]: T[K];
     } & {
-        [K in keyof T as K extends ResultRelationKeys<T, Spec> ? K : never]: MapRelation<
-            T[K],
-            SubSpec<Spec, K>,
-            Mode
-        >;
+        [K in keyof T as K extends ResultRelationKeys<T, Spec> ? K : never]: MapRelation<T[K], SubSpec<Spec, K>, Mode>;
     }
 >;
 
@@ -149,10 +145,7 @@ type InferEntity<T, O> =
  *
  * @publicApi
  */
-export type InferMethodReturn<
-    T,
-    Options extends InferMethodReturnOptions = {},
-> = T extends readonly (infer U)[]
+export type InferMethodReturn<T, Options extends InferMethodReturnOptions = {}> = T extends readonly (infer U)[]
     ? InferEntity<U, Options>[]
     : T extends null | undefined
       ? T

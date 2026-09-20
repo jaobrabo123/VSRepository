@@ -53,11 +53,7 @@ import { RestrictMethodOptions } from "./types/utils/restrict-method-options.typ
  *
  * @publicApi
  */
-export abstract class VSRepository<
-    Entity,
-    PKType,
-    OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes,
-> {
+export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes> {
     public readonly pkName: KeysOfType<Entity, PKType>;
 
     private readonly adapter: VSRepoAdapter<Entity>;
@@ -72,10 +68,8 @@ export abstract class VSRepository<
      * This is a property managed by VSRepository, please don't modify it!!
      * @internal
      */
-    $vsrepocache: Map<
-        string,
-        (args: any[], methodOptions?: MethodOptions<Entity, OrmTypes>) => VSRepoArgs<Entity>
-    > = new Map();
+    _vsrepocache: Map<string, (args: any[], methodOptions?: MethodOptions<Entity, OrmTypes>) => VSRepoArgs<Entity>> =
+        new Map();
 
     /**
      * Creates a configured instance of `VSRepository`, resolving and validating
@@ -112,9 +106,7 @@ export abstract class VSRepository<
         this.logger.logInfo(
             `Initializing ${this.constructor.name} (pk: '${String(this.pkName)}'` +
                 (this.softRemoveKey ? `, softRemoveKey: '${String(this.softRemoveKey)}'` : "") +
-                (this.defaultOrdering
-                    ? `, defaultOrdering: ${JSON.stringify(this.defaultOrdering)}`
-                    : "") +
+                (this.defaultOrdering ? `, defaultOrdering: ${JSON.stringify(this.defaultOrdering)}` : "") +
                 `, adapter: ${this.adapter.constructor.name}` +
                 `)`,
         );
@@ -204,10 +196,7 @@ export abstract class VSRepository<
             this.fail("'fn' must be a valid function", VSRepoErrorType.BASE);
         }
 
-        return this.adapter.runInTransaction(
-            fn,
-            this.validator.validateTransactionOptions(options),
-        );
+        return this.adapter.runInTransaction(fn, this.validator.validateTransactionOptions(options));
     }
 
     /** Returns the underlying ORM client instance used outside of transactions. */
@@ -262,10 +251,7 @@ export abstract class VSRepository<
                 modifying: optionsValidated.modifying ?? false,
             });
 
-            const resolved =
-                optionsValidated.singleResult && Array.isArray(result)
-                    ? (result[0] ?? null)
-                    : result;
+            const resolved = optionsValidated.singleResult && Array.isArray(result) ? (result[0] ?? null) : result;
 
             this.logger.endPerformLog(start);
 
@@ -281,11 +267,7 @@ export abstract class VSRepository<
     /** Fetches a record by its primary key (PK). */
     async get(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity | null> {
         return this.execBaseMethod(
-            opt =>
-                this.adapter.findOne(
-                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
-                    opt,
-                ),
+            opt => this.adapter.findOne(this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)), opt),
             "get",
             options,
         );
@@ -294,11 +276,7 @@ export abstract class VSRepository<
     /** Fetches a record by PK and throws an Error if not found. */
     async getOrThrow(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
         return this.execBaseMethod(
-            opt =>
-                this.adapter.findOneOrThrow(
-                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
-                    opt,
-                ),
+            opt => this.adapter.findOneOrThrow(this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)), opt),
             "getOrThrow",
             options,
         );
@@ -311,11 +289,7 @@ export abstract class VSRepository<
         }
 
         return this.execBaseMethod(
-            opt =>
-                this.adapter.findMany(
-                    this.mergeWheresResolver.resolve(opt.see, this.wherePkIn(pks)),
-                    opt,
-                ),
+            opt => this.adapter.findMany(this.mergeWheresResolver.resolve(opt.see, this.wherePkIn(pks)), opt),
             "getList",
             options,
         );
@@ -341,10 +315,7 @@ export abstract class VSRepository<
     }
 
     /** Creates or updates (upsert) a record. */
-    async save(
-        obj: DeepPartial<Entity>,
-        options?: MethodOptions<Entity, OrmTypes>,
-    ): Promise<Entity> {
+    async save(obj: DeepPartial<Entity>, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
         return this.execBaseMethod(opt => this.adapter.save(obj, opt), "save", options);
     }
 
@@ -363,31 +334,20 @@ export abstract class VSRepository<
     /** Deletes a record identified by its primary key (PK). */
     async remove(pk: PKType, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
         return this.execBaseMethod(
-            opt =>
-                this.adapter.delete(
-                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
-                    opt,
-                ),
+            opt => this.adapter.delete(this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)), opt),
             "remove",
             options,
         );
     }
 
     /** Deletes multiple records by their primary keys, returning the count of affected rows. */
-    async removeList(
-        pks: PKType[],
-        options?: RestrictMethodOptions<Entity, OrmTypes>,
-    ): Promise<CountResult> {
+    async removeList(pks: PKType[], options?: RestrictMethodOptions<Entity, OrmTypes>): Promise<CountResult> {
         if (!Array.isArray(pks)) {
             this.fail("'pks' must be a valid array", VSRepoErrorType.BASE);
         }
 
         return this.execBaseMethod(
-            opt =>
-                this.adapter.deleteMany(
-                    this.mergeWheresResolver.resolve(opt.see, this.wherePkIn(pks)),
-                    opt,
-                ),
+            opt => this.adapter.deleteMany(this.mergeWheresResolver.resolve(opt.see, this.wherePkIn(pks)), opt),
             "removeList",
             options,
             "restrict",
@@ -395,18 +355,9 @@ export abstract class VSRepository<
     }
 
     /** Partially updates an existing record by its primary key (PK). */
-    async patch(
-        pk: PKType,
-        obj: DeepPartial<Entity>,
-        options?: MethodOptions<Entity, OrmTypes>,
-    ): Promise<Entity> {
+    async patch(pk: PKType, obj: DeepPartial<Entity>, options?: MethodOptions<Entity, OrmTypes>): Promise<Entity> {
         return this.execBaseMethod(
-            opt =>
-                this.adapter.update(
-                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
-                    obj,
-                    opt,
-                ),
+            opt => this.adapter.update(this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)), obj, opt),
             "patch",
             options,
         );
@@ -423,12 +374,7 @@ export abstract class VSRepository<
         options?: MethodOptions<Entity, OrmTypes>,
     ): Promise<(U & Entity) | null> {
         return this.execBaseMethod(
-            opt =>
-                this.adapter.merge<U>(
-                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
-                    obj,
-                    opt,
-                ),
+            opt => this.adapter.merge<U>(this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)), obj, opt),
             "merge",
             options,
         );
@@ -447,11 +393,7 @@ export abstract class VSRepository<
     /** Checks whether a record exists by its primary key (PK). */
     async has(pk: PKType, options?: RestrictMethodOptions<Entity, OrmTypes>): Promise<boolean> {
         return this.execBaseMethod(
-            opt =>
-                this.adapter.exists(
-                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
-                    opt,
-                ),
+            opt => this.adapter.exists(this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)), opt),
             "has",
             options,
             "restrict",
@@ -482,10 +424,7 @@ export abstract class VSRepository<
     }
 
     /** Marks multiple records as deleted (soft-delete) in batch. Requires `softRemoveKey` to be configured on the repository. */
-    async softRemoveList(
-        pks: PKType[],
-        options?: RestrictMethodOptions<Entity, OrmTypes>,
-    ): Promise<CountResult> {
+    async softRemoveList(pks: PKType[], options?: RestrictMethodOptions<Entity, OrmTypes>): Promise<CountResult> {
         if (!this.softRemoveKey) {
             this.fail(
                 "this method can only be used if you have configured 'softRemoveKey' in this repository.",
@@ -535,10 +474,7 @@ export abstract class VSRepository<
     }
 
     /** Restores multiple records previously marked as deleted (soft-delete) in batch. Requires `softRemoveKey` to be configured on the repository. */
-    async restoreList(
-        pks: PKType[],
-        options?: RestrictMethodOptions<Entity, OrmTypes>,
-    ): Promise<CountResult> {
+    async restoreList(pks: PKType[], options?: RestrictMethodOptions<Entity, OrmTypes>): Promise<CountResult> {
         if (!this.softRemoveKey) {
             this.fail(
                 "this method can only be used if you have configured 'softRemoveKey' in this repository.",
@@ -649,12 +585,7 @@ export abstract class VSRepository<
 
         return this.execBaseMethod(
             opt =>
-                this.adapter.divideOne(
-                    field,
-                    value,
-                    this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)),
-                    opt,
-                ),
+                this.adapter.divideOne(field, value, this.mergeWheresResolver.resolve(opt.see, this.wherePk(pk)), opt),
             "divide",
             options,
         );
@@ -673,12 +604,7 @@ export abstract class VSRepository<
         const validatedWhere = this.validator.validateWhere(where ?? {});
 
         return this.execBaseMethod(
-            opt =>
-                this.adapter.sum(
-                    field,
-                    this.mergeWheresResolver.resolve(opt.see, validatedWhere),
-                    opt,
-                ),
+            opt => this.adapter.sum(field, this.mergeWheresResolver.resolve(opt.see, validatedWhere), opt),
             "sum",
             options,
             "restrict",
@@ -694,12 +620,7 @@ export abstract class VSRepository<
         const validatedWhere = this.validator.validateWhere(where ?? {});
 
         return this.execBaseMethod(
-            opt =>
-                this.adapter.average(
-                    field,
-                    this.mergeWheresResolver.resolve(opt.see, validatedWhere),
-                    opt,
-                ),
+            opt => this.adapter.average(field, this.mergeWheresResolver.resolve(opt.see, validatedWhere), opt),
             "average",
             options,
             "restrict",
@@ -715,12 +636,7 @@ export abstract class VSRepository<
         const validatedWhere = this.validator.validateWhere(where ?? {});
 
         return this.execBaseMethod(
-            opt =>
-                this.adapter.min(
-                    field,
-                    this.mergeWheresResolver.resolve(opt.see, validatedWhere),
-                    opt,
-                ),
+            opt => this.adapter.min(field, this.mergeWheresResolver.resolve(opt.see, validatedWhere), opt),
             "min",
             options,
             "restrict",
@@ -736,12 +652,7 @@ export abstract class VSRepository<
         const validatedWhere = this.validator.validateWhere(where ?? {});
 
         return this.execBaseMethod(
-            opt =>
-                this.adapter.max(
-                    field,
-                    this.mergeWheresResolver.resolve(opt.see, validatedWhere),
-                    opt,
-                ),
+            opt => this.adapter.max(field, this.mergeWheresResolver.resolve(opt.see, validatedWhere), opt),
             "max",
             options,
             "restrict",

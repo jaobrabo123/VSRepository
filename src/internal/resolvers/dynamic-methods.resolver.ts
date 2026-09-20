@@ -173,10 +173,7 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.otherParams.push("data");
             dynamicMethodInfo.argsCount++;
         } else if (dynamicMethod.startsWith("updateManyReturningWhere")) {
-            dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace(
-                "updateManyReturningWhere",
-                "",
-            );
+            dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("updateManyReturningWhere", "");
             dynamicMethodInfo.ignoreWhere = true;
             dynamicMethodInfo.onlyBaseWheres = true;
             dynamicMethodInfo.method = "updateManyReturning";
@@ -237,10 +234,7 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("deleteManyReturningBy", "");
             dynamicMethodInfo.method = "deleteManyReturning";
         } else if (dynamicMethod.startsWith("deleteManyReturningWhere")) {
-            dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace(
-                "deleteManyReturningWhere",
-                "",
-            );
+            dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("deleteManyReturningWhere", "");
             dynamicMethodInfo.ignoreWhere = true;
             dynamicMethodInfo.onlyBaseWheres = true;
             dynamicMethodInfo.method = "deleteManyReturning";
@@ -314,10 +308,7 @@ export class DynamicMethodsResolver<T, K> {
 
         if (!dynamicMethodInfo.ignoreIgnoreConflicts) {
             if (dynamicMethodInfo.keyToMapReplaced.endsWith("IgnoreConflicts")) {
-                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
-                    "IgnoreConflicts",
-                    "",
-                );
+                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace("IgnoreConflicts", "");
                 dynamicMethodCustomization.ignoreConflicts = true;
             }
         }
@@ -354,10 +345,7 @@ export class DynamicMethodsResolver<T, K> {
 
                 dynamicMethodInfo.otherParams.push("pagination");
 
-                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
-                    "Paginated",
-                    "",
-                );
+                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace("Paginated", "");
 
                 dynamicMethodInfo.argsCount++;
             } else if (dynamicMethodInfo.keyToMapReplaced.endsWith("Ordered")) {
@@ -365,10 +353,7 @@ export class DynamicMethodsResolver<T, K> {
 
                 dynamicMethodInfo.otherParams.push("order");
 
-                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
-                    "Ordered",
-                    "",
-                );
+                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace("Ordered", "");
 
                 dynamicMethodInfo.argsCount++;
             }
@@ -400,9 +385,7 @@ export class DynamicMethodsResolver<T, K> {
             const keySplitedDistinct = dynamicMethodInfo.keyToMapReplaced.split("Distinct");
 
             if (keySplitedDistinct[1]) {
-                dynamicMethodCustomization.distinctKeys = keySplitedDistinct[1]
-                    .split("And")
-                    .map(uncapitalize);
+                dynamicMethodCustomization.distinctKeys = keySplitedDistinct[1].split("And").map(uncapitalize);
             }
 
             dynamicMethodInfo.keyToMapReplaced = keySplitedDistinct[0]!;
@@ -775,10 +758,7 @@ export class DynamicMethodsResolver<T, K> {
                         continue;
                     }
 
-                    const arg =
-                        args[j - adjust] === DEBUG_ARG_SYMBOL
-                            ? `<args>[${j - adjust}]`
-                            : args[j - adjust];
+                    const arg = args[j - adjust] === DEBUG_ARG_SYMBOL ? `<args>[${j - adjust}]` : args[j - adjust];
 
                     // ? Avaliar necessidade dessa validação; era usada por compatibilidade direta com o prisma
                     if (currentWhereRslvd.betweenMode && arg !== undefined) {
@@ -821,10 +801,7 @@ export class DynamicMethodsResolver<T, K> {
         const dynamicMethods: VSRepoMethod<T>[] =
             Reflect.getMetadata(DYNAMIC_METHODS_KEY, instance.constructor.prototype) ?? [];
 
-        this.logger.logDebug(
-            `Resolving ${dynamicMethods.length} dynamic method(s):`,
-            dynamicMethods,
-        );
+        this.logger.logDebug(`Resolving ${dynamicMethods.length} dynamic method(s):`, dynamicMethods);
 
         for (const method of dynamicMethods) {
             if (typeof method.propertyKey === "symbol") {
@@ -839,10 +816,7 @@ export class DynamicMethodsResolver<T, K> {
 
             const dynamicMethodInfo = this.resolveDynamicMethodInfo(methodToMap);
 
-            const dynamicMethodCustomization = this.resolveDynamicMethodCustomization(
-                dynamicMethodInfo,
-                method,
-            );
+            const dynamicMethodCustomization = this.resolveDynamicMethodCustomization(dynamicMethodInfo, method);
 
             let dynamicMethodWhereOps: DynamicMethodWhereOps = {
                 uglyWheres: [],
@@ -853,35 +827,28 @@ export class DynamicMethodsResolver<T, K> {
                 dynamicMethodWhereOps = this.resolvePrettyWheres(dynamicMethodInfo);
             }
 
-            instance.$vsrepocache.set(originalKey, (args, methodOptions) => {
+            instance._vsrepocache.set(originalKey, (args, methodOptions) => {
                 const vsrepoResolveArgsData: VSRepoResolveArgsData<T, K> = {
                     instance,
                     options: methodOptions ?? {},
-                    withoutWhere:
-                        dynamicMethodInfo.ignoreWhere && !dynamicMethodInfo.onlyBaseWheres,
+                    withoutWhere: dynamicMethodInfo.ignoreWhere && !dynamicMethodInfo.onlyBaseWheres,
                     specificSelect: undefined, // ? Avaliar quando vai precisar
                     withoutSelect: dynamicMethodInfo.ignoreSelect,
                     ignoreConflicts: dynamicMethodCustomization.ignoreConflicts,
                     ordering:
                         dynamicMethodCustomization.orderPosition !== undefined
-                            ? this.validateIndexedArg(
-                                  args,
-                                  dynamicMethodCustomization.orderPosition,
-                                  value => this.validator.validateOrdering(value),
+                            ? this.validateIndexedArg(args, dynamicMethodCustomization.orderPosition, value =>
+                                  this.validator.validateOrdering(value),
                               )
                             : (dynamicMethodCustomization.injectOrdering ?? this.defaultOrdering),
                     pagination:
                         dynamicMethodCustomization.paginationPosition !== undefined
-                            ? this.validateIndexedArg(
-                                  args,
-                                  dynamicMethodCustomization.paginationPosition,
-                                  value => this.validator.validatePagination(value),
+                            ? this.validateIndexedArg(args, dynamicMethodCustomization.paginationPosition, value =>
+                                  this.validator.validatePagination(value),
                               )
                             : undefined,
                     dataPayload:
-                        dynamicMethodInfo.dataIndex !== undefined
-                            ? args.at(dynamicMethodInfo.dataIndex)
-                            : undefined,
+                        dynamicMethodInfo.dataIndex !== undefined ? args.at(dynamicMethodInfo.dataIndex) : undefined,
                     createPayload:
                         dynamicMethodInfo.createIndex !== undefined
                             ? args.at(dynamicMethodInfo.createIndex)
@@ -922,7 +889,7 @@ export class DynamicMethodsResolver<T, K> {
                     argsSimulation.push(DEBUG_ARG_SYMBOL);
                 }
 
-                const vsrepoArgs = instance.$vsrepocache.get(originalKey)!(argsSimulation);
+                const vsrepoArgs = instance._vsrepocache.get(originalKey)!(argsSimulation);
 
                 const { db: _, ...options } = vsrepoArgs.options ?? {};
 
@@ -933,7 +900,6 @@ export class DynamicMethodsResolver<T, K> {
             }
 
             (instance as any)[originalKey] = async (...args: any[]) => {
-                let db = this.adapter.getDbClient();
                 let methodOptions: MethodOptions<T> | undefined;
 
                 if (args.length < dynamicMethodInfo.argsCount) {
@@ -948,12 +914,11 @@ export class DynamicMethodsResolver<T, K> {
                 } else if (args.length > dynamicMethodInfo.argsCount) {
                     const optionsArg = args[args.length - 1];
                     methodOptions = this.validator.validateMethodOptions(optionsArg);
-                    db = methodOptions.db ?? db;
                 } else {
                     args.push("1");
                 }
 
-                const vsrepoArgs = instance.$vsrepocache.get(originalKey)!(args, methodOptions);
+                const vsrepoArgs = instance._vsrepocache.get(originalKey)!(args, methodOptions);
 
                 const start = this.logger.startPerformLog(
                     `run ${String(originalKey)} (-> ${dynamicMethodInfo.method})`,
@@ -969,9 +934,7 @@ export class DynamicMethodsResolver<T, K> {
                         vsrepoArgs.options,
                     ].filter(arg => arg !== undefined);
 
-                    const result = await (this.adapter as any)[dynamicMethodInfo.method](
-                        ...argsOrdered,
-                    );
+                    const result = await (this.adapter as any)[dynamicMethodInfo.method](...argsOrdered);
 
                     this.logger.endPerformLog(start);
 
@@ -1021,9 +984,7 @@ export class DynamicMethodsResolver<T, K> {
                 } else {
                     if (args.length > 1) {
                         const errorMessage = `This query method was declared without spreadArgs = true, use a single QueryMethodArg instead`;
-                        this.logger.logError(
-                            `Cannot run '${String(originalKey)}': ${errorMessage}`,
-                        );
+                        this.logger.logError(`Cannot run '${String(originalKey)}': ${errorMessage}`);
 
                         throw new VSRepoError(errorMessage, VSRepoErrorType.DYNAMIC);
                     }
@@ -1045,8 +1006,7 @@ export class DynamicMethodsResolver<T, K> {
                         modifying: modifyingQueryMethod,
                     });
 
-                    const resolved =
-                        singleResult && Array.isArray(result) ? (result[0] ?? null) : result;
+                    const resolved = singleResult && Array.isArray(result) ? (result[0] ?? null) : result;
 
                     this.logger.endPerformLog(start);
 

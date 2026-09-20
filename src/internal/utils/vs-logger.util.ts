@@ -86,10 +86,7 @@ export class VSLogger {
 
     private buildPrefix(level: VSLogLevel): string {
         const timestamp = this.color(new Date().toISOString(), ANSI.dim);
-        const levelLabel = this.color(
-            `[${LEVEL_LABEL[level]}]`,
-            `${ANSI.bold}${LEVEL_COLOR[level]}`,
-        );
+        const levelLabel = this.color(`[${LEVEL_LABEL[level]}]`, `${ANSI.bold}${LEVEL_COLOR[level]}`);
         const name = this.color(`[${this.loggerName}]`, ANSI.magenta);
 
         return `${timestamp} ${levelLabel} ${name}`;

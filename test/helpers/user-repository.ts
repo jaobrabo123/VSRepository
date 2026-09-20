@@ -50,9 +50,7 @@ export class UserRepository extends VSRepository<User, string> {
     @QueryMethod('SELECT * FROM "user" WHERE email = $1 AND "userType" = $2', {
         spreadArgs: true,
     })
-    declare findByEmailAndTypeRaw: (
-        ...args: QueryArgs<[email: string, userType: string]>
-    ) => Promise<User[]>;
+    declare findByEmailAndTypeRaw: (...args: QueryArgs<[email: string, userType: string]>) => Promise<User[]>;
 }
 
 export class SoftDeletableUserRepository extends VSRepository<User, string> {

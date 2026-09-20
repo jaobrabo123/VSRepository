@@ -71,8 +71,6 @@ describe("compartilhando o client de transação via 'options.db'", () => {
         await userRepository.get("user-1");
 
         expect(fakeAdapter.getDbClient).toHaveBeenCalledTimes(1);
-        expect(fakeAdapter.findOne.mock.calls[0]?.[1]).toEqual(
-            expect.objectContaining({ db: defaultClient }),
-        );
+        expect(fakeAdapter.findOne.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ db: defaultClient }));
     });
 });

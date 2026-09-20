@@ -1194,15 +1194,15 @@ O core da v2 é compilado e empacotado a partir desta branch como um pacote npm 
 
 ```bash
 # 1. Instalar as dependências
-pnpm install
+bun install
 
 # 2. Compilar os fontes TypeScript em dist/ (remove um dist/ anterior primeiro)
-pnpm build
+bun run build
 
 # 3. (Opcional) Inspecionar o que seria publicado sem gerar um tarball
 npm pack --dry-run
 
-# 4. Gerar o tarball instalável (roda `prepack` -> `pnpm build` automaticamente)
+# 4. Gerar o tarball instalável (roda `prepack` -> `bun run build` automaticamente)
 npm pack
 
 # 5. Consumir localmente em outro projeto
@@ -1211,7 +1211,7 @@ npm install ../caminho/vsrepo-*.tgz
 
 Observações:
 
-- `pnpm build` executa `tsc -p tsconfig.build.json`, que gera o JS compilado e as declarações de tipo em `dist/` com `rootDir: src`.
+- `bun run build` executa `tsc -p tsconfig.build.json`, que gera o JS compilado e as declarações de tipo em `dist/` com `rootDir: src`.
 - O pacote publicado contém **apenas** a pasta `dist/` além dos READMEs e da `LICENSE` (veja `files` no `package.json`). Os adapters viverão em seus próprios pacotes `@vsrepo/*-adapter`.
 
 ---

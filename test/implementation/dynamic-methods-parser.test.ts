@@ -201,12 +201,7 @@ describe("bloco composto 'campoOrCampoANDcampoAndCampoOperador' (OR + AND)", () 
         // findByEmailOrNameANDActiveStatusAndAgeGreaterThan(email, name, activeStatus, age)
         //   -> "EmailOrName"                antes do "AND" -> vira o array OR: email OR name
         //   -> "ActiveStatusAndAgeGreaterThan" depois do "AND" -> vira o array AND: activeStatus E age > x
-        await repo.findByEmailOrNameANDActiveStatusAndAgeGreaterThan(
-            "e@x.com",
-            "Nome",
-            true,
-            18,
-        );
+        await repo.findByEmailOrNameANDActiveStatusAndAgeGreaterThan("e@x.com", "Nome", true, 18);
 
         expect(where()).toEqual({
             OR: [{ email: "e@x.com" }, { name: "Nome" }],
@@ -378,14 +373,15 @@ describe("prefixos de escrita — create", () => {
 
         await repo.createManyIgnoreConflicts(payload);
 
-        expect(fakeAdapter.createMany.mock.calls[0]?.[1]).toEqual(
-            expect.objectContaining({ ignoreConflicts: true }),
-        );
+        expect(fakeAdapter.createMany.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ ignoreConflicts: true }));
     });
 
     it("'createManyReturning' chama 'adapter.createManyReturning' (não 'adapter.createMany') com a lista recebida", async () => {
         const payload = [{ name: "a" }, { name: "b" }];
-        const created = [{ id: "1", name: "a" }, { id: "2", name: "b" }];
+        const created = [
+            { id: "1", name: "a" },
+            { id: "2", name: "b" },
+        ];
         fakeAdapter.createManyReturning.mockResolvedValueOnce(created);
 
         const result = await repo.createManyReturning(payload);
@@ -555,11 +551,7 @@ describe("sufixos 'Paginated' / 'Ordered' e a ordem dos argumentos extras", () =
     });
 
     it("'findByActiveOrderedAndPaginated' espera '(filtro, order, pagination)' nessa ordem", async () => {
-        await repo.findByActiveOrderedAndPaginated(
-            true,
-            { createdAt: "desc" },
-            { limit: 10, offset: 0 },
-        );
+        await repo.findByActiveOrderedAndPaginated(true, { createdAt: "desc" }, { limit: 10, offset: 0 });
 
         expect(fakeAdapter.findMany.mock.calls[0]?.[1]).toEqual(
             expect.objectContaining({
@@ -570,11 +562,7 @@ describe("sufixos 'Paginated' / 'Ordered' e a ordem dos argumentos extras", () =
     });
 
     it("'findByActivePaginatedAndOrdered' espera '(filtro, pagination, order)' — ordem invertida no nome, mesmo resultado final", async () => {
-        await repo.findByActivePaginatedAndOrdered(
-            true,
-            { limit: 10, offset: 0 },
-            { createdAt: "desc" },
-        );
+        await repo.findByActivePaginatedAndOrdered(true, { limit: 10, offset: 0 }, { createdAt: "desc" });
 
         expect(fakeAdapter.findMany.mock.calls[0]?.[1]).toEqual(
             expect.objectContaining({
@@ -610,9 +598,7 @@ describe("sufixo 'Distinct<Campo>'", () => {
     it("'findByActiveDistinctName' propaga 'options.distinct' com o(s) campo(s) do nome", async () => {
         await repo.findByActiveDistinctName(true);
 
-        expect(fakeAdapter.findMany.mock.calls[0]?.[1]).toEqual(
-            expect.objectContaining({ distinct: ["name"] }),
-        );
+        expect(fakeAdapter.findMany.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ distinct: ["name"] }));
     });
 
     it("'findByActiveDistinctNameOrderByCreatedAtDesc' combina 'distinct' com ordenação fixa no mesmo nome", async () => {

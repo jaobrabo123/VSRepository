@@ -5,13 +5,4 @@ import { DecimalLike } from "./decimal-like.type";
  *
  * @publicApi
  */
-export type Primitive =
-    | string
-    | number
-    | boolean
-    | bigint
-    | symbol
-    | undefined
-    | null
-    | Date
-    | DecimalLike;
+export type Primitive = string | number | boolean | bigint | symbol | undefined | null | Date | DecimalLike;

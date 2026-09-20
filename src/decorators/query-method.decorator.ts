@@ -65,7 +65,7 @@ export function QueryMethod(value: string, options?: QueryMethodOptions): Proper
         ? DecoratorsValidator.validateQueryMethodOptions(options)
         : { modifying: false };
 
-    return (target: Object, propertyKey: string | symbol) => {
+    return (target: object, propertyKey: string | symbol) => {
         const methods: VSRepoQuery[] = Reflect.getMetadata(QUERY_METHODS_KEY, target) ?? [];
 
         methods.push({ ...validatedConfig, value, propertyKey });

@@ -1,6 +1,6 @@
 // Testes de tipagem (compile-time only) do utilitário `InferMethodReturn`.
 // Não são executados pelo Jest — só precisam compilar limpo com `tsc --noEmit`
-// (ver `pnpm test:typing`). `Expect<Equal<A, B>>` só compila se A e B forem
+// (ver `bun run test:typing`). `Expect<Equal<A, B>>` só compila se A e B forem
 // exatamente o mesmo tipo (não basta um ser atribuível ao outro), e cada bloco
 // `@ts-expect-error` documenta um uso que DEVE falhar a compilar.
 
@@ -9,8 +9,7 @@ import { MethodOptions } from "../../src/types/utils/methods-options.type";
 import { InferMethodReturn } from "../../src/types/utils/infer-method-return.type";
 import { User as HelperUser } from "../helpers/entities";
 
-type Equal<X, Y> =
-    (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2 ? true : false;
+type Equal<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2 ? true : false;
 type Expect<T extends true> = T;
 
 // Entidades do exemplo (relações obrigatórias, como em ORMs que sempre tipam o campo)
@@ -53,14 +52,11 @@ type User = {
 declare const userRepository: VSRepository<User, string>;
 
 // Tudo dentro de uma função async nunca chamada — só precisa compilar, não rodar.
-async function typeChecks(): Promise<void> {
+async function _typeChecks(): Promise<void> {
     // --- relations: escalares + relações pedidas ----------------------------
     {
         const options = { relations: { products: true } } satisfies MethodOptions<User>;
-        const result: InferMethodReturn<User, typeof options> = await userRepository.getOrThrow(
-            "id",
-            options,
-        );
+        const result: InferMethodReturn<User, typeof options> = await userRepository.getOrThrow("id", options);
 
         type _ = Expect<
             Equal<
@@ -85,9 +81,9 @@ async function typeChecks(): Promise<void> {
         >;
 
         // @ts-expect-error 'address' não foi pedida em 'relations'
-        result.address;
+        const _1 = result.address;
         // @ts-expect-error 'tags' (relação de products) não foi pedida
-        result.products[0]?.tags;
+        const _2 = result.products[0]?.tags;
     }
 
     // --- select: só os campos selecionados; `| null` no retorno preservado --
@@ -95,10 +91,7 @@ async function typeChecks(): Promise<void> {
         const options = {
             select: { id: true, email: true, name: true },
         } satisfies MethodOptions<User>;
-        const result: InferMethodReturn<User | null, typeof options> = await userRepository.get(
-            "id",
-            options,
-        );
+        const result: InferMethodReturn<User | null, typeof options> = await userRepository.get("id", options);
 
         type _ = Expect<Equal<typeof result, { id: string; name: string; email: string } | null>>;
     }
@@ -108,8 +101,7 @@ async function typeChecks(): Promise<void> {
         const options = {
             relations: { products: { tags: true }, address: true },
         } satisfies MethodOptions<User>;
-        const result: InferMethodReturn<User[], typeof options> =
-            await userRepository.getAll(options);
+        const result: InferMethodReturn<User[], typeof options> = await userRepository.getAll(options);
 
         type _ = Expect<
             Equal<
@@ -152,8 +144,7 @@ async function typeChecks(): Promise<void> {
         const options = {
             select: { id: true, products: { id: true, tags: true } },
         } satisfies MethodOptions<User>;
-        const result: InferMethodReturn<User[], typeof options> =
-            await userRepository.getAll(options);
+        const result: InferMethodReturn<User[], typeof options> = await userRepository.getAll(options);
 
         type _ = Expect<
             Equal<
@@ -175,10 +166,7 @@ async function typeChecks(): Promise<void> {
     // --- sem select/relations: só escalares, sem relações --------------------
     {
         const options = {} satisfies MethodOptions<User>;
-        const result: InferMethodReturn<User, typeof options> = await userRepository.getOrThrow(
-            "id",
-            options,
-        );
+        const result: InferMethodReturn<User, typeof options> = await userRepository.getOrThrow("id", options);
 
         type _ = Expect<
             Equal<
@@ -196,7 +184,7 @@ async function typeChecks(): Promise<void> {
         >;
 
         // @ts-expect-error relações não fazem parte do retorno sem 'relations'
-        result.products;
+        const _1 = result.products;
     }
 }
 
@@ -216,29 +204,19 @@ type _NoOptions = Expect<
 // `null`/array-ness do retorno são preservados
 type _Nullable = Expect<Equal<InferMethodReturn<Tag | null>, { id: string; name: string } | null>>;
 type _Array = Expect<Equal<InferMethodReturn<Tag[]>, { id: string; name: string }[]>>;
-type _NullableArray = Expect<
-    Equal<InferMethodReturn<Tag[] | null>, { id: string; name: string }[] | null>
->;
+type _NullableArray = Expect<Equal<InferMethodReturn<Tag[] | null>, { id: string; name: string }[] | null>>;
 
 // `see` e `db` não afetam o tipo
-type _SeeDb = Expect<
-    Equal<InferMethodReturn<Tag, { see: "all"; db: unknown; select: { id: true } }>, { id: string }>
->;
+type _SeeDb = Expect<Equal<InferMethodReturn<Tag, { see: "all"; db: unknown; select: { id: true } }>, { id: string }>>;
 
 // `select` tem precedência: com `select` presente, `relations` é ignorado
 // (espelha o adapter Prisma 7, que descarta `relations` quando há `select`)
 type _SelectWinsOverRelations = Expect<
-    Equal<
-        InferMethodReturn<User, { select: { id: true }; relations: { products: true } }>,
-        { id: string }
-    >
+    Equal<InferMethodReturn<User, { select: { id: true }; relations: { products: true } }>, { id: string }>
 >;
 type _SelectWinsOverRelationsSameField = Expect<
     Equal<
-        InferMethodReturn<
-            User,
-            { relations: { products: true }; select: { products: { id: true } } }
-        >,
+        InferMethodReturn<User, { relations: { products: true }; select: { products: { id: true } } }>,
         { products: { id: string }[] }
     >
 >;
@@ -246,10 +224,7 @@ type _SelectWinsOverRelationsSameField = Expect<
 // Com `select` estreitado, um `relations` "largo" também é irrelevante
 type _SelectKnownRelationsWide = Expect<
     Equal<
-        InferMethodReturn<
-            User,
-            { select: { id: true }; relations?: MethodOptions<User>["relations"] }
-        >,
+        InferMethodReturn<User, { select: { id: true }; relations?: MethodOptions<User>["relations"] }>,
         { id: string }
     >
 >;
@@ -272,10 +247,7 @@ type _SelectRelationTrue = Expect<
 
 // Relação nullable selecionada preserva o `| null`
 type _SelectNullableRelation = Expect<
-    Equal<
-        InferMethodReturn<User, { select: { address: { city: true } } }>,
-        { address: { city: string } | null }
-    >
+    Equal<InferMethodReturn<User, { select: { address: { city: true } } }>, { address: { city: string } | null }>
 >;
 
 // Options "largas" (ex.: variável anotada como `MethodOptions<T>`): nada é conhecido
@@ -292,10 +264,7 @@ type _OptionalRelations = Expect<
     >
 >;
 type _OptionalProducts = Expect<
-    Equal<
-        InferMethodReturn<HelperUser, { select: { products: { id: true } } }>,
-        { products?: { id: string }[] }
-    >
+    Equal<InferMethodReturn<HelperUser, { select: { products: { id: true } } }>, { products?: { id: string }[] }>
 >;
 
 // Erro de digitação em options é barrado pela constraint

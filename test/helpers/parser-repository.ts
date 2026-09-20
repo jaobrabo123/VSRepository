@@ -45,9 +45,7 @@ export class ParserRepository extends VSRepository<any, string> {
     // ---- Operadores lógicos ----
     @DynamicMethod() declare findOneByIdAndEmail: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByNameOrEmail: (...args: any[]) => Promise<any>;
-    @DynamicMethod() declare findByEmailOrNameANDActiveStatusAndAgeGreaterThan: (
-        ...args: any[]
-    ) => Promise<any>;
+    @DynamicMethod() declare findByEmailOrNameANDActiveStatusAndAgeGreaterThan: (...args: any[]) => Promise<any>;
 
     // ---- Filtros de relação ----
     @DynamicMethod() declare findByProductsSome: (...args: any[]) => Promise<any>;
@@ -55,9 +53,7 @@ export class ParserRepository extends VSRepository<any, string> {
     @DynamicMethod() declare findByProductsEveryActiveIsTrue: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByProductsNone: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByAddressWith: (...args: any[]) => Promise<any>;
-    @DynamicMethod() declare findByAddressWithCityStartsWithIgnoreCase: (
-        ...args: any[]
-    ) => Promise<any>;
+    @DynamicMethod() declare findByAddressWithCityStartsWithIgnoreCase: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByAddressWithout: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByAddressWithoutCity: (...args: any[]) => Promise<any>;
 
@@ -101,13 +97,9 @@ export class ParserRepository extends VSRepository<any, string> {
     @DynamicMethod() declare findByActiveOrderedAndPaginated: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByActivePaginatedAndOrdered: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByActiveOrderByCreatedAtDesc: (...args: any[]) => Promise<any>;
-    @DynamicMethod() declare findByActiveOrderByCreatedAtAscAndNameDesc: (
-        ...args: any[]
-    ) => Promise<any>;
+    @DynamicMethod() declare findByActiveOrderByCreatedAtAscAndNameDesc: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByActiveDistinctName: (...args: any[]) => Promise<any>;
-    @DynamicMethod() declare findByActiveDistinctNameOrderByCreatedAtDesc: (
-        ...args: any[]
-    ) => Promise<any>;
+    @DynamicMethod() declare findByActiveDistinctNameOrderByCreatedAtDesc: (...args: any[]) => Promise<any>;
 
     // ---- Options do decorator (`proxyTo` / `injectOrdering`) ----
     @DynamicMethod({ proxyTo: "findByEmail" })
