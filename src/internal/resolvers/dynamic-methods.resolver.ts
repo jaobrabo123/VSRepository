@@ -853,7 +853,7 @@ export class DynamicMethodsResolver<T, K> {
                 dynamicMethodWhereOps = this.resolvePrettyWheres(dynamicMethodInfo);
             }
 
-            instance.$vsrepocache.set(originalKey, (args, methodOptions) => {
+            instance._vsrepocache.set(originalKey, (args, methodOptions) => {
                 const vsrepoResolveArgsData: VSRepoResolveArgsData<T, K> = {
                     instance,
                     options: methodOptions ?? {},
@@ -922,7 +922,7 @@ export class DynamicMethodsResolver<T, K> {
                     argsSimulation.push(DEBUG_ARG_SYMBOL);
                 }
 
-                const vsrepoArgs = instance.$vsrepocache.get(originalKey)!(argsSimulation);
+                const vsrepoArgs = instance._vsrepocache.get(originalKey)!(argsSimulation);
 
                 const { db: _, ...options } = vsrepoArgs.options ?? {};
 
@@ -953,7 +953,7 @@ export class DynamicMethodsResolver<T, K> {
                     args.push("1");
                 }
 
-                const vsrepoArgs = instance.$vsrepocache.get(originalKey)!(args, methodOptions);
+                const vsrepoArgs = instance._vsrepocache.get(originalKey)!(args, methodOptions);
 
                 const start = this.logger.startPerformLog(
                     `run ${String(originalKey)} (-> ${dynamicMethodInfo.method})`,

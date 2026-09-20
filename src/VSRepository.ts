@@ -72,7 +72,7 @@ export abstract class VSRepository<
      * This is a property managed by VSRepository, please don't modify it!!
      * @internal
      */
-    $vsrepocache: Map<
+    _vsrepocache: Map<
         string,
         (args: any[], methodOptions?: MethodOptions<Entity, OrmTypes>) => VSRepoArgs<Entity>
     > = new Map();
