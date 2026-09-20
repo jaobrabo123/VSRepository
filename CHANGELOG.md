@@ -6,6 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2.5.0] - 2026-09-20
+
+> Promotes `2.5.0-beta` to stable.
+
+---
+
+## [2.5.0] - 2026-09-20 (Português)
+
+> Promove `2.5.0-beta` para estável.
+
+---
+
 ## [2.5.0-beta] - 2026-09-19
 
 ### Added
