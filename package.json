@@ -1,11 +1,15 @@
 {
   "name": "vsrepo",
-  "version": "2.4.0",
-  "description": "ORM-agnostic repository pattern library with full TypeScript support and automatic type inference.",
+  "version": "2.5.0-beta",
+  "description": "ORM-agnostic repository pattern library",
   "homepage": "https://github.com/jaobrabo123/VSRepository#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jaobrabo123/VSRepository.git"
+  },
+  "bugs": {
+    "email": "joaodev.azevedo@outlook.com",
+    "url": "https://github.com/jaobrabo123/VSRepoDrizzleAdapter/issues"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -20,7 +24,8 @@
   "files": [
     "dist",
     "README.md",
-    "README.pt-BR.md"
+    "README.pt-BR.md",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=18"
@@ -38,6 +43,7 @@
   "keywords": [
     "prisma",
     "typeorm",
+    "drizzle",
     "repository",
     "orm",
     "typescript",

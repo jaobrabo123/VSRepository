@@ -6,6 +6,38 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2.5.0-beta] - 2026-09-19
+
+### Added
+- **`InferMethodReturn<T, Options>`** — new opt-in utility type for stricter return typing, exported from the package entry point. It narrows the type returned by a method (`Entity`, `Entity | null` or `Entity[]`) to the fields and relations actually requested through `select`/`relations`, instead of the whole entity: with no options only the scalar fields are returned; with `relations`, the scalar fields plus the requested relations (nested ones included); with `select`, only the selected fields (a relation set to `true` brings all of its scalar fields, and a nested `select` restricts it further). When both are passed, `select` takes precedence and `relations` is ignored. `null`/array-ness and optional (`?`) modifiers are preserved, and if the options are typed as a plain `MethodOptions<T>` (not narrowed) the whole entity is returned unchanged. The default typing of the methods is **not** changed
+- **`InferMethodType<Args, Return, OrmTypes?>`** — new utility type, exported from the package entry point, to declare dynamic methods whose return type is inferred on each call from the `select`/`relations` passed in `options`: `@DynamicMethod() declare findByName: InferMethodType<[name: string], User[]>`. Calls without `options` return only the scalar fields. Unknown keys in `select`/`relations` (at any depth) are rejected at compile time, and the editor autocompletes them, just like with a plain `MethodOptions<T>` parameter. The third generic (`OrmTypes`) is optional and types the `db` option
+- **`getPkName?(): string`** - new optional method that allows the adapter to declare the entity's primary key field to the repository. When instantiating a `VSRepository`, you can omit `pkName` from the constructor options, and it will be read from `adapter.getPkName()`. If you omit it and the adapter does not implement `getPkName()`, the constructor throws a `VSRepoError`
+
+### Documentation
+- Both READMEs document the new types: new "Strict return typing with `InferMethodReturn`" and "Strict return typing with `InferMethodType`" sections, a pointer in the dynamic-methods intro, and two new rows in the utility types table
+- Documents the new optional `getPkName?(): string` method of `VSRepoAdapter`
+
+### Fixed
+- Fixed the `OrderByField` typing so it doesn't claim to accept nested ordering
+
+---
+
+## [2.5.0-beta] - 2026-09-19 (Português)
+
+### Adicionado
+- **`InferMethodReturn<T, Options>`** — novo tipo utilitário opt-in para uma tipagem de retorno mais restrita, exportado pelo entry point do pacote. Ele estreita o tipo retornado por um método (`Entity`, `Entity | null` ou `Entity[]`) para os campos e relações realmente pedidos via `select`/`relations`, em vez da entidade inteira: sem options, apenas os campos escalares; com `relations`, os campos escalares mais as relações pedidas (inclusive as aninhadas); com `select`, apenas os campos selecionados (uma relação com `true` traz todos os seus campos escalares, e um `select` aninhado a restringe ainda mais). Quando os dois são passados, `select` tem precedência e `relations` é ignorado. `null`/array e os modificadores opcionais (`?`) são preservados, e se as options estiverem tipadas como um `MethodOptions<T>` genérico (sem estreitamento) a entidade inteira é retornada sem alterações. A tipagem padrão dos métodos **não** foi alterada
+- **`InferMethodType<Args, Return, OrmTypes?>`** — novo tipo utilitário, exportado pelo entry point do pacote, para declarar métodos dinâmicos cujo tipo de retorno é inferido a cada chamada a partir do `select`/`relations` passados em `options`: `@DynamicMethod() declare findByName: InferMethodType<[name: string], User[]>`. Chamadas sem `options` retornam apenas os campos escalares. Chaves inexistentes em `select`/`relations` (em qualquer profundidade) são rejeitadas em tempo de compilação, e o editor as sugere via autocomplete, igual a um parâmetro `MethodOptions<T>` comum. A terceira generic (`OrmTypes`) é opcional e tipa a option `db`
+- **`getPkName?(): string`** - novo método opcional permite que o adapter declare ao repository qual campo é a primary key da entidade. Ao instanciar um `VSRepository`, você pode omitir o `pkName` das options do construtor e ele será lido do `adapter.getPkName()`. Se você omitir e o adapter não implementar o `getPkName()`, o construtor lança um `VSRepoError`
+
+### Documentação
+- Ambos os READMEs documentam os novos tipos: novas seções "Tipagem de retorno restrita com `InferMethodReturn`" e "Tipagem de retorno restrita com `InferMethodType`", uma indicação na introdução de métodos dinâmicos, e duas novas linhas na tabela de tipos utilitários
+- Documenta o novo método opcional `getPkName?(): string` do `VSRepoAdapter`
+
+### Corrigido
+- Corrigida a tipagem do `OrderByField` para não dizer que aceita nested ordering
+
+---
+
 ## [2.4.0] - 2026-09-16
 
 ### Added
