@@ -21,6 +21,7 @@ import { VSRepoErrorType } from "./internal/enums/vsrepo-error-type.enum";
 import { VSRepoQueryOptions } from "./types/vsrepo/vsrepo-query-options.type";
 import { NumericKeys } from "./types/utils/numeric-keys.type";
 import { RestrictMethodOptions } from "./types/utils/restrict-method-options.type";
+import { VSQueryBuilder } from "./internal/utils/vs-query-builder.util";
 
 /**
  * ORM-agnostic base repository, exposing a complete set of ready-to-use CRUD
@@ -202,6 +203,10 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
     /** Returns the underlying ORM client instance used outside of transactions. */
     getDbClient<DB extends any = OrmTypes["dbClient"]>(): DB {
         return this.adapter.getDbClient();
+    }
+
+    createQueryBuilder(db?: OrmTypes["dbClient"] | OrmTypes["dbTransaction"]): VSQueryBuilder<Entity, OrmTypes> {
+        return new VSQueryBuilder(db ?? this.adapter.getDbClient(), this.adapter, this.logger);
     }
 
     /**

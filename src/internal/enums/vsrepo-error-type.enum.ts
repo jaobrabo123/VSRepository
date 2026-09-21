@@ -16,4 +16,6 @@ export enum VSRepoErrorType {
     BASE = "BASE",
     /** Failure raised by a `VSRepoAdapter` while talking to the underlying ORM/database. */
     ADAPTER = "ADAPTER",
+
+    QUERY_BUILDER = "QUERY_BUILDER",
 }

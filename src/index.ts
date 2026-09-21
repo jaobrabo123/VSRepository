@@ -6,6 +6,7 @@ export { VSRepoAdapter } from "./VSRepoAdapter.js";
 export { VSRepoError } from "./errors/VSRepoError.js";
 export { VSRepoAdapterError } from "./errors/VSRepoAdapterError.js";
 export { DbArg } from "./internal/utils/db-arg.util.js";
+export { VSQueryBuilder } from "./internal/utils/vs-query-builder.util.js";
 
 // Decorators
 export { DynamicMethod } from "./decorators/dynamic-method.decorator.js";
