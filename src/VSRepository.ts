@@ -206,7 +206,12 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
     }
 
     createQueryBuilder(db?: OrmTypes["dbClient"] | OrmTypes["dbTransaction"]): VSQueryBuilder<Entity, OrmTypes> {
-        return new VSQueryBuilder(db ?? this.adapter.getDbClient(), this.adapter, this.logger);
+        return new VSQueryBuilder(
+            db ?? this.adapter.getDbClient(),
+            this.adapter,
+            this.mergeWheresResolver,
+            this.logger,
+        );
     }
 
     /**
