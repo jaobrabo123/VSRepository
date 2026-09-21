@@ -15,15 +15,19 @@ import orderingSchema from "../validators/schemas/ordering.schema";
 import relationsSchema from "../validators/schemas/relations.schema";
 import seeModeSchema from "../validators/schemas/see-mode.schema";
 import selectSchema from "../validators/schemas/select.schema";
-import whereSchema from "../validators/schemas/where.schema";
 import { VSLogger } from "./vs-logger.util";
 import * as v from "valibot";
+import merge from "deepmerge";
 
+/**
+ * @publicApi
+ */
 export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes> {
     private options: Omit<AdapterMethodOptions<Entity>, "db"> = {};
-    private whereFilter?: VSRepoWhere<Entity>;
     private distinct?: KeysOfType<Entity, Primitive>[];
     private seeMode: SeeMode = "active";
+    private wherePlain?: VSRepoWherePlain<Entity>;
+    private orWhereArray?: VSRepoWherePlain<Entity>[];
 
     constructor(
         private db: OrmTypes["dbClient"] | OrmTypes["dbTransaction"],
@@ -50,7 +54,33 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
     }
 
     private resolveWhere(): VSRepoWhere<Entity> {
-        return this.mergeWheresResolver.resolve(this.seeMode, this.whereFilter ?? {});
+        const where = (
+            this.orWhereArray
+                ? {
+                      OR: this.wherePlain ? [this.wherePlain, ...this.orWhereArray] : this.orWhereArray,
+                  }
+                : (this.wherePlain ?? {})
+        ) as VSRepoWhere<Entity>;
+
+        return this.mergeWheresResolver.resolve(this.seeMode, where);
+    }
+
+    // * Log de debug dos passos do builder e das queries. O objeto só é serializado se o nível for DEBUG
+    private trace(message: string, obj?: unknown): void {
+        this.logger?.logDebug(`VSQueryBuilder: ${message}`, obj);
+    }
+
+    // * Nunca logar o `db` aqui (client/transação do ORM), só os parâmetros da query
+    private async execute<R>(operation: string, params: Record<string, unknown>, run: () => Promise<R>): Promise<R> {
+        this.trace(operation, { see: this.seeMode, ...params });
+
+        const start = this.logger?.startPerformLog(`run query builder ${operation}`);
+
+        try {
+            return await run();
+        } finally {
+            this.logger?.endPerformLog(start);
+        }
     }
 
     /**
@@ -63,8 +93,15 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
     /**
      * @internal
      */
-    setWhereFilter(whereFilter?: VSRepoWhere<Entity>): void {
-        this.whereFilter = whereFilter;
+    setWherePlain(wherePlain?: VSRepoWherePlain<Entity>): void {
+        this.wherePlain = wherePlain;
+    }
+
+    /**
+     * @internal
+     */
+    setOrWhereArray(orWhereArray?: VSRepoWherePlain<Entity>[]): void {
+        this.orWhereArray = orWhereArray;
     }
 
     /**
@@ -83,68 +120,64 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
 
     setDb(db: OrmTypes["dbClient"] | OrmTypes["dbTransaction"]): void {
         this.db = db;
+
+        this.trace("db replaced");
     }
 
     async getResult(): Promise<Entity[]> {
-        const result = await this.adapter.findMany(this.resolveWhere(), {
-            ...this.options,
-            distinct: this.distinct,
-            db: this.db,
-        });
+        const where = this.resolveWhere();
+        const options = { ...this.options, distinct: this.distinct };
 
-        return result;
+        return this.execute("getResult", { where, options }, () =>
+            this.adapter.findMany(where, { ...options, db: this.db }),
+        );
     }
 
     async getOneResult(): Promise<Entity | null> {
-        const result = await this.adapter.findOne(this.resolveWhere(), {
-            ...this.options,
-            db: this.db,
-        });
+        const where = this.resolveWhere();
+        const options = { ...this.options };
 
-        return result;
+        return this.execute("getOneResult", { where, options }, () =>
+            this.adapter.findOne(where, { ...options, db: this.db }),
+        );
     }
 
     async getOneResultOrThrow(): Promise<Entity> {
-        const result = await this.adapter.findOneOrThrow(this.resolveWhere(), {
-            ...this.options,
-            db: this.db,
-        });
+        const where = this.resolveWhere();
+        const options = { ...this.options };
 
-        return result;
+        return this.execute("getOneResultOrThrow", { where, options }, () =>
+            this.adapter.findOneOrThrow(where, { ...options, db: this.db }),
+        );
     }
 
     async getCount(): Promise<number> {
-        const result = await this.adapter.count(this.resolveWhere(), {
-            order: this.options.order,
-            pagination: this.options.pagination,
-            db: this.db,
-        });
+        const where = this.resolveWhere();
+        const options = { order: this.options.order, pagination: this.options.pagination };
 
-        return result;
+        return this.execute("getCount", { where, options }, () =>
+            this.adapter.count(where, { ...options, db: this.db }),
+        );
     }
 
     async getExistence(): Promise<boolean> {
-        const result = await this.adapter.exists(this.resolveWhere(), {
-            db: this.db,
-        });
+        const where = this.resolveWhere();
 
-        return result;
+        return this.execute("getExistence", { where }, () => this.adapter.exists(where, { db: this.db }));
     }
 
     async getResultAndCount(): Promise<{ result: Entity[]; count: number }> {
-        const whereResolved = this.resolveWhere();
+        const where = this.resolveWhere();
+        const options = { ...this.options };
 
-        const [result, count] = await Promise.all([
-            this.adapter.findMany(whereResolved, {
-                ...this.options,
-                db: this.db,
-            }),
-            this.adapter.count(whereResolved, {
-                db: this.db,
-            }),
-        ]);
+        return this.execute("getResultAndCount", { where, options }, async () => {
+            const [result, count] = await Promise.all([
+                this.adapter.findMany(where, { ...options, db: this.db }),
+                this.adapter.count(where, { db: this.db }),
+            ]);
 
-        return { result, count };
+            return { result, count };
+        });
     }
 
     clone(): VSQueryBuilder<Entity, OrmTypes> {
@@ -156,9 +189,12 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
         );
 
         qbClone.setOptions(structuredClone(this.options));
-        qbClone.setWhereFilter(this.whereFilter && structuredClone(this.whereFilter));
-        qbClone.setDistinct(this.distinct && structuredClone(this.distinct));
+        qbClone.setWherePlain(this.wherePlain);
+        qbClone.setOrWhereArray(this.orWhereArray && [...this.orWhereArray]);
+        qbClone.setDistinct(this.distinct);
         qbClone.setSeeMode(this.seeMode);
+
+        this.trace("clone");
 
         return qbClone;
     }
@@ -168,6 +204,8 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
 
         this.options.select = select;
 
+        this.trace("select", select);
+
         return this;
     }
 
@@ -176,13 +214,17 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
 
         this.options.relations = relations;
 
+        this.trace("relations", relations);
+
         return this;
     }
 
-    where(where: VSRepoWhere<Entity>): this {
-        this.validate(where, whereSchema, "where");
+    where(where: VSRepoWherePlain<Entity>): this {
+        this.validate(where, v.looseObject({}), "where");
 
-        this.whereFilter = where;
+        this.wherePlain = where;
+
+        this.trace("where", where);
 
         return this;
     }
@@ -190,14 +232,11 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
     andWhere(where: VSRepoWherePlain<Entity>): this {
         this.validate(where, v.looseObject({}), "where");
 
-        this.whereFilter ??= {};
-        this.whereFilter.AND = this.whereFilter.AND
-            ? Array.isArray(this.whereFilter.AND)
-                ? this.whereFilter.AND
-                : [this.whereFilter.AND]
-            : [];
+        this.wherePlain = this.wherePlain
+            ? merge<VSRepoWherePlain<Entity>>(this.wherePlain, where, { arrayMerge: (_t, s) => s })
+            : where;
 
-        this.whereFilter.AND.push(where);
+        this.trace("andWhere", where);
 
         return this;
     }
@@ -205,14 +244,10 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
     orWhere(where: VSRepoWherePlain<Entity>): this {
         this.validate(where, v.looseObject({}), "where");
 
-        this.whereFilter ??= {};
-        this.whereFilter.OR = this.whereFilter.OR
-            ? Array.isArray(this.whereFilter.OR)
-                ? this.whereFilter.OR
-                : [this.whereFilter.OR]
-            : [];
+        this.orWhereArray ??= [];
+        this.orWhereArray.push(where);
 
-        this.whereFilter.OR.push(where);
+        this.trace("orWhere", where);
 
         return this;
     }
@@ -221,6 +256,8 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
         this.validate(order, orderingSchema, "order");
 
         this.options.order = order;
+
+        this.trace("orderBy", order);
 
         return this;
     }
@@ -231,6 +268,8 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
         this.options.pagination ??= {};
         this.options.pagination.limit = limit;
 
+        this.trace(`limit ${limit}`);
+
         return this;
     }
 
@@ -240,6 +279,8 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
         this.options.pagination ??= {};
         this.options.pagination.offset = offset;
 
+        this.trace(`offset ${offset}`);
+
         return this;
     }
 
@@ -248,6 +289,8 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
 
         this.distinct = Array.isArray(fields) ? fields : [fields];
 
+        this.trace("distinctOn", this.distinct);
+
         return this;
     }
 
@@ -255,6 +298,8 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
         this.validate(seeMode, seeModeSchema, "seeMode");
 
         this.seeMode = seeMode;
+
+        this.trace(`see '${seeMode}'`);
 
         return this;
     }

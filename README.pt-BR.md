@@ -53,6 +53,15 @@ O VSRepository permite criar repositories fortemente tipados com:
 - [Query methods (SQL raw)](#query-methods-sql-raw)
     - [Argumentos via spread com `spreadArgs`](#argumentos-via-spread-com-spreadargs)
     - [Queries raw pontuais com `query()`](#queries-raw-pontuais-com-query)
+- [Query builder](#query-builder)
+    - [Construindo a query](#construindo-a-query)
+    - [Obtendo resultados](#obtendo-resultados)
+    - [Paginação com `getResultAndCount()`](#paginação-com-getresultandcount)
+    - [Soft-delete com `see()`](#soft-delete-com-see)
+    - [Transações e `setDb()`](#transações-e-setdb)
+    - [Reutilizando e clonando um builder](#reutilizando-e-clonando-um-builder)
+    - [Validação e erros](#validação-e-erros)
+    - [Logs do query builder](#logs-do-query-builder)
 - [Transações](#transações)
 - [Tipos utilitários](#tipos-utilitários)
 - [Escrevendo seu próprio adapter](#escrevendo-seu-próprio-adapter)
@@ -81,7 +90,7 @@ Se você vem do código/docs da [v1](https://github.com/jaobrabo123/VSRepository
 | Ordenação inline no nome do método                | Não suportado (`order` tinha que ser passado como argumento via `Ordered`/`Paginated`)                          | Cadeias `OrderBy<Campo>Asc`/`OrderBy<Campo>Desc` embutidas diretamente no nome do método                                                                                                                                                                                                                                                                                                                   |
 | Tratamento de duplicatas no `createMany`          | Sufixo `SkipDuplicates`                                                                                         | Sufixo `IgnoreConflicts`                                                                                                                                                                                                                                                                                                                                                                                   |
 | `aggregate` / `groupBy`                           | Suportado (passthrough nativo do Prisma)                                                                        | `groupBy` **não está planejado** para a v2. Um prefixo `aggregate` separado também dificilmente será implementado: as operações mais comuns já são cobertas por métodos base dedicados (`sum`, `average`, `min`, `max`, `increment`, `decrement`, `multiply`, `divide`) — veja [Métodos atômicos e de agregação](#métodos-atômicos-e-de-agregação). Para qualquer coisa mais complexa, use `@QueryMethod`. |
-| Tipos de erro                                     | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | Uma classe base `VSRepoError` com um campo `type: VSRepoErrorType` (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`), além de uma subclasse `VSRepoAdapterError` que carrega um `AdapterErrorCode` e o erro original do ORM                                                                                                                                                             |
+| Tipos de erro                                     | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | Uma classe base `VSRepoError` com um campo `type: VSRepoErrorType` (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`, `QUERY_BUILDER`), além de uma subclasse `VSRepoAdapterError` que carrega um `AdapterErrorCode` e o erro original do ORM                                                                                                                                            |
 | Log de debug                                      | Boolean `showWorking: true`                                                                                     | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` para avisos de queries lentas                                                                                                                                                                                                                                                                                                |
 | CLI `vsrepo generate` (etapa de geração de tipos) | Obrigatória antes de usar                                                                                       | Não faz parte do núcleo da v2 — os tipos vêm diretamente das suas entidades/tipos do ORM                                                                                                                                                                                                                                                                                                                   |
 | Extras de CRUD                                    | `patchList`, `options.select`/`options.include` raw                                                             | `select`/`relations` já são o padrão (sempre "raw"); `patch`/`merge` mantêm a mesma semântica. **`patchList` foi removido** — para uma atualização parcial em lote, use um dynamic method `updateManyBy`/`updateManyWhere`                                                                                                                                                                                 |
@@ -248,6 +257,7 @@ Disponíveis automaticamente em toda subclasse de `VSRepository`:
 | `transaction(fn, options?)`             | Executa `fn` dentro de uma transação nativa do ORM.                                                                                   |
 | `getDbClient()`                         | Retorna a instância do client do ORM.                                                                                                 |
 | `query<T>(query, options?)`             | Executa uma instrução SQL raw diretamente contra o banco. Veja [Queries raw pontuais com `query()`](#queries-raw-pontuais-com-query). |
+| `createQueryBuilder(db?)`               | Cria um [query builder](#query-builder) fluente para queries montadas em tempo de execução.                                           |
 
 A maioria dos métodos acima aceita um objeto `MethodOptions<Entity, OrmTypes>` como último argumento (`select`, `relations`, `see`, `db`). Alguns — `total`, `has`, `removeList`, `sum`, `average`, `min`, `max`, e os métodos em lote de soft-delete (`softRemoveList`/`restoreList`) — não retornam/moldam uma `Entity`, então aceitam o tipo mais restrito `RestrictMethodOptions<Entity, OrmTypes>` (só `see`, `db`; sem `select`/`relations`). `transaction`, `query` e `getDbClient` recebem options próprias ou nenhuma.
 
@@ -758,6 +768,200 @@ Assim como os métodos base, dinâmicos e query, `query()` aceita `db` em `optio
 
 ---
 
+## Query builder
+
+`createQueryBuilder(db?)` retorna um builder fluente para queries cujo formato só é conhecido em tempo de execução — filtros opcionais, ordenação e paginação controladas pelo usuário, etc. — onde declarar um `@DynamicMethod` para cada combinação seria inviável. Ele está disponível em toda instância de `VSRepository` e passa pelo mesmo adapter de todos os outros métodos:
+
+```typescript
+const { result, count } = await userRepository
+    .createQueryBuilder()
+    .where({ active: true })
+    .andWhere({ balance: { gte: 100 } })
+    .relations({ address: true })
+    .orderBy({ createdAt: "desc" })
+    .limit(20)
+    .offset(40)
+    .getResultAndCount();
+```
+
+Nada chega ao banco até que um **método terminal** (`getResult()`, `getCount()`, ...) seja chamado. O builder é **mutável**: cada chamada encadeada altera a mesma instância e a retorna, então use [`clone()`](#reutilizando-e-clonando-um-builder) para derivar variações de uma base comum.
+
+### Construindo a query
+
+| Método                 | Descrição                                                                                                                                                            |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `select(select)`       | Campos (e campos de relações aninhadas) a selecionar — mesmo formato de [`select` e `relations`](#select-e-relations). Substitui qualquer `select` anterior.         |
+| `relations(relations)` | Relações a carregar junto. Substitui qualquer `relations` anterior.                                                                                                  |
+| `where(where)`         | Define o filtro (`VSRepoWhere<Entity>`), substituindo qualquer um anterior — inclusive o que `andWhere`/`orWhere` adicionaram.                                       |
+| `andWhere(where)`      | Adiciona um filtro ao bloco `AND`. Recebe um filtro simples, sem `AND`/`OR`/`NOT` aninhados.                                                                         |
+| `orWhere(where)`       | Adiciona um filtro ao bloco `OR`. Mesma restrição do `andWhere`.                                                                                                     |
+| `orderBy(order)`       | Um objeto ou um array de objetos com `"asc"`/`"desc"` (minúsculo ou maiúsculo). Apenas campos primitivos podem ser ordenados. Substitui qualquer ordenação anterior. |
+| `limit(limit)`         | Número máximo de registros. Precisa ser um inteiro não negativo.                                                                                                     |
+| `offset(offset)`       | Número de registros a pular. Precisa ser um inteiro não negativo.                                                                                                    |
+| `distinctOn(fields)`   | Um campo primitivo, ou um array deles, para aplicar `distinct`. Só é usado pelo `getResult()`.                                                                       |
+| `see(mode)`            | Visibilidade do soft-delete: `"active"` (padrão), `"removed"` ou `"all"`. Veja [Soft-delete com `see()`](#soft-delete-com-see).                                      |
+
+`where()` substitui o filtro inteiro, enquanto `andWhere()` e `orWhere()` preenchem os blocos `AND` e `OR` de nível superior do filtro atual, então nunca removem o que já existe. Como em qualquer `VSRepoWhere`, os campos de nível superior, o bloco `AND` (todas as entradas precisam bater) e o bloco `OR` (ao menos uma entrada precisa bater) são combinados entre si:
+
+```typescript
+userRepository
+    .createQueryBuilder()
+    .where({ active: true })
+    .andWhere({ balance: { gte: 100 } })
+    .orWhere({ name: "Maria" })
+    .orWhere({ name: "Joao" });
+
+// filtro: { active: true, AND: [{ balance: { gte: 100 } }], OR: [{ name: "Maria" }, { name: "Joao" }] }
+// casa com: active AND balance >= 100 AND (name = "Maria" OR name = "Joao")
+```
+
+> **`orWhere` não transforma o filtro inteiro em um `OR`.** `where({ active: true }).orWhere({ name: "Maria" })` casa com `active AND name = "Maria"`, já que o bloco `OR` tem uma única entrada. Para expressar `a OR b` no nível superior, escreva explicitamente: `where({ OR: [{ a }, { b }] })`.
+
+Como o builder é mutável, ele funciona bem com filtros condicionais:
+
+```typescript
+async function buscar(filtros: { name?: string; apenasAtivos?: boolean; pagina: number }) {
+    const qb = userRepository
+        .createQueryBuilder()
+        .orderBy({ createdAt: "desc" })
+        .limit(20)
+        .offset((filtros.pagina - 1) * 20);
+
+    if (filtros.name) qb.andWhere({ name: { contains: filtros.name, ignoreCase: true } });
+    if (filtros.apenasAtivos) qb.andWhere({ active: true });
+
+    return qb.getResultAndCount();
+}
+```
+
+### Obtendo resultados
+
+| Método                  | Retorna                               | Chamada no adapter   | Enviado ao adapter                                                                   |
+| ----------------------- | ------------------------------------- | -------------------- | ------------------------------------------------------------------------------------ |
+| `getResult()`           | `Entity[]`                            | `findMany`           | `where`, `select`, `relations`, `order`, `pagination`, `distinct`                    |
+| `getOneResult()`        | `Entity \| null`                      | `findOne`            | `where`, `select`, `relations`, `order`, `pagination`                                |
+| `getOneResultOrThrow()` | `Entity` (lança se não encontrar)     | `findOneOrThrow`     | `where`, `select`, `relations`, `order`, `pagination`                                |
+| `getCount()`            | `number`                              | `count`              | `where`, `order`, `pagination`                                                       |
+| `getExistence()`        | `boolean`                             | `exists`             | `where`                                                                              |
+| `getResultAndCount()`   | `{ result: Entity[]; count: number }` | `findMany` + `count` | `findMany`: `where`, `select`, `relations`, `order`, `pagination` — `count`: `where` |
+
+Todo método terminal também aplica o modo de [`see`](#soft-delete-com-see) ao `where` e roda no `db` do builder (veja [`setDb()`](#transações-e-setdb)). Observações:
+
+- Os resultados são tipados como a `Entity` inteira, igual aos métodos base — `select` e `relations` mudam o que é carregado, não o tipo. Veja [Tipagem de retorno restrita com `InferMethodReturn`](#tipagem-de-retorno-restrita-com-infermethodreturn) se quiser estreitá-lo.
+- `distinctOn()` só é enviado pelo `getResult()`: o `count` não suporta `distinct`, então `getCount()`, `getExistence()` e `getResultAndCount()` não o utilizam.
+- `getCount()` repassa `order` e `pagination` para o `count` do adapter. Se você quer o total de um builder que tem paginação, use `getResultAndCount()` ou conte a partir de um [`clone()`](#reutilizando-e-clonando-um-builder) sem ela.
+
+### Paginação com `getResultAndCount()`
+
+Busca uma página e o total de registros que batem com o filtro em uma única chamada, parecido com o `getResultAndCount()` do MikroORM. O `result` respeita `order`, `limit` e `offset`; o `count` ignora `order` e `pagination` de propósito — ele é o total de registros que batem com o `where`, para você calcular o número de páginas. As duas queries rodam em paralelo com o mesmo `where` resolvido e o mesmo `db`.
+
+```typescript
+const pageSize = 20;
+
+const { result, count } = await userRepository
+    .createQueryBuilder()
+    .where({ active: true })
+    .orderBy({ createdAt: "desc" })
+    .limit(pageSize)
+    .offset((page - 1) * pageSize)
+    .getResultAndCount();
+
+const totalPages = Math.ceil(count / pageSize);
+```
+
+### Soft-delete com `see()`
+
+Em um repository com [`softRemoveKey`](#soft-delete), o builder só enxerga registros não removidos por padrão, como todos os outros métodos. Use `see()` para mudar isso — vale para todos os métodos terminais (inclusive as duas queries do `getResultAndCount()`):
+
+```typescript
+await userRepository.createQueryBuilder().getResult(); // padrão — apenas registros não removidos
+await userRepository.createQueryBuilder().see("removed").getResult(); // apenas registros com soft-delete
+await userRepository.createQueryBuilder().see("all").getResult(); // todos, ignorando o soft-delete
+```
+
+Repositories sem `softRemoveKey` ignoram o `see()`.
+
+### Transações e `setDb()`
+
+`createQueryBuilder(db?)` aceita o client ou a transação em que a query vai rodar. Como nada roda até que um método terminal seja chamado, você também pode montar a query antes e escolher onde ela roda depois, com `setDb()`:
+
+```typescript
+const qb = userRepository.createQueryBuilder().where({ active: true }).orderBy({ createdAt: "desc" });
+
+await userRepository.transaction(async tx => {
+    qb.setDb(tx); // daqui em diante, o builder roda dentro da transação
+    const users = await qb.getResult();
+
+    await userLogsRepository.save({ action: "Usuários listados", data: { count: users.length } }, { db: tx });
+});
+```
+
+O `setDb()` também é útil junto com o `clone()` para rodar a mesma query em outro client sem mexer no builder original.
+
+### Reutilizando e clonando um builder
+
+`clone()` retorna um builder independente com o mesmo filtro, options, campos de `distinctOn`, modo de `see` e `db`. Alterações feitas em qualquer um dos dois depois disso não afetam o outro:
+
+```typescript
+const ativos = userRepository.createQueryBuilder().where({ active: true });
+
+const total = await ativos.clone().getCount();
+const primeiraPagina = await ativos.clone().orderBy({ name: "asc" }).limit(10).getResult();
+```
+
+A cópia é feita com `structuredClone`, então mantenha os valores do filtro como dados simples (primitivos, `Date`, arrays e objetos simples): funções não podem ser clonadas e instâncias de classe perdem o protótipo.
+
+### Validação e erros
+
+Os argumentos são validados assim que são passados para um método encadeado, e não quando a query roda. Um argumento inválido lança um `VSRepoError` com `type: VSRepoErrorType.QUERY_BUILDER`, cuja mensagem começa pelo argumento problemático, e deixa o builder inalterado. `limit` e `offset` precisam ser inteiros não negativos; nos outros métodos a validação confere o formato do argumento (os nomes dos campos são checados pelo TypeScript).
+
+```typescript
+import { VSRepoError, VSRepoErrorType } from "vsrepo";
+
+try {
+    userRepository.createQueryBuilder().limit(-1);
+} catch (error) {
+    if (error instanceof VSRepoError && error.type === VSRepoErrorType.QUERY_BUILDER) {
+        console.error(error.message); // [VSRepository] Error: limit: Invalid value: Expected >=0 but received -1
+    }
+}
+```
+
+Erros lançados pelo adapter enquanto a query roda (ex.: `VSRepoAdapterError`) não são encapsulados — chegam até você sem alterações.
+
+### Logs do query builder
+
+O builder usa o logger do repository, então segue o mesmo `logLevel` e `logSlowThresholdMs` (veja [Logging](#logging)):
+
+- `DEBUG` registra cada chamada encadeada e, em cada método terminal, a query resolvida: o modo de `see`, o `where` final (já incluindo o filtro de soft-delete) e as options enviadas ao adapter. O `db` nunca é logado.
+- Todo método terminal tem o tempo medido como `run query builder <método>`: a duração é logada em `DEBUG` e promovida a `WARN` quando passa de `logSlowThresholdMs`.
+- Argumentos inválidos são logados em `ERROR` logo antes de o `VSRepoError` ser lançado.
+
+Por exemplo, `.where({ active: true }).orderBy({ createdAt: "desc" }).limit(20).getResultAndCount()` em um repository com `softRemoveKey` imprime isto em `DEBUG` (sem os timestamps e sem as linhas das chamadas encadeadas):
+
+```text
+[DEBUG] [UserRepositoryLogger] VSQueryBuilder: getResultAndCount
+{
+  "see": "active",
+  "where": {
+    "active": true,
+    "deletedAt": null
+  },
+  "options": {
+    "order": {
+      "createdAt": "desc"
+    },
+    "pagination": {
+      "limit": 20
+    }
+  }
+}
+[DEBUG] [UserRepositoryLogger] Starting to run query builder getResultAndCount...
+[DEBUG] [UserRepositoryLogger] Took 0.11ms to run query builder getResultAndCount
+```
+
+---
+
 ## Transações
 
 Todos os métodos (base, dinâmicos e de query) aceitam `options.db` para participar de uma transação compartilhada:
@@ -1069,6 +1273,7 @@ try {
 | `VALIDATOR`       | Options ou argumentos de método inválidos foram detectados durante a validação (ex.: `pkName` ausente quando o adapter não tem `getPkName()`). |
 | `BASE`            | Uso inválido de um método base (`get`, `save`, `remove`, etc).                                                                                 |
 | `ADAPTER`         | Um `VSRepoAdapter` falhou ao falar com o ORM/banco subjacente — sempre é lançado como `VSRepoAdapterError`.                                    |
+| `QUERY_BUILDER`   | Um argumento inválido foi passado para um método do [query builder](#validação-e-erros) (ex.: um `limit` negativo).                            |
 
 ### `VSRepoAdapterError` e `AdapterErrorCode`
 
@@ -1185,6 +1390,8 @@ super({
 | `INFO`          | Eventos de alto nível do ciclo de vida, como a inicialização do repository.                             |
 | `WARN` (padrão) | Problemas recuperáveis e operações lentas (veja `logSlowThresholdMs`, padrão de 300ms).                 |
 | `ERROR`         | Falhas lançadas durante a execução de uma operação.                                                     |
+
+O [query builder](#logs-do-query-builder) usa o mesmo logger: em `DEBUG` ele também registra cada chamada encadeada e a query resolvida de cada método terminal, e cada método terminal tem o tempo medido como qualquer outra operação.
 
 ---
 

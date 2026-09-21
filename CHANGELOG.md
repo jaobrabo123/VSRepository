@@ -6,6 +6,38 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased]
+
+### Added
+- **`createQueryBuilder(db?)`** — new method on every `VSRepository` that returns a fluent query builder for queries assembled at runtime. Chain `select`, `relations`, `where`, `andWhere`, `orWhere`, `orderBy`, `limit`, `offset`, `distinctOn` and `see`, then run it with `getResult()`, `getOneResult()`, `getOneResultOrThrow()`, `getCount()`, `getExistence()` or `getResultAndCount()`. The last one fetches a page and the total of records matching the `where` (ignoring `order`/`pagination`, so it can be used for pagination) in parallel. The builder respects soft-delete (`see("active")` by default), `clone()` derives independent builders from a common base, and `setDb()` lets you choose lazily where the query runs — e.g. build it first and run it inside a `transaction()`. `distinctOn` only affects `getResult()`, since `count` doesn't support `distinct`
+- **`VSRepoErrorType.QUERY_BUILDER`** — new error type, thrown as a `VSRepoError` when an invalid argument is passed to a query builder method
+- **Query builder logs** — the builder uses the repository's logger: at `DEBUG` it traces every chained call and the resolved query of each terminal method (the `db` is never logged), and each terminal method is timed (`Took Xms to run query builder <method>`, promoted to `WARN` above `logSlowThresholdMs`)
+
+### Changed
+- `pagination` validation is now stricter: `limit` and `offset` must be non-negative integers. Negative, decimal and infinite values, previously accepted, are now rejected
+- `select` and `relations` passed in the `options` of any method are now validated recursively: every value must be a `boolean` or a nested object (previously any object was accepted)
+
+### Documentation
+- Both READMEs document the query builder: new "Query builder" section, a new row in the base methods table, `QUERY_BUILDER` in the error types tables, and a note about the builder in the Logging section
+
+---
+
+## [Unreleased] (Português)
+
+### Adicionado
+- **`createQueryBuilder(db?)`** — novo método em todo `VSRepository` que retorna um query builder fluente para queries montadas em tempo de execução. Encadeie `select`, `relations`, `where`, `andWhere`, `orWhere`, `orderBy`, `limit`, `offset`, `distinctOn` e `see`, e execute com `getResult()`, `getOneResult()`, `getOneResultOrThrow()`, `getCount()`, `getExistence()` ou `getResultAndCount()`. O último busca uma página e o total de registros que batem com o `where` (ignorando `order`/`pagination`, então serve para paginação) em paralelo. O builder respeita o soft-delete (`see("active")` por padrão), o `clone()` deriva builders independentes de uma base comum, e o `setDb()` permite escolher de forma lazy onde a query roda — ex.: montá-la antes e executá-la dentro de um `transaction()`. O `distinctOn` só afeta o `getResult()`, já que o `count` não suporta `distinct`
+- **`VSRepoErrorType.QUERY_BUILDER`** — novo tipo de erro, lançado como `VSRepoError` quando um argumento inválido é passado para um método do query builder
+- **Logs do query builder** — o builder usa o logger do repository: em `DEBUG` ele registra cada chamada encadeada e a query resolvida de cada método terminal (o `db` nunca é logado), e cada método terminal tem o tempo medido (`Took Xms to run query builder <método>`, promovido a `WARN` acima de `logSlowThresholdMs`)
+
+### Alterado
+- A validação de `pagination` ficou mais estrita: `limit` e `offset` precisam ser inteiros não negativos. Valores negativos, decimais e infinitos, antes aceitos, agora são rejeitados
+- `select` e `relations` passados nas `options` de qualquer método agora são validados recursivamente: todo valor precisa ser `boolean` ou um objeto aninhado (antes qualquer objeto era aceito)
+
+### Documentação
+- Ambos os READMEs documentam o query builder: nova seção "Query builder", uma nova linha na tabela de métodos base, `QUERY_BUILDER` nas tabelas de tipos de erro, e uma observação sobre o builder na seção de Logging
+
+---
+
 ## [2.5.0] - 2026-09-20
 
 > Promotes `2.5.0-beta` to stable.
