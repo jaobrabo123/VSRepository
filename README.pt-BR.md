@@ -775,8 +775,7 @@ Assim como os métodos base, dinâmicos e query, `query()` aceita `db` em `optio
 ```typescript
 const { result, count } = await userRepository
     .createQueryBuilder()
-    .where({ active: true })
-    .andWhere({ balance: { gte: 100 } })
+    .where({ active: true, balance: { gte: 100 } })
     .relations({ address: true })
     .orderBy({ createdAt: "desc" })
     .limit(20)
@@ -784,7 +783,7 @@ const { result, count } = await userRepository
     .getResultAndCount();
 ```
 
-Nada chega ao banco até que um **método terminal** (`getResult()`, `getCount()`, ...) seja chamado. O builder é **mutável**: cada chamada encadeada altera a mesma instância e a retorna, então use [`clone()`](#reutilizando-e-clonando-um-builder) para derivar variações de uma base comum.
+Nada chega ao banco até que um **método terminal** (`getResult()`, `getCount()`, ...) seja chamado. O builder é **mutável**: cada chamada encadeada altera a mesma instância e a retorna, então use [`clone()`](#reutilizando-e-clonando-um-builder) para derivar variações de uma base comum. A classe `VSQueryBuilder<Entity>` é exportada de `vsrepo` caso você precise tipar um builder (ex.: como parâmetro de função).
 
 ### Construindo a query
 
@@ -792,45 +791,31 @@ Nada chega ao banco até que um **método terminal** (`getResult()`, `getCount()
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `select(select)`       | Campos (e campos de relações aninhadas) a selecionar — mesmo formato de [`select` e `relations`](#select-e-relations). Substitui qualquer `select` anterior.         |
 | `relations(relations)` | Relações a carregar junto. Substitui qualquer `relations` anterior.                                                                                                  |
-| `where(where)`         | Define o filtro (`VSRepoWhere<Entity>`), substituindo qualquer um anterior — inclusive o que `andWhere`/`orWhere` adicionaram.                                       |
-| `andWhere(where)`      | Adiciona um filtro ao bloco `AND`. Recebe um filtro simples, sem `AND`/`OR`/`NOT` aninhados.                                                                         |
-| `orWhere(where)`       | Adiciona um filtro ao bloco `OR`. Mesma restrição do `andWhere`.                                                                                                     |
-| `orderBy(order)`       | Um objeto ou um array de objetos com `"asc"`/`"desc"` (minúsculo ou maiúsculo). Apenas campos primitivos podem ser ordenados. Substitui qualquer ordenação anterior. |
+| `where(where)`         | O filtro: o mesmo `VSRepoWhere` usado no resto da biblioteca (operadores de campo, filtros de relação e `AND`/`OR`/`NOT`). Substitui qualquer filtro anterior.       |
+| `orderBy(order)`       | Um objeto ou um array de objetos com `"asc"`/`"desc"` (minúsculo ou maiúsculo). Apenas campos escalares podem ser ordenados. Substitui qualquer ordenação anterior. |
 | `limit(limit)`         | Número máximo de registros. Precisa ser um inteiro não negativo.                                                                                                     |
 | `offset(offset)`       | Número de registros a pular. Precisa ser um inteiro não negativo.                                                                                                    |
 | `distinctOn(fields)`   | Um campo primitivo, ou um array deles, para aplicar `distinct`. Só é usado pelo `getResult()`.                                                                       |
 | `see(mode)`            | Visibilidade do soft-delete: `"active"` (padrão), `"removed"` ou `"all"`. Veja [Soft-delete com `see()`](#soft-delete-com-see).                                      |
 
-`where()` substitui o filtro inteiro, enquanto `andWhere()` e `orWhere()` preenchem os blocos `AND` e `OR` de nível superior do filtro atual, então nunca removem o que já existe. Como em qualquer `VSRepoWhere`, os campos de nível superior, o bloco `AND` (todas as entradas precisam bater) e o bloco `OR` (ao menos uma entrada precisa bater) são combinados entre si:
+Chamar `where()` de novo substitui o filtro anterior, e o filtro de [soft-delete](#soft-delete-com-see) é adicionado por cima dele quando a query roda. Como o builder é mutável, um filtro que depende de entradas opcionais é mais fácil de montar como objeto antes:
 
 ```typescript
-userRepository
-    .createQueryBuilder()
-    .where({ active: true })
-    .andWhere({ balance: { gte: 100 } })
-    .orWhere({ name: "Maria" })
-    .orWhere({ name: "Joao" });
+import type { VSRepoWhere } from "vsrepo";
 
-// filtro: { active: true, AND: [{ balance: { gte: 100 } }], OR: [{ name: "Maria" }, { name: "Joao" }] }
-// casa com: active AND balance >= 100 AND (name = "Maria" OR name = "Joao")
-```
-
-> **`orWhere` não transforma o filtro inteiro em um `OR`.** `where({ active: true }).orWhere({ name: "Maria" })` casa com `active AND name = "Maria"`, já que o bloco `OR` tem uma única entrada. Para expressar `a OR b` no nível superior, escreva explicitamente: `where({ OR: [{ a }, { b }] })`.
-
-Como o builder é mutável, ele funciona bem com filtros condicionais:
-
-```typescript
 async function buscar(filtros: { name?: string; apenasAtivos?: boolean; pagina: number }) {
-    const qb = userRepository
+    const where: VSRepoWhere<User> = {};
+
+    if (filtros.name) where.name = { contains: filtros.name, ignoreCase: true };
+    if (filtros.apenasAtivos) where.active = true;
+
+    return userRepository
         .createQueryBuilder()
+        .where(where)
         .orderBy({ createdAt: "desc" })
         .limit(20)
-        .offset((filtros.pagina - 1) * 20);
-
-    if (filtros.name) qb.andWhere({ name: { contains: filtros.name, ignoreCase: true } });
-    if (filtros.apenasAtivos) qb.andWhere({ active: true });
-
-    return qb.getResultAndCount();
+        .offset((filtros.pagina - 1) * 20)
+        .getResultAndCount();
 }
 ```
 
@@ -853,7 +838,7 @@ Todo método terminal também aplica o modo de [`see`](#soft-delete-com-see) ao 
 
 ### Paginação com `getResultAndCount()`
 
-Busca uma página e o total de registros que batem com o filtro em uma única chamada, parecido com o `getResultAndCount()` do MikroORM. O `result` respeita `order`, `limit` e `offset`; o `count` ignora `order` e `pagination` de propósito — ele é o total de registros que batem com o `where`, para você calcular o número de páginas. As duas queries rodam em paralelo com o mesmo `where` resolvido e o mesmo `db`.
+Busca uma página e o total de registros que batem com o filtro em uma única chamada, tipo o `getResultAndCount()` do MikroORM. O `result` respeita `order`, `limit` e `offset`; o `count` ignora `order` e `pagination` de propósito — ele é o total de registros que batem com o `where`, para você calcular o número de páginas. As duas queries rodam em paralelo com o mesmo `where` resolvido e o mesmo `db`.
 
 ```typescript
 const pageSize = 20;
@@ -909,11 +894,9 @@ const total = await ativos.clone().getCount();
 const primeiraPagina = await ativos.clone().orderBy({ name: "asc" }).limit(10).getResult();
 ```
 
-A cópia é feita com `structuredClone`, então mantenha os valores do filtro como dados simples (primitivos, `Date`, arrays e objetos simples): funções não podem ser clonadas e instâncias de classe perdem o protótipo.
-
 ### Validação e erros
 
-Os argumentos são validados assim que são passados para um método encadeado, e não quando a query roda. Um argumento inválido lança um `VSRepoError` com `type: VSRepoErrorType.QUERY_BUILDER`, cuja mensagem começa pelo argumento problemático, e deixa o builder inalterado. `limit` e `offset` precisam ser inteiros não negativos; nos outros métodos a validação confere o formato do argumento (os nomes dos campos são checados pelo TypeScript).
+Os argumentos são validados assim que são passados para um método encadeado, e não quando a query roda. Um argumento inválido lança um `VSRepoError` com `type: VSRepoErrorType.QUERY_BUILDER`, cuja mensagem começa pelo argumento problemático, e deixa o builder inalterado. `limit` e `offset` precisam ser inteiros não negativos; nos outros métodos a validação confere o formato do argumento.
 
 ```typescript
 import { VSRepoError, VSRepoErrorType } from "vsrepo";

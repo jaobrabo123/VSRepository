@@ -775,8 +775,7 @@ Just like base, dynamic and query methods, `query()` accepts `db` in `options` t
 ```typescript
 const { result, count } = await userRepository
     .createQueryBuilder()
-    .where({ active: true })
-    .andWhere({ balance: { gte: 100 } })
+    .where({ active: true, balance: { gte: 100 } })
     .relations({ address: true })
     .orderBy({ createdAt: "desc" })
     .limit(20)
@@ -784,53 +783,39 @@ const { result, count } = await userRepository
     .getResultAndCount();
 ```
 
-Nothing reaches the database until a **terminal method** (`getResult()`, `getCount()`, ...) is called. The builder is **mutable**: every chained call changes the same instance and returns it, so use [`clone()`](#reusing-and-cloning-a-builder) to derive variations from a common base.
+Nothing reaches the database until a **terminal method** (`getResult()`, `getCount()`, ...) is called. The builder is **mutable**: every chained call changes the same instance and returns it, so use [`clone()`](#reusing-and-cloning-a-builder) to derive variations from a common base. The `VSQueryBuilder<Entity>` class is exported from `vsrepo` in case you need to type a builder (e.g. as a function parameter).
 
 ### Building the query
 
-| Method                 | Description                                                                                                                                         |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `select(select)`       | Fields (and nested relation fields) to select — same shape as in [`select` and `relations`](#select-and-relations). Replaces any previous `select`. |
-| `relations(relations)` | Relations to eagerly load. Replaces any previous `relations`.                                                                                       |
-| `where(where)`         | Sets the filter (`VSRepoWhere<Entity>`), replacing any previous one — including what `andWhere`/`orWhere` added.                                    |
-| `andWhere(where)`      | Adds a filter to the `AND` block. Takes a plain filter, without nested `AND`/`OR`/`NOT`.                                                            |
-| `orWhere(where)`       | Adds a filter to the `OR` block. Same restriction as `andWhere`.                                                                                    |
-| `orderBy(order)`       | An object or an array of objects with `"asc"`/`"desc"` (lower or upper case). Only primitive fields can be ordered. Replaces any previous ordering. |
-| `limit(limit)`         | Maximum number of records. Must be a non-negative integer.                                                                                          |
-| `offset(offset)`       | Number of records to skip. Must be a non-negative integer.                                                                                          |
-| `distinctOn(fields)`   | A primitive field, or an array of them, to apply `distinct` on. Only used by `getResult()`.                                                         |
-| `see(mode)`            | Soft-delete visibility: `"active"` (default), `"removed"` or `"all"`. See [Soft-delete with `see()`](#soft-delete-with-see).                        |
+| Method                 | Description                                                                                                                                                |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `select(select)`       | Fields (and nested relation fields) to select — same shape as in [`select` and `relations`](#select-and-relations). Replaces any previous `select`.        |
+| `relations(relations)` | Relations to eagerly load. Replaces any previous `relations`.                                                                                              |
+| `where(where)`         | The filter: the same `VSRepoWhere` used by the rest of the library (field operators, relation filters and `AND`/`OR`/`NOT`). Replaces any previous filter. |
+| `orderBy(order)`       | An object or an array of objects with `"asc"`/`"desc"` (lower or upper case). Only scalar fields can be ordered. Replaces any previous ordering.        |
+| `limit(limit)`         | Maximum number of records. Must be a non-negative integer.                                                                                                 |
+| `offset(offset)`       | Number of records to skip. Must be a non-negative integer.                                                                                                 |
+| `distinctOn(fields)`   | A primitive field, or an array of them, to apply `distinct` on. Only used by `getResult()`.                                                                |
+| `see(mode)`            | Soft-delete visibility: `"active"` (default), `"removed"` or `"all"`. See [Soft-delete with `see()`](#soft-delete-with-see).                               |
 
-`where()` replaces the whole filter, while `andWhere()` and `orWhere()` fill the top-level `AND` and `OR` blocks of the current filter, so they never remove what's already there. As in any `VSRepoWhere`, the top-level fields, the `AND` block (every entry must match) and the `OR` block (at least one entry must match) are combined together:
+Calling `where()` again replaces the previous filter, and the [soft-delete](#soft-delete-with-see) filter is added on top of it when the query runs. Since the builder is mutable, a filter that depends on optional inputs is easiest to build as an object first:
 
 ```typescript
-userRepository
-    .createQueryBuilder()
-    .where({ active: true })
-    .andWhere({ balance: { gte: 100 } })
-    .orWhere({ name: "Maria" })
-    .orWhere({ name: "Joao" });
+import type { VSRepoWhere } from "vsrepo";
 
-// filter: { active: true, AND: [{ balance: { gte: 100 } }], OR: [{ name: "Maria" }, { name: "Joao" }] }
-// matches: active AND balance >= 100 AND (name = "Maria" OR name = "Joao")
-```
-
-> **`orWhere` doesn't turn the whole filter into an `OR`.** `where({ active: true }).orWhere({ name: "Maria" })` matches `active AND name = "Maria"`, since the `OR` block has a single entry. To express `a OR b` at the top level, write it explicitly: `where({ OR: [{ a }, { b }] })`.
-
-Since the builder is mutable, it fits conditional filters well:
-
-```typescript
 async function search(filters: { name?: string; onlyActive?: boolean; page: number }) {
-    const qb = userRepository
+    const where: VSRepoWhere<User> = {};
+
+    if (filters.name) where.name = { contains: filters.name, ignoreCase: true };
+    if (filters.onlyActive) where.active = true;
+
+    return userRepository
         .createQueryBuilder()
+        .where(where)
         .orderBy({ createdAt: "desc" })
         .limit(20)
-        .offset((filters.page - 1) * 20);
-
-    if (filters.name) qb.andWhere({ name: { contains: filters.name, ignoreCase: true } });
-    if (filters.onlyActive) qb.andWhere({ active: true });
-
-    return qb.getResultAndCount();
+        .offset((filters.page - 1) * 20)
+        .getResultAndCount();
 }
 ```
 
@@ -853,7 +838,7 @@ Every terminal method also applies the [`see`](#soft-delete-with-see) mode to th
 
 ### Pagination with `getResultAndCount()`
 
-Fetches a page and the total number of matching records in one call, similar to MikroORM's `getResultAndCount()`. `result` honors `order`, `limit` and `offset`; `count` ignores `order` and `pagination` on purpose — it's the total of records matching the `where`, so you can compute the number of pages. Both queries run in parallel with the same resolved `where` and the same `db`.
+Fetches a page and the total number of matching records in one call, like MikroORM's `getResultAndCount()`. `result` honors `order`, `limit` and `offset`; `count` ignores `order` and `pagination` on purpose — it's the total of records matching the `where`, so you can compute the number of pages. Both queries run in parallel with the same resolved `where` and the same `db`.
 
 ```typescript
 const pageSize = 20;
@@ -909,11 +894,9 @@ const total = await active.clone().getCount();
 const firstPage = await active.clone().orderBy({ name: "asc" }).limit(10).getResult();
 ```
 
-The copy is made with `structuredClone`, so keep filter values to plain data (primitives, `Date`s, arrays and plain objects): functions can't be cloned and class instances lose their prototype.
-
 ### Validation and errors
 
-Arguments are validated as soon as they're passed to a chained method, not when the query runs. An invalid one throws a `VSRepoError` with `type: VSRepoErrorType.QUERY_BUILDER`, whose message starts with the offending argument, and leaves the builder unchanged. `limit` and `offset` must be non-negative integers; for the other methods the validation checks the shape of the argument (field names are checked by TypeScript).
+Arguments are validated as soon as they're passed to a chained method, not when the query runs. An invalid one throws a `VSRepoError` with `type: VSRepoErrorType.QUERY_BUILDER`, whose message starts with the offending argument, and leaves the builder unchanged. `limit` and `offset` must be non-negative integers; for the other methods the validation checks the shape of the argument.
 
 ```typescript
 import { VSRepoError, VSRepoErrorType } from "vsrepo";
