@@ -504,8 +504,8 @@ Applied as suffixes to the field name inside the method (same idea as v1, one re
 
 | Suffix             | Meaning                                                                                                                                                       | Argument                               |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| _(none)_           | equality (`=`)                                                                                                                                                | yes                                    |
-| `Not`              | negation                                                                                                                                                      | yes                                    |
+| _(none)_ / `Equals` | equality (`=`)                                                                                                                                              | yes                                    |
+| `Not` / `NotEquals` | negation                                                                                                                                                      | yes                                    |
 | `In`               | is one of                                                                                                                                                     | yes (array)                            |
 | `NotIn`            | is none of                                                                                                                                                    | yes (array)                            |
 | `Contains`         | substring match                                                                                                                                               | yes                                    |
@@ -535,6 +535,8 @@ declare findByNameContainsIgnoreCase: (name: string) => Promise<User[]>;
 declare findByAgeBetween: (age: [number, number]) => Promise<User[]>;
 ```
 
+> **Keyword collisions in field names:** a suffix/operator is only recognized at a camelCase boundary — followed by an uppercase letter, a non-ASCII character, or (for field suffixes) the end of the name — so `findByOrganizationId` and `findByNotes` resolve to the fields `organizationId` and `notes`, not to the `Or`/`Not` keywords. This still leaves one case ambiguous: a field whose name genuinely *ends* at such a boundary with the same letters as a keyword (e.g. `checkIn`, which reads as field `check` + the `In` suffix by default). Append `Equals` (or `NotEquals`) to force equality and disambiguate: `findByCheckInEquals` resolves to the field `checkIn`.
+
 ### Logical operators
 
 | Operator | Usage in the name               | Example                                             |
@@ -543,7 +545,7 @@ declare findByAgeBetween: (age: [number, number]) => Promise<User[]>;
 | `Or`     | between two fields              | `findByNameOrEmail`                                 |
 | `AND`    | splits a final block into `AND` | `findByEmailOrNameANDActiveStatusAndAgeGreaterThan` |
 
-`AND` (all caps) rules, same as v1: only one `AND` per method name is allowed; every field connected with `And` after it is nested inside `AND: []`; `Or` cannot appear after an `AND`.
+`AND` (all caps) rules, same as v1: only one `AND` per method name is allowed; every field connected with `And` after it is nested inside `AND: []`; `Or` cannot appear after an `AND` — using it that way throws a `VSRepoError` (`RESOLVER`) when the repository is constructed. See [Error handling](#error-handling).
 
 ### Relation filters
 
@@ -583,6 +585,8 @@ declare findByProductsSome: () => Promise<User[]>;
 | `IgnoreConflicts`                          | On `createMany`/`createManyReturning`, skips records that would violate a unique constraint instead of throwing. _(Renamed from v1's `SkipDuplicates`.)_           |
 
 > ⚠️ **Parameter order:** `pagination` and `order` are always placed **before** the optional `MethodOptions<T>` last argument. When both `order` and `pagination` are present, their relative order follows the suffix name (`OrderedAndPaginated` → order, pagination; `PaginatedAndOrdered` → pagination, order).
+>
+> Using `Paginated`/`Ordered`/`OrderBy`, `Distinct` or `IgnoreConflicts` on a prefix that doesn't support them (e.g. `Distinct` on `findOneBy`, `Paginated` on `existsBy`, `IgnoreConflicts` on `create`) throws a `VSRepoError` (`RESOLVER`) when the repository is constructed, rather than silently becoming part of the field name.
 
 ```typescript
 // Paginated: pagination is the penultimate param (before MethodOptions)

@@ -504,8 +504,8 @@ Aplicados como sufixos ao nome do campo dentro do método (mesma ideia da v1, co
 
 | Sufixo             | Significado                                                                                                                                                | Argumento                                |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| _(sem sufixo)_     | igualdade (`=`)                                                                                                                                            | sim                                      |
-| `Not`              | negação                                                                                                                                                    | sim                                      |
+| _(sem sufixo)_ / `Equals` | igualdade (`=`)                                                                                                                                      | sim                                      |
+| `Not` / `NotEquals`       | negação                                                                                                                                              | sim                                      |
 | `In`               | está em                                                                                                                                                    | sim (array)                              |
 | `NotIn`            | não está em                                                                                                                                                | sim (array)                              |
 | `Contains`         | contém substring                                                                                                                                           | sim                                      |
@@ -535,6 +535,8 @@ declare findByNameContainsIgnoreCase: (name: string) => Promise<User[]>;
 declare findByAgeBetween: (age: [number, number]) => Promise<User[]>;
 ```
 
+> **Colisão de palavra-chave em nome de campo:** um sufixo/operador só é reconhecido numa fronteira de camelCase — seguido de letra maiúscula, de caractere não-ASCII ou (para sufixos de campo) do fim do nome — então `findByOrganizationId` e `findByNotes` resolvem para os campos `organizationId` e `notes`, não para as palavras-chave `Or`/`Not`. Ainda fica um caso ambíguo: um campo cujo nome termina de fato numa fronteira com as mesmas letras de uma palavra-chave (ex.: `checkIn`, que por padrão é lido como o campo `check` + o sufixo `In`). Adicione `Equals` (ou `NotEquals`) para forçar igualdade e desambiguar: `findByCheckInEquals` resolve para o campo `checkIn`.
+
 ### Operadores lógicos
 
 | Operador | Uso no nome                    | Exemplo                                             |
@@ -543,7 +545,7 @@ declare findByAgeBetween: (age: [number, number]) => Promise<User[]>;
 | `Or`     | entre dois campos              | `findByNameOrEmail`                                 |
 | `AND`    | separa um bloco final em `AND` | `findByEmailOrNameANDActiveStatusAndAgeGreaterThan` |
 
-Regras do `AND` (em capslock), iguais às da v1: só é permitido **um** `AND` por nome de método; todo campo conectado por `And` depois dele é aninhado dentro de `AND: []`; `Or` não pode aparecer depois de um `AND`.
+Regras do `AND` (em capslock), iguais às da v1: só é permitido **um** `AND` por nome de método; todo campo conectado por `And` depois dele é aninhado dentro de `AND: []`; `Or` não pode aparecer depois de um `AND` — usar dessa forma lança um `VSRepoError` (`RESOLVER`) ao construir o repository. Veja [Tratamento de erros](#tratamento-de-erros).
 
 ### Filtros de relação
 
@@ -583,6 +585,8 @@ declare findByProductsSome: () => Promise<User[]>;
 | `IgnoreConflicts`                          | No `createMany`/`createManyReturning`, ignora registros que violariam uma constraint única, em vez de lançar erro. _(Renomeado do `SkipDuplicates` da v1.)_                    |
 
 > ⚠️ **Ordem dos parâmetros:** `pagination` e `order` sempre vêm **antes** do último argumento opcional `MethodOptions<T>`. Quando `order` e `pagination` estão presentes juntos, a ordem relativa entre eles segue o nome do sufixo (`OrderedAndPaginated` → order, pagination; `PaginatedAndOrdered` → pagination, order).
+>
+> Usar `Paginated`/`Ordered`/`OrderBy`, `Distinct` ou `IgnoreConflicts` num prefixo que não os suporta (ex.: `Distinct` em `findOneBy`, `Paginated` em `existsBy`, `IgnoreConflicts` em `create`) lança um `VSRepoError` (`RESOLVER`) ao construir o repository, em vez de virar silenciosamente parte do nome do campo.
 
 ```typescript
 // Paginated: pagination é o penúltimo parâmetro (antes do MethodOptions)

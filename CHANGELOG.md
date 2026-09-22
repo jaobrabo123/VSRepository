@@ -13,13 +13,20 @@ All notable changes to this project will be documented in this file.
 - **`VSQueryBuilder`** — the class is exported from the package entry point, so builders can be typed (e.g. as a function parameter). All its public methods are documented with JSDoc
 - **`VSRepoErrorType.QUERY_BUILDER`** — new error type, thrown as a `VSRepoError` when an invalid argument is passed to a query builder method
 - **Query builder logs** — the builder uses the repository's logger: at `DEBUG` it traces every chained call and the resolved query of each terminal method (the `db` is never logged), and each terminal method is timed (`Took Xms to run query builder <method>`, promoted to `WARN` above `logSlowThresholdMs`)
+- **`Equals` / `NotEquals`** field-filter suffixes for dynamic methods — same effect as no suffix and `Not`, respectively; useful to disambiguate a field name that ends at the same camelCase boundary as an existing keyword suffix (e.g. `findByCheckInEquals` resolves to the field `checkIn`, instead of the default `check` + `In` reading)
 
 ### Changed
 - `pagination` validation is now stricter: `limit` and `offset` must be non-negative integers. Negative, decimal and infinite values, previously accepted, are now rejected
 - `select` and `relations` passed in the `options` of any method are now validated recursively: every value must be a `boolean` or a nested object (previously any object was accepted)
+- Dynamic-method name parsing is significantly more robust (inspired by Spring Data JPA's `PartTree`): keywords and operators (`Or`, `And`, `AND`, `Not`, `In`, `With`, `Without`, `Some`, `Every`, `None`, `Optional`, ...) are now only recognized at a camelCase word boundary, so field names that merely contain one of these words — `organizationId`, `notes`, `orderId`, `instagramHandle`, `withdrawnAt`, `androidVersion`, `everyoneId`, and the like — are no longer misparsed
+- Using an ordering/pagination suffix (`Paginated`/`Ordered`/`OrderBy...`), `Distinct` or `IgnoreConflicts` on a dynamic-method prefix that doesn't support it, or using `Or` after an `AND` (all caps) block, now throws a `VSRepoError` (`RESOLVER`) when the repository is constructed, instead of silently becoming part of the field name
+
+### Fixed
+- A relation filter (`With`/`Without`/`Some`/`Every`/`None`) combined with equality and `IgnoreCase` (e.g. `findByAddressWithCityEqualsIgnoreCase`) now nests correctly as `{ equals, ignoreCase }`, instead of dropping the `equals` wrapper
 
 ### Documentation
 - Both READMEs document the query builder: new "Query builder" section, a new row in the base methods table, `QUERY_BUILDER` in the error types tables, and a note about the builder in the Logging section
+- Both READMEs document `Equals`/`NotEquals`, the camelCase-boundary rule for keyword collisions (with the `Equals`/`NotEquals` disambiguation example), and the new explicit errors for unsupported suffix/prefix combinations and for `Or` after `AND`
 
 ---
 
@@ -30,13 +37,20 @@ All notable changes to this project will be documented in this file.
 - **`VSQueryBuilder`** — a classe é exportada pelo ponto de entrada do pacote, então dá para tipar builders (ex.: como parâmetro de função). Todos os seus métodos públicos têm JSDoc
 - **`VSRepoErrorType.QUERY_BUILDER`** — novo tipo de erro, lançado como `VSRepoError` quando um argumento inválido é passado para um método do query builder
 - **Logs do query builder** — o builder usa o logger do repository: em `DEBUG` ele registra cada chamada encadeada e a query resolvida de cada método terminal (o `db` nunca é logado), e cada método terminal tem o tempo medido (`Took Xms to run query builder <método>`, promovido a `WARN` acima de `logSlowThresholdMs`)
+- **Sufixos `Equals` / `NotEquals`** para métodos dinâmicos — mesmo efeito de sem sufixo e de `Not`, respectivamente; úteis para desambiguar um campo cujo nome termina na mesma fronteira de camelCase de um sufixo/palavra-chave já existente (ex.: `findByCheckInEquals` resolve para o campo `checkIn`, em vez da leitura padrão `check` + `In`)
 
 ### Alterado
 - A validação de `pagination` ficou mais estrita: `limit` e `offset` precisam ser inteiros não negativos. Valores negativos, decimais e infinitos, antes aceitos, agora são rejeitados
 - `select` e `relations` passados nas `options` de qualquer método agora são validados recursivamente: todo valor precisa ser `boolean` ou um objeto aninhado (antes qualquer objeto era aceito)
+- A resolução de nomes de métodos dinâmicos ficou bem mais robusta (inspirada no `PartTree` do Spring Data JPA): palavras-chave e operadores (`Or`, `And`, `AND`, `Not`, `In`, `With`, `Without`, `Some`, `Every`, `None`, `Optional`, ...) só são reconhecidos numa fronteira de camelCase, então campos cujo nome apenas contém uma dessas palavras — `organizationId`, `notes`, `orderId`, `instagramHandle`, `withdrawnAt`, `androidVersion`, `everyoneId` e afins — deixam de ser interpretados errado
+- Usar um sufixo de ordenação/paginação (`Paginated`/`Ordered`/`OrderBy...`), `Distinct` ou `IgnoreConflicts` num prefixo de método dinâmico que não os suporta, ou usar `Or` depois de um bloco `AND` (maiúsculo), agora lança um `VSRepoError` (`RESOLVER`) ao construir o repository, em vez de virar silenciosamente parte do nome do campo
+
+### Corrigido
+- Um filtro de relação (`With`/`Without`/`Some`/`Every`/`None`) combinado com igualdade e `IgnoreCase` (ex.: `findByAddressWithCityEqualsIgnoreCase`) agora aninha corretamente como `{ equals, ignoreCase }`, em vez de perder o wrapper `equals`
 
 ### Documentação
 - Ambos os READMEs documentam o query builder: nova seção "Query builder", uma nova linha na tabela de métodos base, `QUERY_BUILDER` nas tabelas de tipos de erro, e uma observação sobre o builder na seção de Logging
+- Ambos os READMEs documentam `Equals`/`NotEquals`, a regra de fronteira de camelCase para colisões de palavra-chave (com o exemplo de desambiguação via `Equals`/`NotEquals`), e os novos erros explícitos para combinações de sufixo/prefixo não suportadas e para `Or` depois de `AND`
 
 ---
 
