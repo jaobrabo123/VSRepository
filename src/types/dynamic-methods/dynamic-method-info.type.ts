@@ -15,4 +15,5 @@ export type DynamicMethodInfo = {
     updateIndex?: number;
     createIndex?: number;
     whereIndex?: number;
+    originalDynamicMethodName: string;
 };
