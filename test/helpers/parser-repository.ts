@@ -41,6 +41,24 @@ export class ParserRepository extends VSRepository<any, string> {
     @DynamicMethod() declare findByActiveIsFalse: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByNameContainsIgnoreCase: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByNameOptional: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByNameEquals: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByNameNotEquals: (...args: any[]) => Promise<any>;
+
+    // ---- Robustez contra colisão de palavra-chave em nome de campo ----
+    // Campos cujo nome contém, mas não termina em fronteira de camelCase com, uma
+    // palavra-chave do parser (Or/Not/In/With/Every/Optional/...) — o parser não deve
+    // cortar o nome nesses casos (ver dynamic-methods-parser.test.ts).
+    @DynamicMethod() declare findByNotes: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByOrganizationId: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByOrderId: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByInstagramHandle: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByWithdrawnAt: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByAndroidVersion: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByEveryoneId: (...args: any[]) => Promise<any>;
+    // Campo cujo nome REALMENTE termina numa fronteira igual à palavra-chave 'In' — ainda
+    // ambíguo por padrão (vira campo 'check' + operador 'in'); 'Equals'/'NotEquals' desambiguam.
+    @DynamicMethod() declare findByCheckIn: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByCheckInEquals: (...args: any[]) => Promise<any>;
 
     // ---- Operadores lógicos ----
     @DynamicMethod() declare findOneByIdAndEmail: (...args: any[]) => Promise<any>;
@@ -54,6 +72,8 @@ export class ParserRepository extends VSRepository<any, string> {
     @DynamicMethod() declare findByProductsNone: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByAddressWith: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByAddressWithCityStartsWithIgnoreCase: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByAddressWithCityEquals: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByProductsSomeNameEqualsIgnoreCase: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByAddressWithout: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByAddressWithoutCity: (...args: any[]) => Promise<any>;
 

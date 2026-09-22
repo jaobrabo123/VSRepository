@@ -58,6 +58,68 @@ describe("filtros de campo — sem operador (igualdade)", () => {
         await repo.findByNameOptional("João");
         expect(where()).toEqual({ name: "João" });
     });
+
+    it("'findByNameEquals' -> { name: <valor> } (igual a sem sufixo; existe para desambiguar colisões, ver abaixo)", async () => {
+        await repo.findByNameEquals("João");
+        expect(where()).toEqual({ name: "João" });
+    });
+
+    it("'findByNameNotEquals' -> { name: { not: <valor> } } (igual a 'Not', mesma ideia de desambiguação)", async () => {
+        await repo.findByNameNotEquals("João");
+        expect(where()).toEqual({ name: { not: "João" } });
+    });
+});
+
+describe("robustez contra colisão de palavra-chave em nome de campo", () => {
+    // O parser só reconhece uma palavra-chave (Or/And/Not/In/With/Every/Optional/...) quando ela
+    // termina numa fronteira de camelCase: seguida de maiúscula, de caractere não-ASCII, ou (para
+    // sufixos de campo) do fim do nome. Um campo que contém a palavra-chave no meio, sem essa
+    // fronteira, é tratado como um único nome de campo — não é cortado.
+    it("'findByNotes' -> { notes: <valor> } ('Not' no meio de 'Notes' não é a palavra-chave 'Not')", async () => {
+        await repo.findByNotes("anotação");
+        expect(where()).toEqual({ notes: "anotação" });
+    });
+
+    it("'findByOrganizationId' -> { organizationId: <valor> } ('Or' seguido de minúscula não é o operador 'Or')", async () => {
+        await repo.findByOrganizationId("org-1");
+        expect(where()).toEqual({ organizationId: "org-1" });
+    });
+
+    it("'findByOrderId' -> { orderId: <valor> } (mesma ideia: 'Or' de 'Order' não é o operador 'Or')", async () => {
+        await repo.findByOrderId("order-1");
+        expect(where()).toEqual({ orderId: "order-1" });
+    });
+
+    it("'findByInstagramHandle' -> { instagramHandle: <valor> } ('In' seguido de minúscula não é o sufixo 'In')", async () => {
+        await repo.findByInstagramHandle("@joao");
+        expect(where()).toEqual({ instagramHandle: "@joao" });
+    });
+
+    it("'findByWithdrawnAt' -> { withdrawnAt: <valor> } ('With' seguido de minúscula não é o infixo de relação 'With')", async () => {
+        const date = new Date("2026-01-01");
+        await repo.findByWithdrawnAt(date);
+        expect(where()).toEqual({ withdrawnAt: date });
+    });
+
+    it("'findByAndroidVersion' -> { androidVersion: <valor> } ('And' seguido de minúscula não é o operador 'And')", async () => {
+        await repo.findByAndroidVersion("14");
+        expect(where()).toEqual({ androidVersion: "14" });
+    });
+
+    it("'findByEveryoneId' -> { everyoneId: <valor> } ('Every' seguido de minúscula não é o infixo de relação 'Every')", async () => {
+        await repo.findByEveryoneId("everyone-1");
+        expect(where()).toEqual({ everyoneId: "everyone-1" });
+    });
+
+    it("'findByCheckIn' continua ambíguo por padrão -> { check: { in: <valor> } } ('In' no fim de 'CheckIn' É uma fronteira válida)", async () => {
+        await repo.findByCheckIn(["a", "b"]);
+        expect(where()).toEqual({ check: { in: ["a", "b"] } });
+    });
+
+    it("'findByCheckInEquals' desambigua com 'Equals' -> { checkIn: <valor> }", async () => {
+        await repo.findByCheckInEquals("2026-01-01");
+        expect(where()).toEqual({ checkIn: "2026-01-01" });
+    });
 });
 
 describe("filtros de campo — negação e conjuntos", () => {
@@ -260,6 +322,16 @@ describe("filtros de relação — um-para-um/opcional (With/Without)", () => {
                 _with: { city: { startsWith: "Rio", ignoreCase: true } },
             },
         });
+    });
+
+    it("'findByAddressWithCityEquals' -> igualdade dentro de '_with' vem como valor direto (sem objeto operador)", async () => {
+        await repo.findByAddressWithCityEquals("Aracaju");
+        expect(where()).toEqual({ address: { _with: { city: "Aracaju" } } });
+    });
+
+    it("'findByProductsSomeNameEqualsIgnoreCase' -> igualdade + 'IgnoreCase' dentro de '_some' vira { equals, ignoreCase }", async () => {
+        await repo.findByProductsSomeNameEqualsIgnoreCase("Notebook");
+        expect(where()).toEqual({ products: { _some: { name: { equals: "Notebook", ignoreCase: true } } } });
     });
 });
 

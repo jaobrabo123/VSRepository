@@ -145,6 +145,89 @@ describe("@DynamicMethod — resolução de nomes de método inválidos", () => 
             new Fixed(createFakeAdapter<User>());
         }).not.toThrow();
     });
+
+    // Modificadores (Paginated/Ordered/OrderBy, Distinct, IgnoreConflicts) usados num prefixo que
+    // não os suporta agora são rejeitados de forma explícita ao construir o repository, em vez de
+    // virarem silenciosamente parte do nome do campo.
+    it("é lançado (tipo RESOLVER) quando 'Paginated'/'Ordered' é usado num prefixo sem suporte a ordenação/paginação", () => {
+        class Broken extends VSRepository<User, string> {
+            constructor(adapter: VSRepoAdapter<User>) {
+                super({ adapter, pkName: "id" });
+            }
+
+            @DynamicMethod()
+            declare existsByEmailPaginated: (email: string) => Promise<boolean>;
+        }
+
+        try {
+            new Broken(createFakeAdapter<User>());
+            throw new Error("deveria ter lançado VSRepoError");
+        } catch (err) {
+            expect(err instanceof VSRepoError).toBe(true);
+            expect((err as VSRepoError).type).toBe(VSRepoErrorType.RESOLVER);
+            expect((err as VSRepoError).message).toContain("doesn't support the ordering or pagination modifiers");
+        }
+    });
+
+    it("é lançado (tipo RESOLVER) quando 'Distinct' é usado num prefixo sem suporte (ex.: 'findOneBy')", () => {
+        class Broken extends VSRepository<User, string> {
+            constructor(adapter: VSRepoAdapter<User>) {
+                super({ adapter, pkName: "id" });
+            }
+
+            @DynamicMethod()
+            declare findOneByEmailDistinctName: (email: string) => Promise<User | null>;
+        }
+
+        try {
+            new Broken(createFakeAdapter<User>());
+            throw new Error("deveria ter lançado VSRepoError");
+        } catch (err) {
+            expect(err instanceof VSRepoError).toBe(true);
+            expect((err as VSRepoError).type).toBe(VSRepoErrorType.RESOLVER);
+            expect((err as VSRepoError).message).toContain('doesn\'t support the "Distinct" modifier');
+        }
+    });
+
+    it("é lançado (tipo RESOLVER) quando 'IgnoreConflicts' é usado num prefixo sem suporte (ex.: 'create')", () => {
+        class Broken extends VSRepository<User, string> {
+            constructor(adapter: VSRepoAdapter<User>) {
+                super({ adapter, pkName: "id" });
+            }
+
+            @DynamicMethod()
+            declare createIgnoreConflicts: (data: Partial<User>) => Promise<User>;
+        }
+
+        try {
+            new Broken(createFakeAdapter<User>());
+            throw new Error("deveria ter lançado VSRepoError");
+        } catch (err) {
+            expect(err instanceof VSRepoError).toBe(true);
+            expect((err as VSRepoError).type).toBe(VSRepoErrorType.RESOLVER);
+            expect((err as VSRepoError).message).toContain('doesn\'t support the "IgnoreConflicts" modifier');
+        }
+    });
+
+    it("é lançado (tipo RESOLVER) quando o operador 'Or' aparece depois de um 'AND' (maiúsculo) no nome", () => {
+        class Broken extends VSRepository<User, string> {
+            constructor(adapter: VSRepoAdapter<User>) {
+                super({ adapter, pkName: "id" });
+            }
+
+            @DynamicMethod()
+            declare findByActiveANDNameOrAge: (active: boolean, name: string, age: number) => Promise<User[]>;
+        }
+
+        try {
+            new Broken(createFakeAdapter<User>());
+            throw new Error("deveria ter lançado VSRepoError");
+        } catch (err) {
+            expect(err instanceof VSRepoError).toBe(true);
+            expect((err as VSRepoError).type).toBe(VSRepoErrorType.RESOLVER);
+            expect((err as VSRepoError).message).toContain('"Or" cannot appear after an "AND"');
+        }
+    });
 });
 
 // =============================================================================
