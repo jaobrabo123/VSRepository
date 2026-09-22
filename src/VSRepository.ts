@@ -205,6 +205,24 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
         return this.adapter.getDbClient();
     }
 
+    /**
+     * Creates a fluent {@link VSQueryBuilder} for queries assembled at runtime (optional filters,
+     * user-controlled ordering and pagination, ...). Nothing runs until one of its terminal methods
+     * (`getResult`, `getCount`, `getResultAndCount`, ...) is called.
+     *
+     * @param db Client or transaction the query runs on. Defaults to the repository's client; it can
+     * also be set later with {@link VSQueryBuilder.setDb}.
+     *
+     * @example
+     * ```typescript
+     * const users = await userRepository
+     *     .createQueryBuilder()
+     *     .where({ active: true })
+     *     .orderBy({ createdAt: "desc" })
+     *     .limit(10)
+     *     .getResult();
+     * ```
+     */
     createQueryBuilder(db?: OrmTypes["dbClient"] | OrmTypes["dbTransaction"]): VSQueryBuilder<Entity, OrmTypes> {
         return new VSQueryBuilder(
             db ?? this.adapter.getDbClient(),

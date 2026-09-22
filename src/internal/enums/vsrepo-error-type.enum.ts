@@ -16,6 +16,6 @@ export enum VSRepoErrorType {
     BASE = "BASE",
     /** Failure raised by a `VSRepoAdapter` while talking to the underlying ORM/database. */
     ADAPTER = "ADAPTER",
-
+    /** An invalid argument was passed to a `VSQueryBuilder` method (e.g. a negative `limit`) */
     QUERY_BUILDER = "QUERY_BUILDER",
 }
