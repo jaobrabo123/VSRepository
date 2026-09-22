@@ -315,8 +315,6 @@ describe("métodos de encadeamento", () => {
         expect(qb.select({ id: true })).toBe(qb);
         expect(qb.relations({ address: true })).toBe(qb);
         expect(qb.where({ active: true })).toBe(qb);
-        expect(qb.andWhere({ active: true })).toBe(qb);
-        expect(qb.orWhere({ active: false })).toBe(qb);
         expect(qb.orderBy({ name: "asc" })).toBe(qb);
         expect(qb.limit(1)).toBe(qb);
         expect(qb.offset(1)).toBe(qb);
@@ -324,90 +322,72 @@ describe("métodos de encadeamento", () => {
         expect(qb.see("all")).toBe(qb);
     });
 
-    describe("where / andWhere / orWhere", () => {
+    describe("where", () => {
         beforeEach(() => {
             fakeAdapter.findMany.mockResolvedValue([]);
         });
 
-        it("'where' substitui o filtro anterior", async () => {
+        const whereSentToAdapter = () => fakeAdapter.findMany.mock.calls[0]![0];
+
+        it("repassa o filtro para o adapter", async () => {
             await userRepository
                 .createQueryBuilder()
-                .where({ name: "João" })
+                .where({ active: true, balance: { gte: 100 }, name: { contains: "Jo", ignoreCase: true } })
+                .getResult();
+
+            expect(whereSentToAdapter()).toEqual({
+                active: true,
+                balance: { gte: 100 },
+                name: { contains: "Jo", ignoreCase: true },
+            });
+        });
+
+        it("aceita os operadores lógicos 'AND', 'OR' e 'NOT'", async () => {
+            const where = {
+                active: true,
+                AND: [{ balance: { gte: 100 } }],
+                OR: [{ name: "Maria" }, { email: "maria@email.com" }],
+                NOT: { userType: UserType.ADMIN },
+            };
+
+            await userRepository.createQueryBuilder().where(where).getResult();
+
+            expect(whereSentToAdapter()).toEqual(where);
+        });
+
+        it("aceita filtros de relação", async () => {
+            const where = {
+                products: { _some: { name: "Notebook" } },
+                address: { _with: { city: "Aracaju" } },
+            };
+
+            await userRepository.createQueryBuilder().where(where).getResult();
+
+            expect(whereSentToAdapter()).toEqual(where);
+        });
+
+        it("chamar 'where' de novo substitui o filtro anterior", async () => {
+            await userRepository
+                .createQueryBuilder()
+                .where({ name: "João", OR: [{ active: true }] })
                 .where({ email: "joao@email.com" })
                 .getResult();
 
-            expect(fakeAdapter.findMany.mock.calls[0]![0]).toEqual({ email: "joao@email.com" });
+            expect(whereSentToAdapter()).toEqual({ email: "joao@email.com" });
         });
 
-        it("'andWhere' sem 'where' prévio cria o bloco 'AND'", async () => {
-            await userRepository.createQueryBuilder().andWhere({ active: true }).getResult();
+        it("sem 'where' o filtro enviado ao adapter é vazio", async () => {
+            await userRepository.createQueryBuilder().getResult();
 
-            expect(fakeAdapter.findMany.mock.calls[0]![0]).toEqual({ AND: [{ active: true }] });
+            expect(whereSentToAdapter()).toEqual({});
         });
 
-        it("'andWhere' acrescenta ao 'AND' sem alterar os outros campos do 'where'", async () => {
-            await userRepository
-                .createQueryBuilder()
-                .where({ userType: UserType.ADMIN })
-                .andWhere({ active: true })
-                .andWhere({ balance: { gt: 10 } })
-                .getResult();
+        it("não altera o objeto recebido", async () => {
+            const where = { active: true, OR: [{ name: "Maria" }] };
 
-            expect(fakeAdapter.findMany.mock.calls[0]![0]).toEqual({
-                userType: UserType.ADMIN,
-                AND: [{ active: true }, { balance: { gt: 10 } }],
-            });
-        });
+            await softDeletableRepository.createQueryBuilder().where(where).getResult();
 
-        it("'andWhere' converte um 'AND' que era um objeto único em array, mantendo o que já existia", async () => {
-            await userRepository
-                .createQueryBuilder()
-                .where({ AND: { active: true } })
-                .andWhere({ likesVSRepo: true })
-                .getResult();
-
-            expect(fakeAdapter.findMany.mock.calls[0]![0]).toEqual({
-                AND: [{ active: true }, { likesVSRepo: true }],
-            });
-        });
-
-        it("'orWhere' sem 'where' prévio cria o bloco 'OR'", async () => {
-            await userRepository.createQueryBuilder().orWhere({ active: false }).getResult();
-
-            expect(fakeAdapter.findMany.mock.calls[0]![0]).toEqual({ OR: [{ active: false }] });
-        });
-
-        it("'orWhere' acrescenta ao 'OR' e converte um 'OR' de objeto único em array", async () => {
-            await userRepository
-                .createQueryBuilder()
-                .where({ OR: { name: "João" } })
-                .orWhere({ name: "Maria" })
-                .orWhere({ name: "Ana" })
-                .getResult();
-
-            expect(fakeAdapter.findMany.mock.calls[0]![0]).toEqual({
-                OR: [{ name: "João" }, { name: "Maria" }, { name: "Ana" }],
-            });
-        });
-
-        it("'andWhere' e 'orWhere' podem ser combinados no mesmo filtro", async () => {
-            await userRepository
-                .createQueryBuilder()
-                .andWhere({ active: true })
-                .orWhere({ userType: UserType.ADMIN })
-                .orWhere({ balance: { gte: 1000 } })
-                .getResult();
-
-            expect(fakeAdapter.findMany.mock.calls[0]![0]).toEqual({
-                AND: [{ active: true }],
-                OR: [{ userType: UserType.ADMIN }, { balance: { gte: 1000 } }],
-            });
-        });
-
-        it("'where' depois de 'andWhere' descarta o que foi acumulado", async () => {
-            await userRepository.createQueryBuilder().andWhere({ active: true }).where({ name: "João" }).getResult();
-
-            expect(fakeAdapter.findMany.mock.calls[0]![0]).toEqual({ name: "João" });
+            expect(where).toEqual({ active: true, OR: [{ name: "Maria" }] });
         });
     });
 
@@ -522,9 +502,10 @@ describe("validação dos argumentos", () => {
         ["relations", "relations", qb => qb.relations(true as any)],
         ["relations (valor inválido em campo)", "products", qb => qb.relations({ products: "yes" } as any)],
         ["where", "where", qb => qb.where("id = 1" as any)],
+        ["where (null)", "where", qb => qb.where(null as any)],
         ["where (AND inválido)", "AND", qb => qb.where({ AND: "x" } as any)],
-        ["andWhere", "where", qb => qb.andWhere("x" as any)],
-        ["orWhere", "where", qb => qb.orWhere(null as any)],
+        ["where (OR inválido)", "OR", qb => qb.where({ OR: "x" } as any)],
+        ["where (NOT inválido)", "NOT", qb => qb.where({ NOT: 5 } as any)],
         ["orderBy", "order", qb => qb.orderBy("name" as any)],
         ["orderBy (direção inválida)", "order", qb => qb.orderBy({ name: "up" } as any)],
         ["orderBy (elemento do array inválido)", "order", qb => qb.orderBy([{ name: "asc" }, { name: "up" }] as any)],
@@ -626,19 +607,39 @@ describe("soft-delete (see)", () => {
             expect(fakeAdapter.findMany.mock.calls[0]![0]).toEqual({ deletedAt: null });
         });
 
-        it("o filtro é combinado com 'andWhere'/'orWhere' sem perdê-los", async () => {
+        it("o filtro de soft-delete é aplicado por fora do 'OR' do filtro do usuário", async () => {
             await softDeletableRepository
                 .createQueryBuilder()
-                .andWhere({ active: true })
-                .orWhere({ userType: UserType.ADMIN })
+                .where({ active: true, OR: [{ userType: UserType.ADMIN }, { name: "Maria" }] })
                 .getResult();
 
+            // active AND (userType = ADMIN OR name = "Maria") AND deletedAt IS NULL
             expect(fakeAdapter.findMany.mock.calls[0]![0]).toEqual({
-                AND: [{ active: true }],
-                OR: [{ userType: UserType.ADMIN }],
+                active: true,
+                OR: [{ userType: UserType.ADMIN }, { name: "Maria" }],
                 deletedAt: null,
             });
         });
+
+        it.each(terminals)(
+            "'%s' recebe o mesmo filtro (com 'OR' e soft-delete) em todas as chamadas ao adapter",
+            async (_name, run, adapterMocks) => {
+                await run(
+                    softDeletableRepository
+                        .createQueryBuilder()
+                        .where({ active: true, OR: [{ name: "João" }, { name: "Maria" }] })
+                        .see("removed"),
+                );
+
+                for (const mock of adapterMocks()) {
+                    expect(mock.mock.calls[0]![0]).toEqual({
+                        active: true,
+                        OR: [{ name: "João" }, { name: "Maria" }],
+                        deletedAt: { not: null },
+                    });
+                }
+            },
+        );
 
         it("chamar 'see' de novo substitui o modo anterior", async () => {
             await softDeletableRepository.createQueryBuilder().see("all").see("removed").getResult();
@@ -757,18 +758,30 @@ describe("clone()", () => {
         );
     });
 
+    it("preserva o filtro do original, inclusive com 'OR'", async () => {
+        const original = userRepository
+            .createQueryBuilder()
+            .where({ active: true, OR: [{ name: "João" }, { name: "Maria" }] });
+
+        await original.clone().getResult();
+
+        expect(fakeAdapter.findMany.mock.calls[0]![0]).toEqual({
+            active: true,
+            OR: [{ name: "João" }, { name: "Maria" }],
+        });
+    });
+
     it("alterar o clone não afeta o original", async () => {
         const original = userRepository
             .createQueryBuilder()
             .where({ active: true })
-            .andWhere({ balance: { gt: 1 } })
             .select({ id: true, address: { city: true } })
             .limit(10)
             .distinctOn("name");
 
         original
             .clone()
-            .andWhere({ likesVSRepo: true })
+            .where({ balance: { gt: 1 } })
             .select({ email: true })
             .limit(99)
             .offset(1)
@@ -777,7 +790,7 @@ describe("clone()", () => {
         await original.getResult();
 
         expect(fakeAdapter.findMany).toHaveBeenCalledWith(
-            { active: true, AND: [{ balance: { gt: 1 } }] },
+            { active: true },
             {
                 select: { id: true, address: { city: true } },
                 pagination: { limit: 10 },
@@ -792,7 +805,7 @@ describe("clone()", () => {
         const clone = original.clone();
 
         original
-            .andWhere({ balance: { gt: 1 } })
+            .where({ balance: { gt: 1 } })
             .select({ name: true })
             .limit(1);
         await clone.getResult();
@@ -800,20 +813,18 @@ describe("clone()", () => {
         expect(fakeAdapter.findMany).toHaveBeenCalledWith({ active: true }, { select: { id: true }, db: dbClient });
     });
 
-    it("copia o filtro aninhado sem compartilhar referências, preservando datas", async () => {
+    it("preserva valores como 'Date' no filtro do clone", async () => {
         const since = new Date("2026-01-01T00:00:00.000Z");
         const original = userRepository.createQueryBuilder().where({ createdAt: { gte: since } });
 
-        const clone = original.clone();
-        await clone.getResult();
+        await original.clone().getResult();
 
         const [where] = fakeAdapter.findMany.mock.calls[0]!;
         const gte = (where as any).createdAt.gte;
-        // 'types.isDate' em vez de 'instanceof': o 'structuredClone' devolve uma 'Date' do realm do Node,
-        // diferente da 'Date' do sandbox do Jest, então 'toBeInstanceOf(Date)' falharia
+        // 'types.isDate' em vez de 'instanceof': a mesclagem/clonagem pode devolver uma 'Date' de outro realm
+        // do Node, diferente da 'Date' do sandbox do Jest, então 'toBeInstanceOf(Date)' não é confiável
         expect(types.isDate(gte)).toBe(true);
         expect(gte.getTime()).toBe(since.getTime());
-        expect(gte).not.toBe(since);
     });
 
     it("preserva o modo do 'see'", async () => {
@@ -955,6 +966,20 @@ describe("logs", () => {
             });
         });
 
+        it("loga o 'where' final, já com o filtro de soft-delete por fora do 'OR' do usuário", async () => {
+            const logger = createFakeLogger();
+
+            await createBuilder(logger)
+                .where({ active: true, OR: [{ name: "João" }, { name: "Maria" }] })
+                .getCount();
+
+            expect(logger.logDebug).toHaveBeenCalledWith("VSQueryBuilder: getCount", {
+                see: "active",
+                where: { active: true, OR: [{ name: "João" }, { name: "Maria" }], deletedAt: null },
+                options: {},
+            });
+        });
+
         it("nunca inclui o 'db' (client/transação do ORM) no que é logado", async () => {
             const logger = createFakeLogger();
             const qb = createBuilder(logger);
@@ -984,8 +1009,6 @@ describe("logs", () => {
             qb.select({ id: true })
                 .relations({ address: true })
                 .where({ active: true })
-                .andWhere({ balance: { gt: 1 } })
-                .orWhere({ name: "João" })
                 .orderBy({ name: "asc" })
                 .limit(10)
                 .offset(5)
@@ -995,9 +1018,7 @@ describe("logs", () => {
             expect(logger.logDebug.mock.calls).toEqual([
                 ["VSQueryBuilder: select", { id: true }],
                 ["VSQueryBuilder: relations", { address: true }],
-                ["VSQueryBuilder: where", { active: true, AND: [{ balance: { gt: 1 } }], OR: [{ name: "João" }] }],
-                ["VSQueryBuilder: andWhere", { balance: { gt: 1 } }],
-                ["VSQueryBuilder: orWhere", { name: "João" }],
+                ["VSQueryBuilder: where", { active: true }],
                 ["VSQueryBuilder: orderBy", { name: "asc" }],
                 ["VSQueryBuilder: limit 10", undefined],
                 ["VSQueryBuilder: offset 5", undefined],

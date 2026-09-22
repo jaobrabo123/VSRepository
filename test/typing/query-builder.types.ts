@@ -50,8 +50,6 @@ async function _typeChecks(): Promise<void> {
         .select({ id: true })
         .relations({ address: true })
         .where({ active: true })
-        .andWhere({ active: true })
-        .orWhere({ active: false })
         .orderBy({ name: "asc" })
         .limit(1)
         .offset(1)
@@ -81,15 +79,20 @@ async function _typeChecks(): Promise<void> {
     // @ts-expect-error 'nope' não é uma relação de User
     qb.relations({ nope: true });
 
-    // --- where / andWhere / orWhere ------------------------------------------
+    // --- where ---------------------------------------------------------------
 
     qb.where({ name: "João" }); // ok
     qb.where({ balance: { gt: 10, lte: 100 } }); // ok — operadores de número
     qb.where({ name: { contains: "Jo", ignoreCase: true } }); // ok — operadores de string
     qb.where({ createdAt: { between: [new Date(), new Date()] } }); // ok — operadores de data
-    qb.where({ AND: [{ active: true }], OR: { name: "João" }, NOT: [{ userType: "ADMIN" as User["userType"] }] }); // ok
     qb.where({ products: { _some: { name: "x" } } }); // ok — filtro de relação (array)
     qb.where({ address: { _with: { city: "x" } } }); // ok — filtro de relação (objeto)
+
+    qb.where({ AND: [{ active: true }], OR: { name: "João" }, NOT: [{ userType: "ADMIN" as User["userType"] }] }); // ok — operadores lógicos
+    qb.where({ active: true, OR: [{ name: "João" }, { email: "joao@email.com" }] }); // ok
+
+    // @ts-expect-error 'nope' não é um campo dentro do 'OR'
+    qb.where({ OR: [{ nope: 1 }] });
 
     // @ts-expect-error 'nope' não é um campo de User
     qb.where({ nope: 1 });
@@ -99,18 +102,6 @@ async function _typeChecks(): Promise<void> {
 
     // @ts-expect-error 'contains' só existe em campos string
     qb.where({ balance: { contains: "1" } });
-
-    qb.andWhere({ active: true }); // ok
-    qb.orWhere({ balance: { gt: 1 } }); // ok
-
-    // @ts-expect-error 'andWhere' recebe um filtro simples, sem 'AND'/'OR'/'NOT' aninhados
-    qb.andWhere({ AND: [{ active: true }] });
-
-    // @ts-expect-error 'orWhere' recebe um filtro simples, sem 'AND'/'OR'/'NOT' aninhados
-    qb.orWhere({ OR: [{ active: true }] });
-
-    // @ts-expect-error 'nope' não é um campo de User
-    qb.andWhere({ nope: 1 });
 
     // --- orderBy -------------------------------------------------------------
 
