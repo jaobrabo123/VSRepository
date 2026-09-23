@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 🇧🇷 Português | [🇺🇸 English](./dynamic-methods.md)
 
 [← Voltar para o Sumário](./README.pt-BR.md)
@@ -252,3 +254,5 @@ await userRepository.findOneByEmail("john@example.com", { relations: { address: 
 - Chaves inexistentes em `select`/`relations` (em qualquer profundidade) são rejeitadas em tempo de compilação, e o editor as sugere via autocomplete — igual a um parâmetro `MethodOptions<Entity>` comum.
 - Funciona junto com as [options do decorador](#options-do-decorador) (`proxyTo`, `injectOrdering`).
 - Foi pensado para métodos dinâmicos que retornam entidades (`findBy…`, `findOneBy…`, `findWhere…`, …). Os que não retornam — `countBy…`, `existsBy…` — mantêm a assinatura normal.
+
+[⬆️ Voltar ao topo](#top)

@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 🇺🇸 English | [🇧🇷 Português](./writing-an-adapter.pt-BR.md)
 
 [← Back to the table of contents](./README.md)
@@ -154,3 +156,5 @@ export class MyOrmAdapter<T> extends VSRepoAdapter<T> {
 | `getLogLevel()`                                      | Returns the logger's configured `VSLogLevel`.                                                                                                                                                                                               |
 
 This is purely a convenience for adapter authors — nothing in the core requires your adapter to use it.
+
+[⬆️ Back to top](#top)

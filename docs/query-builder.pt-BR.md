@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 🇧🇷 Português | [🇺🇸 English](./query-builder.md)
 
 [← Voltar para o Sumário](./README.pt-BR.md)
@@ -176,3 +178,5 @@ Por exemplo, `.where({ active: true }).orderBy({ createdAt: "desc" }).limit(20).
 [DEBUG] [UserRepositoryLogger] Starting to run query builder getResultAndCount...
 [DEBUG] [UserRepositoryLogger] Took 0.11ms to run query builder getResultAndCount
 ```
+
+[⬆️ Voltar ao topo](#top)

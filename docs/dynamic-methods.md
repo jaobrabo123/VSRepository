@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 🇺🇸 English | [🇧🇷 Português](./dynamic-methods.pt-BR.md)
 
 [← Back to the table of contents](./README.md)
@@ -252,3 +254,5 @@ await userRepository.findOneByEmail("john@example.com", { relations: { address: 
 - Unknown keys in `select`/`relations` (at any depth) are rejected at compile time, and the editor autocompletes them — just like with a plain `MethodOptions<Entity>` parameter.
 - It works together with the [decorator options](#decorator-options) (`proxyTo`, `injectOrdering`).
 - It is meant for dynamic methods that return entities (`findBy…`, `findOneBy…`, `findWhere…`, …). Methods that don't — `countBy…`, `existsBy…` — keep their regular signature.
+
+[⬆️ Back to top](#top)

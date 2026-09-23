@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 🇧🇷 Português | [🇺🇸 English](./logging.md)
 
 [← Voltar para o Sumário](./README.pt-BR.md)
@@ -26,3 +28,5 @@ super({
 | `ERROR`         | Falhas lançadas durante a execução de uma operação.                                                     |
 
 O [query builder](./query-builder.pt-BR.md#logs-do-query-builder) usa o mesmo logger: em `DEBUG` ele também registra cada chamada encadeada e a query resolvida de cada método terminal, e cada método terminal tem o tempo medido como qualquer outra operação.
+
+[⬆️ Voltar ao topo](#top)

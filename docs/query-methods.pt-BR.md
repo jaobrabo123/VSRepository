@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 🇧🇷 Português | [🇺🇸 English](./query-methods.md)
 
 [← Voltar para o Sumário](./README.pt-BR.md)
@@ -93,3 +95,5 @@ const user = await userRepository.query<User | null>('SELECT * FROM "user" WHERE
 | `singleResult` | `boolean` | `false`                     | Quando `true`, transforma um resultado em array no seu primeiro elemento (`null` se vazio). Não tem efeito em resultados que não são array (ex.: o número de linhas afetadas de uma query `modifying`). |
 
 Assim como os métodos base, dinâmicos e query, `query()` aceita `db` em `options` para participar de um bloco `transaction()`.
+
+[⬆️ Voltar ao topo](#top)

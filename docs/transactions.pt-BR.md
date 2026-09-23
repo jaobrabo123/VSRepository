@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 🇧🇷 Português | [🇺🇸 English](./transactions.md)
 
 [← Voltar para o Sumário](./README.pt-BR.md)
@@ -89,3 +91,5 @@ await userRepository.transaction(async tx => {
     return qb.getResult();
 });
 ```
+
+[⬆️ Voltar ao topo](#top)

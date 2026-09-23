@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 🇺🇸 English | [🇧🇷 Português](./select-and-relations.pt-BR.md)
 
 [← Back to the table of contents](./README.md)
@@ -74,3 +76,5 @@ const users: InferMethodReturn<User[], typeof options> = await userRepository.ge
 - Keep the options' literal types, using `satisfies MethodOptions<T>` (as above) or passing them inline. If they are typed as a plain `MethodOptions<T>` (e.g. `const options: MethodOptions<User> = ...`), nothing is known at compile time and `T` is returned unchanged.
 - Optional (`?`) fields and relations of the entity stay optional.
 - To get this inference directly on dynamic methods, see [Strict return typing with `InferMethodType`](./dynamic-methods.md#strict-return-typing-with-infermethodtype).
+
+[⬆️ Back to top](#top)

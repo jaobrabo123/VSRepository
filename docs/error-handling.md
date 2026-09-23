@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 🇺🇸 English | [🇧🇷 Português](./error-handling.pt-BR.md)
 
 [← Back to the table of contents](./README.md)
@@ -118,3 +120,5 @@ console.log(AdapterErrorCode.UNIQUE_CONSTRAINT_VIOLATION); // "UNIQUE_CONSTRAINT
 ### `VSRepoError` vs. raw ORM errors
 
 Non-adapter usage/config mistakes throw the base `VSRepoError`. Failures raised _by the underlying ORM_ while an adapter method runs are **wrapped** in `VSRepoAdapterError` (classified by an `AdapterErrorCode`, with the original error preserved in `originalError`) instead of propagating raw — this is what makes callers independent of any specific ORM's error shape.
+
+[⬆️ Back to top](#top)

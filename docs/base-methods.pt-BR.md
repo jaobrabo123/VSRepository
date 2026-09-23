@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 # Métodos base, configuração & soft-delete
 
 🇧🇷 Português | [🇺🇸 English](./base-methods.md)
@@ -138,3 +140,5 @@ Vale notar que vários ORMs (Drizzle, MikroORM, TypeORM) representam colunas `de
 ### Escrevendo um adapter
 
 O `VSRepoAdapter` espelha as mesmas 8 operações (`incrementOne`, `decrementOne`, `multiplyOne`, `divideOne`, `sum`, `average`, `min`, `max` — veja [Escrevendo seu próprio adapter](./writing-an-adapter.pt-BR.md#escrevendo-seu-próprio-adapter)). Cada adapter traduz isso para o que o ORM/banco considera "nativo": o Prisma tem um formato de update embutido (`{ field: { increment: value } }`) e uma chamada `aggregate()`; outros ORMs em geral precisam de um `QueryBuilder`/expressão `sql` raw (ex.: `SET field = field * :value`, `SELECT SUM(field) ...`). Os métodos atômicos precisam retornar o registro refletindo o estado _depois_ do write — se a API de update atômico do ORM só retorna a quantidade de linhas afetadas, faça uma leitura extra em vez de devolver uma cópia desatualizada que já estava em memória.
+
+[⬆️ Voltar ao topo](#top)

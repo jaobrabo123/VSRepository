@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 # Base methods, configuration & soft-delete
 
 🇺🇸 English | [🇧🇷 Português](./base-methods.pt-BR.md)
@@ -138,3 +140,5 @@ Note that several ORMs (Drizzle, MikroORM, TypeORM) represent `decimal`/`numeric
 ### Writing an adapter
 
 `VSRepoAdapter` mirrors the same 8 operations (`incrementOne`, `decrementOne`, `multiplyOne`, `divideOne`, `sum`, `average`, `min`, `max` — see [Writing your own adapter](./writing-an-adapter.md#writing-your-own-adapter)). Each adapter translates them into whatever its ORM/database considers "native": Prisma has a built-in `{ field: { increment: value } }` update shape and an `aggregate()` call; other ORMs typically need a `QueryBuilder`/raw-`sql` expression (e.g. `SET field = field * :value`, `SELECT SUM(field) ...`) instead. The atomic methods must return the record reflecting the state _after_ the write — if the ORM's atomic-update API only returns an affected-row count, issue a follow-up read rather than returning a stale in-memory copy.
+
+[⬆️ Back to top](#top)

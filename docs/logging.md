@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 🇺🇸 English | [🇧🇷 Português](./logging.pt-BR.md)
 
 [← Back to the table of contents](./README.md)
@@ -49,3 +51,5 @@ If that same call takes longer than `logSlowThresholdMs` (300ms by default), the
 ```
 
 The operation name in these lines (`save`, `findByEmail`, `getResultAndCount`, ...) is whatever base method, dynamic method, or query builder terminal method was called, so grepping the log for `Took ` surfaces every slow operation across the repository regardless of which method produced it.
+
+[⬆️ Back to top](#top)

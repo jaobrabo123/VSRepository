@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 🇺🇸 English | [🇧🇷 Português](./utility-types.pt-BR.md)
 
 [← Back to the table of contents](./README.md)
@@ -89,3 +91,5 @@ const chained: Ordering<User> = [{ name: "asc" }, { createdAt: "desc" }];
 
 await userRepository.getAll({ order: chained });
 ```
+
+[⬆️ Back to top](#top)

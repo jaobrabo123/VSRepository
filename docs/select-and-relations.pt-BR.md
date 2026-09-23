@@ -1,3 +1,5 @@
+<a id="top"></a>
+
 🇧🇷 Português | [🇺🇸 English](./select-and-relations.md)
 
 [← Voltar para o Sumário](./README.pt-BR.md)
@@ -74,3 +76,5 @@ const users: InferMethodReturn<User[], typeof options> = await userRepository.ge
 - Mantenha os tipos literais das options, usando `satisfies MethodOptions<T>` (como acima) ou passando-as inline. Se estiverem tipadas como um `MethodOptions<T>` genérico (ex.: `const options: MethodOptions<User> = ...`), nada é conhecido em tempo de compilação e `T` é retornado sem alterações.
 - Campos e relações opcionais (`?`) da entidade continuam opcionais.
 - Para ter essa inferência direto nos métodos dinâmicos, veja [Tipagem de retorno restrita com `InferMethodType`](./dynamic-methods.pt-BR.md#tipagem-de-retorno-restrita-com-infermethodtype).
+
+[⬆️ Voltar ao topo](#top)
