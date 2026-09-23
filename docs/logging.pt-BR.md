@@ -1,6 +1,6 @@
 🇧🇷 Português | [🇺🇸 English](./logging.md)
 
-[← Voltar para o README principal](../README.pt-BR.md)
+[← Voltar para o Sumário](./README.pt-BR.md)
 
 # Logging
 

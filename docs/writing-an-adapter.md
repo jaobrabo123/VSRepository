@@ -1,6 +1,6 @@
 🇺🇸 English | [🇧🇷 Português](./writing-an-adapter.pt-BR.md)
 
-[← Back to the main README](../README.md)
+[← Back to the table of contents](./README.md)
 
 # Writing your own adapter
 

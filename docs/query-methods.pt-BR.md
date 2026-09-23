@@ -1,6 +1,6 @@
 🇧🇷 Português | [🇺🇸 English](./query-methods.md)
 
-[← Voltar para o README principal](../README.pt-BR.md)
+[← Voltar para o Sumário](./README.pt-BR.md)
 
 # Query methods (SQL raw)
 
