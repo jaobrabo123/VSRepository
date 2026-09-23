@@ -14,10 +14,10 @@ class UserRepository extends VSRepository<User, string> {
     declare findByEmail: (email: string, options?: MethodOptions<User>) => Promise<User[]>;
 
     @DynamicMethod()
-    declare findOneByEmail: (email: string) => Promise<User | null>;
+    declare findOneByEmail: (email: string, options?: MethodOptions<User>) => Promise<User | null>;
 
     @DynamicMethod()
-    declare updateById: (id: string, data: DeepPartial<User>) => Promise<User>;
+    declare updateById: (id: string, data: DeepPartial<User>, options?: MethodOptions<User>) => Promise<User>;
 
     // Where-based: VSRepoWhere<T> as the first param, pagination penultimate, MethodOptions last
     @DynamicMethod()
@@ -38,42 +38,44 @@ class UserRepository extends VSRepository<User, string> {
 }
 ```
 
+> **`MethodOptions` is always accepted:** every dynamic method, whatever its prefix, accepts an optional `MethodOptions<Entity, OrmTypes>` (`select`, `relations`, `see`, `db`, ...) as its **last** argument — the resolver treats any argument beyond what the name requires as `MethodOptions` and validates it as such. You still need to **declare it in the TS signature** for TypeScript to let you pass it (as in every example above); the examples further down sometimes omit it for brevity when demonstrating something else, but it's available on all of them too.
+
 > Want the return type to follow the `select`/`relations` you pass, instead of always being the whole entity? Declare the method with [`InferMethodType`](#strict-return-typing-with-infermethodtype).
 
 ## Available prefixes
 
-| Prefix                     | Adapter method        | Notes                                                                                                                                   |
-| -------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `findBy`                   | `findMany`            | Field filters follow the prefix.                                                                                                        |
-| `findOneBy`                | `findOne`             | Field filters follow the prefix; single result.                                                                                         |
-| `findOneOrThrowBy`         | `findOneOrThrow`      | Throws if no record is found.                                                                                                           |
-| `findOneOrThrow`           | `findOneOrThrow`      | No field filters; applies only soft-delete/`see`.                                                                                       |
-| `findOneOrThrowWhere`      | `findOneOrThrow`      | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
-| `findWhere`                | `findMany`            | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
-| `findOneWhere`             | `findOne`             | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
-| `findOne`                  | `findOne`             | No field filters; applies only soft-delete/`see`.                                                                                       |
-| `countBy`                  | `count`               | Field filters follow the prefix.                                                                                                        |
-| `countWhere`               | `count`               | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
-| `count`                    | `count`               | No field filters.                                                                                                                       |
-| `existsBy`                 | `exists`              | Returns `boolean`.                                                                                                                      |
-| `existsWhere`              | `exists`              | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
-| `create`                   | `create`              | Receives `DeepPartial<Entity>` as argument.                                                                                             |
-| `createMany`               | `createMany`          | Receives `DeepPartial<Entity>[]` as argument; supports `IgnoreConflicts`.                                                               |
-| `createManyReturning`      | `createManyReturning` | Receives `DeepPartial<Entity>[]` as argument; supports `IgnoreConflicts`; returns the created records (`T[]`) instead of `CountResult`. |
-| `updateBy`                 | `update`              | Field filters + `DeepPartial<Entity>` as argument.                                                                                      |
-| `updateWhere`              | `update`              | Receives a `VSRepoWhere<T>` as the first argument, then `DeepPartial<Entity>`.                                                          |
-| `updateManyBy`             | `updateMany`          | Field filters + `DeepPartial<Entity>`.                                                                                                  |
-| `updateManyWhere`          | `updateMany`          | Receives a `VSRepoWhere<T>` as the first argument, then `DeepPartial<Entity>`.                                                          |
-| `updateManyReturningBy`    | `updateManyReturning` | Field filters + `DeepPartial<Entity>`; returns updated records.                                                                         |
-| `updateManyReturningWhere` | `updateManyReturning` | Receives a `VSRepoWhere<T>` as the first argument, then `DeepPartial<Entity>`; returns updated records.                                 |
-| `upsertBy`                 | `upsert`              | Field filters + `create`/`update` payloads.                                                                                             |
-| `upsertWhere`              | `upsert`              | Receives a `VSRepoWhere<T>` as the first argument, then `create`/`update` payloads.                                                     |
-| `deleteBy`                 | `delete`              | Field filters follow the prefix.                                                                                                        |
-| `deleteWhere`              | `delete`              | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
-| `deleteManyBy`             | `deleteMany`          | Field filters follow the prefix.                                                                                                        |
-| `deleteManyWhere`          | `deleteMany`          | Receives a `VSRepoWhere<T>` as the first argument.                                                                                      |
-| `deleteManyReturningBy`    | `deleteManyReturning` | Field filters follow the prefix; returns deleted records.                                                                               |
-| `deleteManyReturningWhere` | `deleteManyReturning` | Receives a `VSRepoWhere<T>` as the first argument; returns deleted records.                                                             |
+| Prefix                     | Adapter method         | Returns          | Notes                                                                               |
+| --------------------------- | ---------------------- | ----------------- | ------------------------------------------------------------------------------------ |
+| `findBy`                   | `findMany`              | `Entity[]`        | Field filters follow the prefix.                                                    |
+| `findOneBy`                | `findOne`               | `Entity \| null`  | Field filters follow the prefix; single result.                                     |
+| `findOneOrThrowBy`         | `findOneOrThrow`        | `Entity`          | Throws if no record is found.                                                       |
+| `findOneOrThrow`           | `findOneOrThrow`        | `Entity`          | No field filters; applies only soft-delete/`see`.                                   |
+| `findOneOrThrowWhere`      | `findOneOrThrow`        | `Entity`          | Receives a `VSRepoWhere<T>` as the first argument.                                  |
+| `findWhere`                | `findMany`              | `Entity[]`        | Receives a `VSRepoWhere<T>` as the first argument.                                  |
+| `findOneWhere`             | `findOne`               | `Entity \| null`  | Receives a `VSRepoWhere<T>` as the first argument.                                  |
+| `findOne`                  | `findOne`               | `Entity \| null`  | No field filters; applies only soft-delete/`see`.                                   |
+| `countBy`                  | `count`                 | `number`          | Field filters follow the prefix.                                                    |
+| `countWhere`               | `count`                 | `number`          | Receives a `VSRepoWhere<T>` as the first argument.                                  |
+| `count`                    | `count`                 | `number`          | No field filters.                                                                   |
+| `existsBy`                 | `exists`                | `boolean`         | Field filters follow the prefix.                                                    |
+| `existsWhere`              | `exists`                | `boolean`         | Receives a `VSRepoWhere<T>` as the first argument.                                  |
+| `create`                   | `create`                | `Entity`          | Receives `DeepPartial<Entity>` as argument.                                         |
+| `createMany`               | `createMany`            | `CountResult`     | Receives `DeepPartial<Entity>[]` as argument; supports `IgnoreConflicts`.           |
+| `createManyReturning`      | `createManyReturning`  | `Entity[]`        | Receives `DeepPartial<Entity>[]` as argument; supports `IgnoreConflicts`.           |
+| `updateBy`                 | `update`                | `Entity`          | Field filters + `DeepPartial<Entity>` as argument.                                  |
+| `updateWhere`              | `update`                | `Entity`          | Receives a `VSRepoWhere<T>` as the first argument, then `DeepPartial<Entity>`.       |
+| `updateManyBy`             | `updateMany`            | `CountResult`     | Field filters + `DeepPartial<Entity>`.                                              |
+| `updateManyWhere`          | `updateMany`            | `CountResult`     | Receives a `VSRepoWhere<T>` as the first argument, then `DeepPartial<Entity>`.       |
+| `updateManyReturningBy`    | `updateManyReturning`  | `Entity[]`        | Field filters + `DeepPartial<Entity>`.                                              |
+| `updateManyReturningWhere` | `updateManyReturning`  | `Entity[]`        | Receives a `VSRepoWhere<T>` as the first argument, then `DeepPartial<Entity>`.       |
+| `upsertBy`                 | `upsert`                | `Entity`          | Field filters + `create`/`update` payloads.                                         |
+| `upsertWhere`              | `upsert`                | `Entity`          | Receives a `VSRepoWhere<T>` as the first argument, then `create`/`update` payloads.  |
+| `deleteBy`                 | `delete`                | `Entity`          | Field filters follow the prefix.                                                    |
+| `deleteWhere`              | `delete`                | `Entity`          | Receives a `VSRepoWhere<T>` as the first argument.                                  |
+| `deleteManyBy`             | `deleteMany`            | `CountResult`     | Field filters follow the prefix.                                                    |
+| `deleteManyWhere`          | `deleteMany`            | `CountResult`     | Receives a `VSRepoWhere<T>` as the first argument.                                  |
+| `deleteManyReturningBy`    | `deleteManyReturning`  | `Entity[]`        | Field filters follow the prefix.                                                    |
+| `deleteManyReturningWhere` | `deleteManyReturning`  | `Entity[]`        | Receives a `VSRepoWhere<T>` as the first argument.                                  |
 
 > `groupBy` is **not planned** for v2 — it doesn't map cleanly onto the ORM-agnostic contract. `aggregate` as a separate prefix is also unlikely to be implemented: the most common aggregate operations (`sum`, `average`, `min`, `max`, `increment`, `decrement`, `multiply`, `divide`) are already available as dedicated base methods — see [Atomic and aggregate methods](./base-methods.md#atomic-and-aggregate-methods). For anything more complex, use a `@QueryMethod` with raw SQL.
 
@@ -179,7 +181,7 @@ declare findByNameContainsIgnoreCaseOrderedAndPaginated:
     (name: string, order: Ordering<User>, pagination: Pagination, options?: MethodOptions<User>) => Promise<User[]>;
 
 @DynamicMethod()
-declare createManyIgnoreConflicts: (data: DeepPartial<User>[]) => Promise<{ count: number }>;
+declare createManyIgnoreConflicts: (data: DeepPartial<User>[]) => Promise<CountResult>;
 
 // createManyReturning: same as createMany, but returns the created records
 @DynamicMethod()
