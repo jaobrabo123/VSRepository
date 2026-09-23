@@ -35,4 +35,8 @@ export type VSRepoOptions<T, K> = {
     logSlowThresholdMs?: number | boolean;
     /** Default ordering automatically applied to queries that accept `order`, unless the call overrides it. */
     defaultOrdering?: Ordering<T>;
+    /**
+     * @default false
+     */
+    lazyDynamicMethods?: boolean;
 };

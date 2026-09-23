@@ -112,6 +112,21 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
                 `)`,
         );
 
+        let dynamicMethodsCount: number | undefined;
+        let queryMethodsCount: number | undefined;
+
+        if (!optionsValidated.lazyDynamicMethods) {
+            const result = this.resolveDynamicMethods();
+            dynamicMethodsCount = result.dynamicMethodsCount;
+            queryMethodsCount = result.queryMethodsCount;
+        }
+
+        this.logger.logInfo(
+            `${this.constructor.name} ready (${optionsValidated.lazyDynamicMethods ? "Resolution of dynamic methods postponed" : `${dynamicMethodsCount} dynamic method(s), ${queryMethodsCount} query method(s) resolved`})`,
+        );
+    }
+
+    protected resolveDynamicMethods(): { dynamicMethodsCount: number; queryMethodsCount: number } {
         const dynamicMethodsResolver = new DynamicMethodsResolver<Entity, PKType>(
             this.logger,
             this.adapter,
@@ -136,9 +151,7 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
             throw err;
         }
 
-        this.logger.logInfo(
-            `${this.constructor.name} ready (${dynamicMethodsCount} dynamic method(s), ${queryMethodsCount} query method(s) resolved)`,
-        );
+        return { dynamicMethodsCount, queryMethodsCount };
     }
 
     // * Loga o erro antes de lançar, pra guard clauses (mau uso da API) não passarem em silêncio
