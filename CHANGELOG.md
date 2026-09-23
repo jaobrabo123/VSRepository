@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 ### Documentation
 - Both READMEs document the query builder: new "Query builder" section, a new row in the base methods table, `QUERY_BUILDER` in the error types tables, and a note about the builder in the Logging section
 - Both READMEs document `Equals`/`NotEquals`, the camelCase-boundary rule for keyword collisions (with the `Equals`/`NotEquals` disambiguation example), and the new explicit errors for unsupported suffix/prefix combinations and for `Or` after `AND`
+- **Docs restructured**: the root READMEs (EN/PT) are now a short overview — intro, what changed from v1, adapter status, installation, basic usage, development, requirements, contributing — with a documentation index. Feature-by-feature detail (base methods & configuration, soft-delete, `select`/`relations`, dynamic methods, query methods, query builder, transactions, utility types, writing an adapter, error handling, logging) moved into its own guide under [`docs/`](./docs), each in English and Portuguese, with more examples than before (e.g. concrete DEBUG/WARN log output in the logging guide, transaction return-value/rollback and query-builder examples in the transactions guide)
 
 ---
 
@@ -51,6 +52,7 @@ All notable changes to this project will be documented in this file.
 ### Documentação
 - Ambos os READMEs documentam o query builder: nova seção "Query builder", uma nova linha na tabela de métodos base, `QUERY_BUILDER` nas tabelas de tipos de erro, e uma observação sobre o builder na seção de Logging
 - Ambos os READMEs documentam `Equals`/`NotEquals`, a regra de fronteira de camelCase para colisões de palavra-chave (com o exemplo de desambiguação via `Equals`/`NotEquals`), e os novos erros explícitos para combinações de sufixo/prefixo não suportadas e para `Or` depois de `AND`
+- **Documentação reestruturada**: os READMEs da raiz (EN/PT) agora são uma visão geral curta — intro, o que mudou da v1, status dos adapters, instalação, uso básico, desenvolvimento, requisitos, contribuição — com um índice de documentação. O detalhamento de cada funcionalidade (métodos base & configuração, soft-delete, `select`/`relations`, métodos dinâmicos, query methods, query builder, transações, tipos utilitários, escrevendo um adapter, tratamento de erros, logging) foi para um guia próprio dentro de [`docs/`](./docs), cada um em português e em inglês, com mais exemplos do que antes (ex.: saída real de log em DEBUG/WARN no guia de logging, exemplos de valor de retorno/rollback de transação e de query builder no guia de transações)
 
 ---
 

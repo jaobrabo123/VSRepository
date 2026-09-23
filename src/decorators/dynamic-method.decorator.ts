@@ -7,7 +7,7 @@ import { VSRepoMethod } from "../types/vsrepo/vsrepo-method.type";
  * Property decorator used to declare a dynamic method on a `VSRepository` subclass.
  *
  * Applied to a `declare` class field whose name follows one of the supported
- * dynamic-method patterns (e.g. `findByEmail`, `findManyByStatusPaginated`,
+ * dynamic-method patterns (e.g. `findOneByEmail`, `findByStatusPaginated`,
  * `upsertById`), the method's behavior is inferred from the field name at
  * construction time, optionally adjusted via `options`.
  *
