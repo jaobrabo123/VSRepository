@@ -84,7 +84,7 @@ describe("VSSql.raw", () => {
 
 describe("VSSql.empty", () => {
     it("não contribui com texto nem parâmetros", () => {
-        const filter = false ? sql`AND active = ${true}` : empty;
+        const filter = empty;
         const fragment = sql`SELECT * FROM "user" WHERE 1=1 ${filter}`;
 
         expect(fragment.compile(numberedPlaceholder)).toEqual({
