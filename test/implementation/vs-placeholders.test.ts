@@ -117,6 +117,62 @@ describe("'vsPlaceholders' — 'VSRepository.query()' (overload de string)", () 
     });
 });
 
+describe("'vsPlaceholders' — '?N' dentro de string literal", () => {
+    let userRepository: VsPlaceholdersUserRepository;
+
+    beforeEach(() => {
+        userRepository = new VsPlaceholdersUserRepository(fakeAdapter);
+    });
+
+    it("não trata '?N' dentro de um literal como placeholder e passa o texto intacto", async () => {
+        fakeAdapter.query.mockResolvedValueOnce([]);
+
+        await userRepository.query("SELECT * FROM \"user\" WHERE note = 'use ?1 ?2 here' AND email = ?1", {
+            args: ["joao@email.com"],
+        });
+
+        expect(fakeAdapter.query).toHaveBeenCalledWith(
+            "SELECT * FROM \"user\" WHERE note = 'use ?1 ?2 here' AND email = $1",
+            expect.objectContaining({ args: ["joao@email.com"] }),
+        );
+    });
+
+    it("respeita o escape '' dentro do literal ao decidir onde ele termina", async () => {
+        fakeAdapter.query.mockResolvedValueOnce([]);
+
+        await userRepository.query("SELECT * FROM \"user\" WHERE note = 'it''s ?1 ?2' AND email = ?1", {
+            args: ["joao@email.com"],
+        });
+
+        expect(fakeAdapter.query).toHaveBeenCalledWith(
+            "SELECT * FROM \"user\" WHERE note = 'it''s ?1 ?2' AND email = $1",
+            expect.objectContaining({ args: ["joao@email.com"] }),
+        );
+    });
+
+    it("um '?N' literal não consome args — o placeholder real seguinte usa o índice original", async () => {
+        fakeAdapter.query.mockResolvedValueOnce([]);
+
+        await userRepository.query("SELECT * FROM \"user\" WHERE note = '?1' AND email = ?2", {
+            args: ["nota literal", "joao@email.com"],
+        });
+
+        expect(fakeAdapter.query).toHaveBeenCalledWith(
+            "SELECT * FROM \"user\" WHERE note = '?1' AND email = $1",
+            expect.objectContaining({ args: ["joao@email.com"] }),
+        );
+    });
+
+    it("'?N' fora de string continua lançando 'VSRepoError' de range mesmo com '?N' literal presente", async () => {
+        await expect(
+            userRepository.query("SELECT * FROM \"user\" WHERE note = '?1' AND email = ?2", {
+                args: ["joao@email.com"],
+            }),
+        ).rejects.toThrow(/Invalid 'vsPlaceholders' reference '\?2'/);
+        expect(fakeAdapter.query).not.toHaveBeenCalled();
+    });
+});
+
 describe("'vsPlaceholders' — '@QueryMethod'", () => {
     let userRepository: VsPlaceholdersUserRepository;
 
