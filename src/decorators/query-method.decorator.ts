@@ -15,15 +15,12 @@ import { VSRepoQuery } from "../types/vsrepo/vsrepo-query.type";
  * `spreadArgs: true`, via separate positional arguments instead.
  *
  * The placeholder syntax depends on the database/driver behind your adapter. Check your adapter's
- * documentation for the exact syntax before writing queries.
+ * documentation for the exact syntax before writing queries — or set `vsPlaceholders: true` in the
+ * `VSRepository` constructor options to use `?1`, `?2`, ... instead, regardless of adapter.
  *
  * @param value Raw SQL statement to execute. Use placeholders for the values
  * that will be passed via `args` — never interpolate values directly into `value`.
- * @param options Optional configuration; set `modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements,
- * `singleResult: true` to collapse an array result into its first element, and
- * `spreadArgs: true` to receive placeholder values as separate arguments instead of a
- * single `QueryMethodArg` object — see {@link QueryMethodOptions.singleResult} and
- * {@link QueryMethodOptions.spreadArgs}.
+ * @param options Optional configuration; set `modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements.
  *
  * @example
  * ```typescript
@@ -33,25 +30,7 @@ import { VSRepoQuery } from "../types/vsrepo/vsrepo-query.type";
  *
  *     @QueryMethod('UPDATE "user" SET active = true WHERE id = $1', { modifying: true })
  *     declare activateUser: (arg: QueryMethodArg<[id: string]>) => Promise<number>;
- *
- *     // Only one row is ever expected here, so `singleResult` collapses the
- *     // array into a single object (or `null` when no row matches).
- *     @QueryMethod('SELECT * FROM "user" WHERE id = $1 LIMIT 1', { singleResult: true })
- *     declare findByIdRaw: (arg: QueryMethodArg<[id: string]>) => Promise<User | null>;
- *
- *     // `spreadArgs: true` takes placeholder values as separate arguments,
- *     // JpaRepository style, instead of a single `{ args: [...] }` object.
- *     // An optional trailing `withDb(tx)` runs the query in a transaction.
- *     @QueryMethod('SELECT * FROM "user" WHERE email = $1 AND "userType" = $2', {
- *         spreadArgs: true,
- *     })
- *     declare findByEmailAndType: (
- *         ...args: QueryArgs<[email: string, userType: string]>
- *     ) => Promise<User[]>;
  * }
- *
- * await userRepository.findByEmailAndType("joao@email.com", "admin");
- * await userRepository.findByEmailAndType("joao@email.com", "admin", withDb(tx));
  * ```
  *
  * @publicApi

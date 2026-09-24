@@ -48,6 +48,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         logSlowThresholdMs: v.optional(v.union([v.pipe(v.number(), v.gtValue(0)), v.boolean()])),
         defaultOrdering: v.optional(orderingSchema),
         lazyDynamicMethods: v.optional(v.boolean()),
+        vsPlaceholders: v.optional(v.boolean()),
     });
 
     validateConstructorOptions(options: unknown): VSRepoOptions<T, K> {

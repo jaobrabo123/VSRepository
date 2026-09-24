@@ -22,6 +22,7 @@ import { NumericKeys } from "./types/utils/numeric-keys.type";
 import { RestrictMethodOptions } from "./types/utils/restrict-method-options.type";
 import { VSQueryBuilder } from "./internal/utils/vs-query-builder.util";
 import { VSSql } from "./internal/utils/vs-sql.util";
+import { VSPlaceholdersParser } from "./internal/utils/vs-placeholder-parser.util";
 
 /**
  * ORM-agnostic base repository, exposing a complete set of ready-to-use CRUD
@@ -64,6 +65,7 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
 
     private readonly softRemoveKey?: keyof Entity;
     private readonly defaultOrdering?: Ordering<Entity>;
+    private readonly vsPlaceholders: boolean;
 
     /**
      * Whether `resolveDynamicMethods` has already run once for this instance.
@@ -103,6 +105,15 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
 
         this.softRemoveKey = optionsValidated.softRemoveKey;
         this.defaultOrdering = optionsValidated.defaultOrdering;
+        this.vsPlaceholders = optionsValidated.vsPlaceholders ?? false;
+
+        if (this.vsPlaceholders && !this.adapter.getPlaceholder) {
+            throw new VSRepoError(
+                "'vsPlaceholders' is enabled but your adapter did not implement the 'getPlaceholder' method; try updating your adapter to a newer version or disable 'vsPlaceholders'.",
+                VSRepoErrorType.VALIDATOR,
+            );
+        }
+
         this.mergeWheresResolver = new MergeWheresResolver<Entity>(this.softRemoveKey);
         this.logger = new VSLogger(
             optionsValidated.logLevel ?? VSLogLevel.WARN,
@@ -161,6 +172,7 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
             this.mergeWheresResolver,
             this.validator,
             this.defaultOrdering,
+            this.vsPlaceholders,
         );
 
         let dynamicMethodsCount = 0;
@@ -313,6 +325,14 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
      * // placeholder string — `email` is still sent as a parameter.
      * const { sql } = VSSql;
      * const usersViaSql = await userRepository.query<User[]>(sql`SELECT * FROM "user" WHERE email = ${"joao@email.com"}`);
+     *
+     * // With `vsPlaceholders: true` in the constructor options, plain
+     * // strings use VSRepository's own `?1`, `?2`, ... placeholders instead
+     * // of the adapter's native syntax — `?1` may repeat to reuse an arg.
+     * const usersViaVsPlaceholders = await userRepository.query<User[]>(
+     *     'SELECT * FROM "user" WHERE email = ?1',
+     *     { args: ["joao@email.com"] },
+     * );
      * ```
      */
     async query<T = any>(query: string, options?: VSRepoQueryOptions<OrmTypes>): Promise<T>;
@@ -321,15 +341,22 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
         let query: string;
         let args: any[] | undefined = options?.args;
 
-        if (queryOrSql instanceof VSSql) {
+        const sqlFragment: VSSql | undefined =
+            queryOrSql instanceof VSSql
+                ? queryOrSql
+                : typeof queryOrSql === "string" && this.vsPlaceholders
+                  ? VSPlaceholdersParser.parse(queryOrSql, args ?? [])
+                  : undefined;
+
+        if (sqlFragment) {
             if (!this.adapter.getPlaceholder) {
                 this.fail(
-                    "Your adapter did not implement the 'getPlaceholder' method, required to compile a 'VSSql' fragment; try updating your adapter to a newer version, or pass a plain SQL string with 'options.args' instead.",
+                    "Your adapter did not implement the 'getPlaceholder' method, required to compile a 'VSSql' fragment or a 'vsPlaceholders' query; try updating your adapter to a newer version.",
                     VSRepoErrorType.VALIDATOR,
                 );
             }
 
-            const compiled = queryOrSql.compile(index => this.adapter.getPlaceholder!(index));
+            const compiled = sqlFragment.compile(index => this.adapter.getPlaceholder!(index));
             query = compiled.text;
             args = compiled.args;
         } else if (typeof queryOrSql === "string") {
