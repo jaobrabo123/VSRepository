@@ -11,7 +11,7 @@ Guias detalhados e com bastante exemplos para cada funcionalidade do VSRepositor
 | [Métodos base, configuração & soft-delete](./base-methods.pt-BR.md) | Options do construtor, os 12 métodos CRUD automáticos, soft-delete nativo, e os 8 métodos atômicos/de agregação (`increment`, `sum`, ...). |
 | [`select` e `relations`](./select-and-relations.pt-BR.md) | Seleção de campos e carregamento de relações ad-hoc em qualquer chamada, e o `InferMethodReturn` para estreitar o tipo de retorno de acordo. |
 | [Métodos dinâmicos](./dynamic-methods.pt-BR.md) | Métodos no estilo `findByEmail`, resolvidos a partir de um nome de método `declare`d: prefixos, filtros de campo, operadores lógicos, filtros de relação, ordenação/paginação/distinct. |
-| [Query methods (SQL raw)](./query-methods.pt-BR.md) | Métodos de SQL raw via `@QueryMethod`, ignorando totalmente o parser de nomes dos métodos dinâmicos. |
+| [Query methods (SQL raw)](./query-methods.pt-BR.md) | SQL raw via `@QueryMethod`, fragmentos parametrizados `VSSql` e os placeholders agnósticos `?1`/`?2` (`vsPlaceholders`). |
 | [Query builder](./query-builder.pt-BR.md) | A API fluente `createQueryBuilder()` para queries montadas em tempo de execução, incluindo paginação, visibilidade de soft-delete e transações. |
 | [Transações](./transactions.pt-BR.md) | Rodando vários repositories na mesma transação nativa do ORM. |
 | [Tipos utilitários](./utility-types.pt-BR.md) | Os tipos utilitários exportados (`InferMethodType`, `InferMethodReturn`, `KeysOfType`, ...) e onde cada um é usado. |

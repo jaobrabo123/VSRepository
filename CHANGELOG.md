@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [Unreleased]
+
+### Added
+- **`VSSql`** — ORM-agnostic, composable SQL fragments for raw queries: build one with `VSSql.sql` (a tagged template where every interpolated value becomes a bound parameter), `VSSql.raw` (inserts trusted, unparameterized text — for identifiers only, never user input), `VSSql.join` (builds a parameterized list, e.g. an `IN (...)`) and `VSSql.empty` (contributes no text/params, for conditional fragments). Fragments nest freely and the placeholder numbering stays correct; passing one to `VSRepository.query()` compiles it through `adapter.getPlaceholder()` — so `VSSql` works with every database and is safe from SQL injection by construction
+- **`vsPlaceholders`** constructor option — when `true`, raw SQL strings passed to `query()` and `@QueryMethod` use VSRepository's own agnostic, 1-based, positional placeholders (`?1`, `?2`, ...) instead of the adapter's native syntax; the same index can repeat (`?1 ... ?1`) to reuse an argument. Requires the adapter to implement `getPlaceholder()` — enabling it without one throws a `VSRepoError`
+- **`VSRepoAdapter.getPlaceholder?`** — new optional adapter method declaring the placeholder syntax for the Nth (0-based) bound parameter (e.g. `` `$${index + 1}` `` for PostgreSQL, `"?"` for SQLite/MySQL). Implementing it is what enables `VSSql` fragments and `vsPlaceholders`
+- **Query method logs** — `query()` and `@QueryMethod` now log the compiled query and its args at `DEBUG` (the `db` is never logged) and time the execution (`Took Xms ...`, promoted to `WARN` above `logSlowThresholdMs`), like the rest of the library
+
+## [Unreleased] (Português)
+
+### Adicionado
+- **`VSSql`** — fragmentos SQL agnósticos de ORM e componíveis para queries raw: monte um com `VSSql.sql` (um template literal com tag em que todo valor interpolado vira um parâmetro ligado), `VSSql.raw` (insere texto confiável e não parametrizado — só para identificadores, nunca input do usuário), `VSSql.join` (monta uma lista parametrizada, ex.: um `IN (...)`) e `VSSql.empty` (não contribui com texto nem parâmetros, para fragmentos condicionais). Fragmentos aninham livremente e a numeração dos placeholders continua correta; passar um para o `VSRepository.query()` compila via `adapter.getPlaceholder()` — então `VSSql` funciona com qualquer banco e é seguro contra SQL injection por construção
+- **Option `vsPlaceholders`** no construtor — quando `true`, strings SQL cruas passadas para `query()` e `@QueryMethod` usam os placeholders próprios, agnósticos, posicionais e de base 1 do VSRepository (`?1`, `?2`, ...) em vez da sintaxe nativa do adapter; o mesmo índice pode se repetir (`?1 ... ?1`) para reutilizar um argumento. Exige que o adapter implemente `getPlaceholder()` — ligar essa option sem ele lança um `VSRepoError`
+- **`VSRepoAdapter.getPlaceholder?`** — novo método opcional no adapter que declara a sintaxe de placeholder para o N-ésimo (base 0) parâmetro ligado (ex.: `` `$${index + 1}` `` para o PostgreSQL, `"?"` para SQLite/MySQL). Implementá-lo é o que habilita os fragmentos `VSSql` e o `vsPlaceholders`
+- **Logs dos métodos de query** — `query()` e `@QueryMethod` agora logam a query compilada e seus args em `DEBUG` (o `db` nunca é logado) e medem a execução (`Took Xms ...`, promovido para `WARN` acima do `logSlowThresholdMs`), como no resto da biblioteca
+
 ## [2.6.0] - 2026-09-24
 
 ### Added

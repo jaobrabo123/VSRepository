@@ -20,7 +20,7 @@ VSRepository lets you create strongly-typed repositories with:
 - Automatic **base methods**: `get`, `getOrThrow`, `getList`, `save`, `saveList`, `remove`, `removeList`, `patch`, `merge`, `getAll`, `total`, `has`
 - **Native soft-delete**: `softRemove`, `softRemoveList`, `restore`, `restoreList`
 - **Dynamic methods** inferred from a `declare` field name via the `@DynamicMethod` decorator: `findOneByEmail`, `findByStatusPaginated`, `updateById`
-- **Raw SQL query methods** via the `@QueryMethod` decorator, bypassing the name-parsing engine entirely
+- **Raw SQL query methods** via the `@QueryMethod` decorator (bypassing the name-parsing engine entirely), parameterized `VSSql` fragments for ad-hoc `query()` calls, and agnostic `?1`, `?2` placeholders with `vsPlaceholders`
 - Ad-hoc **`select`/`relations`** per call — no more pre-declared named projections
 - **Type safety** across 100% of operations
 - Native ORM **transactions**, shared across repositories
@@ -37,7 +37,7 @@ The sections below (adapter status, installation, basic usage) are the essential
 | [Base methods, configuration & soft-delete](./docs/base-methods.md) | Constructor options, the 12 automatic CRUD methods, native soft-delete, and the 8 atomic/aggregate methods (`increment`, `sum`, ...). |
 | [`select` and `relations`](./docs/select-and-relations.md) | Ad-hoc field selection and eager relation loading on any call, and `InferMethodReturn` to narrow the return type accordingly. |
 | [Dynamic methods](./docs/dynamic-methods.md) | `findByEmail`-style methods parsed from a `declare`d method name: prefixes, field filters, logical operators, relation filters, ordering/pagination/distinct. |
-| [Query methods (raw SQL)](./docs/query-methods.md) | Raw SQL methods via `@QueryMethod`, bypassing the dynamic-method name parser entirely. |
+| [Query methods (raw SQL)](./docs/query-methods.md) | Raw SQL via `@QueryMethod`, parameterized `VSSql` fragments and the agnostic `?1`/`?2` placeholders (`vsPlaceholders`). |
 | [Query builder](./docs/query-builder.md) | The fluent `createQueryBuilder()` API for queries assembled at runtime, including pagination, soft-delete visibility and transactions. |
 | [Transactions](./docs/transactions.md) | Running several repositories against the same native ORM transaction. |
 | [Utility types](./docs/utility-types.md) | The exported helper types (`InferMethodType`, `InferMethodReturn`, `KeysOfType`, ...) and where each one is used. |
