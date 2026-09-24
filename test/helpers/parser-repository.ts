@@ -40,6 +40,17 @@ export class ParserRepository extends VSRepository<any, string> {
     @DynamicMethod() declare findByActiveIsTrue: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByActiveIsFalse: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByNameContainsIgnoreCase: (...args: any[]) => Promise<any>;
+    // ---- Variantes do combinador 'IgnoreCase' e do sufixo 'Optional' ----
+    @DynamicMethod() declare findByNameIgnoreCase: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByNameEqualsIgnoreCase: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByNameNotEqualsIgnoreCase: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByNameStartsWithIgnoreCase: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByNameNotStartsWithIgnoreCase: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByNameEndsWithIgnoreCase: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByNameNotContainsIgnoreCase: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByNameNotEndsWithIgnoreCase: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByUserTypeInIgnoreCase: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByNameContainsOptional: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByNameOptional: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByNameEquals: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByNameNotEquals: (...args: any[]) => Promise<any>;
@@ -64,6 +75,11 @@ export class ParserRepository extends VSRepository<any, string> {
     @DynamicMethod() declare findOneByIdAndEmail: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByNameOrEmail: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByEmailOrNameANDActiveStatusAndAgeGreaterThan: (...args: any[]) => Promise<any>;
+    // ---- Lógicos com 3+ termos / com operadores em cada ramo ----
+    @DynamicMethod() declare findOneByIdAndEmailAndActive: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByNameOrEmailOrAgeGreaterThan: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByNameContainsOrEmailStartsWith: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findOneByEmailAndAgeGreaterThan: (...args: any[]) => Promise<any>;
 
     // ---- Filtros de relação ----
     @DynamicMethod() declare findByProductsSome: (...args: any[]) => Promise<any>;
@@ -76,6 +92,27 @@ export class ParserRepository extends VSRepository<any, string> {
     @DynamicMethod() declare findByProductsSomeNameEqualsIgnoreCase: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByAddressWithout: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByAddressWithoutCity: (...args: any[]) => Promise<any>;
+    // ---- Mais combinações de operadores dentro dos conectores de relação ----
+    @DynamicMethod() declare findByAddressWithCityIsNull: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByAddressWithCityIsNotNull: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByAddressWithCityNotContains: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByAddressWithoutCityStartsWith: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByAddressWithoutCityNotEndsWith: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByProductsSomeNameIn: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByProductsSomeNameBetween: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByProductsSomeDeletedAtIsNull: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByProductsEveryNameNotStartsWith: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByProductsEveryDeletedAtIsNull: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByProductsNoneNameContains: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByProductsNonePriceBetween: (...args: any[]) => Promise<any>;
+    // ---- Relação + merge lógico (mesma relação repetida / campos no mesmo '_some') ----
+    @DynamicMethod() declare findByProductsSomeNameContainsAndProductsSomePriceGreaterThan: (
+        ...args: any[]
+    ) => Promise<any>;
+    @DynamicMethod() declare findByProductsSomeNameContainsAndPriceGreaterThan: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByAddressWithCityAndAddressWithCountryStartsWith: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByAddressWithCityOrAddressWithCountryEquals: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByProductsSomeNameOrAddressWithCity: (...args: any[]) => Promise<any>;
 
     // ---- Prefixos -> método do adapter ----
     @DynamicMethod() declare findByEmail: (...args: any[]) => Promise<any>;
@@ -110,6 +147,13 @@ export class ParserRepository extends VSRepository<any, string> {
     @DynamicMethod() declare deleteManyWhere: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare deleteManyReturningByActive: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare deleteManyReturningWhere: (...args: any[]) => Promise<any>;
+    // ---- Prefixos de escrita/existência com múltiplos campos no 'where' ----
+    @DynamicMethod() declare updateByEmailAndActive: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare deleteByEmailAndActive: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare existsByEmailAndActive: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare countByActiveAndEmailContains: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findOneOrThrowByEmailAndActive: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare upsertByEmailAndName: (...args: any[]) => Promise<any>;
 
     // ---- Ordenação, paginação e distinct ----
     @DynamicMethod() declare findByActivePaginated: (...args: any[]) => Promise<any>;
@@ -120,6 +164,18 @@ export class ParserRepository extends VSRepository<any, string> {
     @DynamicMethod() declare findByActiveOrderByCreatedAtAscAndNameDesc: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByActiveDistinctName: (...args: any[]) => Promise<any>;
     @DynamicMethod() declare findByActiveDistinctNameOrderByCreatedAtDesc: (...args: any[]) => Promise<any>;
+    // ---- Combinações extras de OrderBy / Distinct / Paginated / Ordered ----
+    @DynamicMethod() declare findByActiveOrderByCreatedAt: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByActiveOrderByCreatedAtDescAndNameAscAndEmailDesc: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByActiveDistinctNameAndEmail: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findByActiveDistinctNameAndEmailOrderByCreatedAtDesc: (...args: any[]) => Promise<any>;
+    // ---- Modifiers nos prefixos 'Where' e 'count' ----
+    @DynamicMethod() declare findWhereOrdered: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findWherePaginated: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findWhereOrderedAndPaginated: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findWhereDistinctName: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare findOneWhereOrdered: (...args: any[]) => Promise<any>;
+    @DynamicMethod() declare countByActiveOrdered: (...args: any[]) => Promise<any>;
 
     // ---- Options do decorator (`proxyTo` / `injectOrdering`) ----
     @DynamicMethod({ proxyTo: "findByEmail" })

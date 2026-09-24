@@ -228,6 +228,41 @@ describe("@DynamicMethod — resolução de nomes de método inválidos", () => 
             expect((err as VSRepoError).message).toContain('"Or" cannot appear after an "AND"');
         }
     });
+
+    it("é lançado (tipo RESOLVER) quando 'Distinct' aparece depois de 'OrderBy' no nome (precedência invertida)", () => {
+        class Broken extends VSRepository<User, string> {
+            constructor(adapter: VSRepoAdapter<User>) {
+                super({ adapter, pkName: "id" });
+            }
+
+            @DynamicMethod()
+            declare findByActiveOrderByCreatedAtDescDistinctName: (active: boolean) => Promise<User[]>;
+        }
+
+        try {
+            new Broken(createFakeAdapter<User>());
+            throw new Error("deveria ter lançado VSRepoError");
+        } catch (err) {
+            expect(err instanceof VSRepoError).toBe(true);
+            expect((err as VSRepoError).type).toBe(VSRepoErrorType.RESOLVER);
+            expect((err as VSRepoError).message).toContain('"Distinct" modifier cannot appear after the "OrderBy"');
+        }
+    });
+
+    it("não lança quando a precedência é a documentada (Distinct antes de OrderBy)", () => {
+        class Fixed extends VSRepository<User, string> {
+            constructor(adapter: VSRepoAdapter<User>) {
+                super({ adapter, pkName: "id" });
+            }
+
+            @DynamicMethod()
+            declare findByActiveDistinctNameOrderByCreatedAtDesc: (active: boolean) => Promise<User[]>;
+        }
+
+        expect(() => {
+            new Fixed(createFakeAdapter<User>());
+        }).not.toThrow();
+    });
 });
 
 // =============================================================================

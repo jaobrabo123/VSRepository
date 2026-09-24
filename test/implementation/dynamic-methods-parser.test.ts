@@ -11,10 +11,12 @@
 //   - `Between`/`NotBetween` viram `{ between: [min, max] }` (não `gte`/`lte`);
 //   - `IsNull`/`IsNotNull` resolvem pra `null` / `{ not: null }` puro, sem
 //     objeto "operator" (ex.: NÃO é `{ equals: null }`);
-//   - `IgnoreCase` em um filtro de relação (`With...IgnoreCase`) fica dentro
-//     do MESMO objeto do operador de texto que ele modifica (ex.:
-//     `city: { startsWith: "Rio", ignoreCase: true }`), não solto num nível
-//     acima;
+//   - `IgnoreCase` sem operador (e com `Equals`) vira `{ equals: valor, ignoreCase: true }`,
+//     e `IgnoreCase` em operadores negados (`NotContains`, `NotEndsWith`, ...) fica DENTRO
+//     do objeto do operador: `{ not: { contains: valor, ignoreCase: true } }`;
+//   - campos da MESMA relação repetidos no nome (`AddressWithCityAndAddressWithCountry...`,
+//     `ProductsSomeNameContainsAndProductsSomePrice...`) são mesclados de forma PROFUNDA
+//     (deep merge) num único objeto `_with`/`_some` — e não sobrescrevem um ao outro;
 //   - blocos `AND`/`Or` combinados (`campoOrCampoANDcampoAndCampo...`) geram
 //     as chaves `OR`/`AND` do Prisma-like where, cada uma com um array de
 //     sub-where's mesclados.
@@ -25,6 +27,7 @@
 import "reflect-metadata";
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { VSRepoAdapter } from "../../src/VSRepoAdapter";
+import { VSRepoError } from "../../src/errors/VSRepoError";
 import { createFakeAdapter } from "../helpers/fake-adapter";
 import { ParserRepository } from "../helpers/parser-repository";
 
@@ -176,6 +179,60 @@ describe("filtros de campo — texto (Contains/StartsWith/EndsWith) e suas nega�
     });
 });
 
+describe("filtros de campo — combinador 'IgnoreCase' em todos os operadores de texto", () => {
+    it("'findByNameIgnoreCase' (sem operador) -> { name: { equals: valor, ignoreCase: true } }", async () => {
+        await repo.findByNameIgnoreCase("João");
+        expect(where()).toEqual({ name: { equals: "João", ignoreCase: true } });
+    });
+
+    it("'findByNameEqualsIgnoreCase' -> { name: { equals: valor, ignoreCase: true } } (mesma forma do 'IgnoreCase' puro)", async () => {
+        await repo.findByNameEqualsIgnoreCase("João");
+        expect(where()).toEqual({ name: { equals: "João", ignoreCase: true } });
+    });
+
+    it("'findByNameNotEqualsIgnoreCase' -> 'ignoreCase' fica dentro do MESMO objeto do operador de texto", async () => {
+        await repo.findByNameNotEqualsIgnoreCase("João");
+        expect(where()).toEqual({ name: { not: "João", ignoreCase: true } });
+    });
+
+    it("'findByNameStartsWithIgnoreCase' -> { name: { startsWith: valor, ignoreCase: true } }", async () => {
+        await repo.findByNameStartsWithIgnoreCase("Jo");
+        expect(where()).toEqual({ name: { startsWith: "Jo", ignoreCase: true } });
+    });
+
+    it("'findByNameNotStartsWithIgnoreCase' -> { name: { not: { startsWith: valor, ignoreCase: true } } }", async () => {
+        await repo.findByNameNotStartsWithIgnoreCase("Jo");
+        expect(where()).toEqual({ name: { not: { startsWith: "Jo", ignoreCase: true } } });
+    });
+
+    it("'findByNameEndsWithIgnoreCase' -> { name: { endsWith: valor, ignoreCase: true } }", async () => {
+        await repo.findByNameEndsWithIgnoreCase("ão");
+        expect(where()).toEqual({ name: { endsWith: "ão", ignoreCase: true } });
+    });
+
+    it("'findByNameNotContainsIgnoreCase' -> { name: { not: { contains: valor, ignoreCase: true } } }", async () => {
+        await repo.findByNameNotContainsIgnoreCase("oã");
+        expect(where()).toEqual({ name: { not: { contains: "oã", ignoreCase: true } } });
+    });
+
+    it("'findByNameNotEndsWithIgnoreCase' -> { name: { not: { endsWith: valor, ignoreCase: true } } }", async () => {
+        await repo.findByNameNotEndsWithIgnoreCase("ão");
+        expect(where()).toEqual({ name: { not: { endsWith: "ão", ignoreCase: true } } });
+    });
+
+    it("'findByUserTypeInIgnoreCase' -> { userType: { in: [...], ignoreCase: true } }", async () => {
+        await repo.findByUserTypeInIgnoreCase(["ADMIN"]);
+        expect(where()).toEqual({ userType: { in: ["ADMIN"], ignoreCase: true } });
+    });
+});
+
+describe("filtros de campo — sufixo 'Optional' combinado com operador", () => {
+    it("'findByNameContainsOptional' -> { name: { contains: valor } } ('Optional' é só documental, não muda a resolução)", async () => {
+        await repo.findByNameContainsOptional("oã");
+        expect(where()).toEqual({ name: { contains: "oã" } });
+    });
+});
+
 describe("filtros de campo — comparação numérica/data", () => {
     const d = new Date("2026-01-01T00:00:00.000Z");
 
@@ -272,6 +329,42 @@ describe("bloco composto 'campoOrCampoANDcampoAndCampoOperador' (OR + AND)", () 
     });
 });
 
+describe("operador 'And' com três ou mais campos", () => {
+    it("'findOneByIdAndEmailAndActive' combina todos os campos no mesmo objeto 'where'", async () => {
+        fakeAdapter.findOne.mockResolvedValueOnce({});
+
+        await repo.findOneByIdAndEmailAndActive("user-1", "joao@email.com", true);
+
+        expect(fakeAdapter.findOne.mock.calls[0]?.[0]).toEqual({
+            id: "user-1",
+            email: "joao@email.com",
+            active: true,
+        });
+    });
+});
+
+describe("operador 'Or' com três ou mais ramos", () => {
+    it("'findByNameOrEmailOrAgeGreaterThan' gera um sub-where por ramo, na ordem do nome", async () => {
+        await repo.findByNameOrEmailOrAgeGreaterThan("Nome", "e@x.com", 18);
+        expect(where()).toEqual({ OR: [{ name: "Nome" }, { email: "e@x.com" }, { age: { gt: 18 } }] });
+    });
+
+    it("'findByNameContainsOrEmailStartsWith' combina 'Or' com operadores de texto em cada ramo", async () => {
+        await repo.findByNameContainsOrEmailStartsWith("oã", "jo");
+        expect(where()).toEqual({ OR: [{ name: { contains: "oã" } }, { email: { startsWith: "jo" } }] });
+    });
+});
+
+describe("operador 'And' com operador de campo embutido", () => {
+    it("'findOneByEmailAndAgeGreaterThan' mantém o operador dentro do próprio campo", async () => {
+        fakeAdapter.findOne.mockResolvedValueOnce({});
+
+        await repo.findOneByEmailAndAgeGreaterThan("e@x.com", 18);
+
+        expect(fakeAdapter.findOne.mock.calls[0]?.[0]).toEqual({ email: "e@x.com", age: { gt: 18 } });
+    });
+});
+
 // =============================================================================
 // Filtros de relação (_some / _every / _none / _with / _without)
 // =============================================================================
@@ -332,6 +425,113 @@ describe("filtros de relação — um-para-um/opcional (With/Without)", () => {
     it("'findByProductsSomeNameEqualsIgnoreCase' -> igualdade + 'IgnoreCase' dentro de '_some' vira { equals, ignoreCase }", async () => {
         await repo.findByProductsSomeNameEqualsIgnoreCase("Notebook");
         expect(where()).toEqual({ products: { _some: { name: { equals: "Notebook", ignoreCase: true } } } });
+    });
+});
+
+describe("filtros de relação — operadores variados dentro de cada conector", () => {
+    it("'findByProductsSomeNameIn' -> { products: { _some: { name: { in: [...] } } } }", async () => {
+        await repo.findByProductsSomeNameIn(["Camiseta", "Calça"]);
+        expect(where()).toEqual({ products: { _some: { name: { in: ["Camiseta", "Calça"] } } } });
+    });
+
+    it("'findByProductsSomeNameBetween' -> 'between' dentro do '_some'", async () => {
+        const range = [10, 50];
+        await repo.findByProductsSomeNameBetween(range);
+        expect(where()).toEqual({ products: { _some: { name: { between: range } } } });
+    });
+
+    it("'findByProductsSomeDeletedAtIsNull' -> valor puro 'null' dentro do '_some' (sem args)", async () => {
+        await repo.findByProductsSomeDeletedAtIsNull();
+        expect(where()).toEqual({ products: { _some: { deletedAt: null } } });
+    });
+
+    it("'findByProductsEveryNameNotStartsWith' -> 'not.startsWith' dentro do '_every'", async () => {
+        await repo.findByProductsEveryNameNotStartsWith("X");
+        expect(where()).toEqual({ products: { _every: { name: { not: { startsWith: "X" } } } } });
+    });
+
+    it("'findByProductsEveryDeletedAtIsNull' -> valor puro 'null' dentro do '_every' (sem args)", async () => {
+        await repo.findByProductsEveryDeletedAtIsNull();
+        expect(where()).toEqual({ products: { _every: { deletedAt: null } } });
+    });
+
+    it("'findByProductsNoneNameContains' -> sub-filtro de texto dentro do '_none'", async () => {
+        await repo.findByProductsNoneNameContains("vietnamita");
+        expect(where()).toEqual({ products: { _none: { name: { contains: "vietnamita" } } } });
+    });
+
+    it("'findByProductsNonePriceBetween' -> 'between' dentro do '_none'", async () => {
+        const range = [10, 50];
+        await repo.findByProductsNonePriceBetween(range);
+        expect(where()).toEqual({ products: { _none: { price: { between: range } } } });
+    });
+
+    it("'findByAddressWithCityIsNull' -> { address: { _with: { city: null } } } (sem args)", async () => {
+        await repo.findByAddressWithCityIsNull();
+        expect(where()).toEqual({ address: { _with: { city: null } } });
+    });
+
+    it("'findByAddressWithCityIsNotNull' -> { address: { _with: { city: { not: null } } } } (sem args)", async () => {
+        await repo.findByAddressWithCityIsNotNull();
+        expect(where()).toEqual({ address: { _with: { city: { not: null } } } });
+    });
+
+    it("'findByAddressWithCityNotContains' -> 'not.contains' dentro do '_with'", async () => {
+        await repo.findByAddressWithCityNotContains("ia");
+        expect(where()).toEqual({ address: { _with: { city: { not: { contains: "ia" } } } } });
+    });
+
+    it("'findByAddressWithoutCityStartsWith' -> 'startsWith' dentro do '_without'", async () => {
+        await repo.findByAddressWithoutCityStartsWith("Rio");
+        expect(where()).toEqual({ address: { _without: { city: { startsWith: "Rio" } } } });
+    });
+
+    it("'findByAddressWithoutCityNotEndsWith' -> 'not.endsWith' dentro do '_without'", async () => {
+        await repo.findByAddressWithoutCityNotEndsWith("o");
+        expect(where()).toEqual({ address: { _without: { city: { not: { endsWith: "o" } } } } });
+    });
+});
+
+describe("filtros de relação — MESMA relação repetida no nome (deep merge)", () => {
+    it("'findByAddressWithCityAndAddressWithCountryStartsWith' mescla os dois 'With' da MESMA relação num único objeto '_with'", async () => {
+        await repo.findByAddressWithCityAndAddressWithCountryStartsWith("Aracaju", "Bra");
+
+        expect(where()).toEqual({
+            address: { _with: { city: "Aracaju", country: { startsWith: "Bra" } } },
+        });
+    });
+
+    it("'findByProductsSomeNameContainsAndProductsSomePriceGreaterThan' mescla dois campos no MESMO '_some'", async () => {
+        await repo.findByProductsSomeNameContainsAndProductsSomePriceGreaterThan("Fone", 100);
+
+        expect(where()).toEqual({
+            products: { _some: { name: { contains: "Fone" }, price: { gt: 100 } } },
+        });
+    });
+
+    it("'findByProductsSomeNameContainsAndPriceGreaterThan' separa o 'And': campo da relação no '_some' e campo simples na raiz", async () => {
+        await repo.findByProductsSomeNameContainsAndPriceGreaterThan("Fone", 100);
+
+        expect(where()).toEqual({
+            products: { _some: { name: { contains: "Fone" } } },
+            price: { gt: 100 },
+        });
+    });
+
+    it("'findByAddressWithCityOrAddressWithCountryEquals' repete a MESMA relação em ramos 'Or' separados", async () => {
+        await repo.findByAddressWithCityOrAddressWithCountryEquals("Aracaju", "Brasil");
+
+        expect(where()).toEqual({
+            OR: [{ address: { _with: { city: "Aracaju" } } }, { address: { _with: { country: "Brasil" } } }],
+        });
+    });
+
+    it("'findByProductsSomeNameOrAddressWithCity' cruza relação e campo simples dentro de ramos 'Or'", async () => {
+        await repo.findByProductsSomeNameOrAddressWithCity("Fone", "Aracaju");
+
+        expect(where()).toEqual({
+            OR: [{ products: { _some: { name: "Fone" } } }, { address: { _with: { city: "Aracaju" } } }],
+        });
     });
 });
 
@@ -586,17 +786,65 @@ describe("prefixos de escrita — delete/deleteMany/deleteManyReturning", () => 
         expect(fakeAdapter.deleteMany.mock.calls[0]?.[0]).toEqual({ active: false });
     });
 
-    it("'deleteManyReturningByActive' chama 'adapter.deleteManyReturning' (não 'deleteMany')", async () => {
+    it("'deleteManyReturningByActive' chama 'adapter.deleteManyReturning' (não 'deleteMany') com o 'where' resolvido do nome", async () => {
         fakeAdapter.deleteManyReturning.mockResolvedValueOnce([]);
         await repo.deleteManyReturningByActive(false);
         expect(fakeAdapter.deleteManyReturning).toHaveBeenCalledTimes(1);
         expect(fakeAdapter.deleteMany).not.toHaveBeenCalled();
+        expect(fakeAdapter.deleteManyReturning.mock.calls[0]?.[0]).toEqual({ active: false });
     });
 
     it("'deleteManyReturningWhere' chama 'adapter.deleteManyReturning' com where explícito", async () => {
         fakeAdapter.deleteManyReturning.mockResolvedValueOnce([]);
         await repo.deleteManyReturningWhere({ active: false });
         expect(fakeAdapter.deleteManyReturning.mock.calls[0]?.[0]).toEqual({ active: false });
+    });
+});
+
+describe("prefixos de escrita/existência com múltiplos campos no 'where'", () => {
+    it("'updateByEmailAndActive' chama 'adapter.update' com where multi-campo + data", async () => {
+        const data = { name: "novo" };
+        fakeAdapter.update.mockResolvedValueOnce({});
+
+        await repo.updateByEmailAndActive("e@x.com", true, data);
+
+        expect(fakeAdapter.update.mock.calls[0]?.[0]).toEqual({ email: "e@x.com", active: true });
+        expect(fakeAdapter.update.mock.calls[0]?.[1]).toBe(data);
+    });
+
+    it("'deleteByEmailAndActive' chama 'adapter.delete' com where multi-campo", async () => {
+        fakeAdapter.delete.mockResolvedValueOnce({});
+        await repo.deleteByEmailAndActive("e@x.com", true);
+        expect(fakeAdapter.delete.mock.calls[0]?.[0]).toEqual({ email: "e@x.com", active: true });
+    });
+
+    it("'existsByEmailAndActive' chama 'adapter.exists' com where multi-campo", async () => {
+        fakeAdapter.exists.mockResolvedValueOnce(true);
+        await repo.existsByEmailAndActive("e@x.com", true);
+        expect(fakeAdapter.exists.mock.calls[0]?.[0]).toEqual({ email: "e@x.com", active: true });
+    });
+
+    it("'countByActiveAndEmailContains' chama 'adapter.count' com operador embutido em um dos campos", async () => {
+        fakeAdapter.count.mockResolvedValueOnce(2);
+        await repo.countByActiveAndEmailContains(true, "joao");
+        expect(fakeAdapter.count.mock.calls[0]?.[0]).toEqual({ active: true, email: { contains: "joao" } });
+    });
+
+    it("'findOneOrThrowByEmailAndActive' chama 'adapter.findOneOrThrow' com where multi-campo", async () => {
+        await repo.findOneOrThrowByEmailAndActive("e@x.com", true);
+        expect(fakeAdapter.findOneOrThrow.mock.calls[0]?.[0]).toEqual({ email: "e@x.com", active: true });
+    });
+
+    it("'upsertByEmailAndName' chama 'adapter.upsert' com where multi-campo + create/update", async () => {
+        const createData = { email: "e@x.com", name: "João" };
+        const updateData = { name: "Novo" };
+        fakeAdapter.upsert.mockResolvedValueOnce({});
+
+        await repo.upsertByEmailAndName("e@x.com", "João", createData, updateData);
+
+        expect(fakeAdapter.upsert.mock.calls[0]?.[0]).toEqual({ email: "e@x.com", name: "João" });
+        expect(fakeAdapter.upsert.mock.calls[0]?.[1]).toBe(createData);
+        expect(fakeAdapter.upsert.mock.calls[0]?.[2]).toBe(updateData);
     });
 });
 
@@ -685,6 +933,105 @@ describe("sufixo 'Distinct<Campo>'", () => {
     });
 });
 
+describe("combinações extras de 'OrderBy<Campo>' fixo e 'Distinct'", () => {
+    it("'findByActiveOrderByCreatedAt' sem 'Asc'/'Desc' -> ordenação fixa padrão 'ASC'", async () => {
+        await repo.findByActiveOrderByCreatedAt(true);
+
+        expect(where()).toEqual({ active: true });
+        expect(fakeAdapter.findMany.mock.calls[0]?.[1]).toEqual(
+            expect.objectContaining({ order: [{ createdAt: "ASC" }] }),
+        );
+    });
+
+    it("'findByActiveOrderByCreatedAtDescAndNameAscAndEmailDesc' encadeia 3 campos de ordenação fixa", async () => {
+        await repo.findByActiveOrderByCreatedAtDescAndNameAscAndEmailDesc(true);
+
+        expect(fakeAdapter.findMany.mock.calls[0]?.[1]).toEqual(
+            expect.objectContaining({
+                order: [{ createdAt: "DESC" }, { name: "ASC" }, { email: "DESC" }],
+            }),
+        );
+    });
+
+    it("'findByActiveDistinctNameAndEmail' propaga 'distinct' com múltiplos campos", async () => {
+        await repo.findByActiveDistinctNameAndEmail(true);
+
+        expect(fakeAdapter.findMany.mock.calls[0]?.[1]).toEqual(
+            expect.objectContaining({ distinct: ["name", "email"] }),
+        );
+    });
+
+    it("'findByActiveDistinctNameAndEmailOrderByCreatedAtDesc' combina 'distinct' multi-campo com 'order' fixo", async () => {
+        await repo.findByActiveDistinctNameAndEmailOrderByCreatedAtDesc(true);
+
+        expect(fakeAdapter.findMany.mock.calls[0]?.[1]).toEqual(
+            expect.objectContaining({
+                distinct: ["name", "email"],
+                order: [{ createdAt: "DESC" }],
+            }),
+        );
+    });
+});
+
+describe("modifiers de ordenação/paginação/distinct nos prefixos 'Where' e 'count'", () => {
+    it("'findWhereOrdered' propaga (where, order)", async () => {
+        await repo.findWhereOrdered({ active: true }, { createdAt: "desc" });
+
+        expect(fakeAdapter.findMany.mock.calls[0]?.[0]).toEqual({ active: true });
+        expect(fakeAdapter.findMany.mock.calls[0]?.[1]).toEqual(
+            expect.objectContaining({ order: { createdAt: "desc" } }),
+        );
+    });
+
+    it("'findWherePaginated' propaga (where, pagination)", async () => {
+        await repo.findWherePaginated({ active: true }, { limit: 10, offset: 0 });
+
+        expect(fakeAdapter.findMany.mock.calls[0]?.[0]).toEqual({ active: true });
+        expect(fakeAdapter.findMany.mock.calls[0]?.[1]).toEqual(
+            expect.objectContaining({ pagination: { limit: 10, offset: 0 } }),
+        );
+    });
+
+    it("'findWhereOrderedAndPaginated' propaga (where, order, pagination) em trio", async () => {
+        await repo.findWhereOrderedAndPaginated({ active: true }, { createdAt: "desc" }, { limit: 10, offset: 0 });
+
+        expect(fakeAdapter.findMany.mock.calls[0]?.[0]).toEqual({ active: true });
+        expect(fakeAdapter.findMany.mock.calls[0]?.[1]).toEqual(
+            expect.objectContaining({
+                order: { createdAt: "desc" },
+                pagination: { limit: 10, offset: 0 },
+            }),
+        );
+    });
+
+    it("'findWhereDistinctName' propaga (where) + 'distinct' derivado do sufixo do nome", async () => {
+        await repo.findWhereDistinctName({ active: true });
+
+        expect(fakeAdapter.findMany.mock.calls[0]?.[0]).toEqual({ active: true });
+        expect(fakeAdapter.findMany.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ distinct: ["name"] }));
+    });
+
+    it("'findOneWhereOrdered' propaga (where, order) para 'adapter.findOne'", async () => {
+        fakeAdapter.findOne.mockResolvedValueOnce(null);
+
+        await repo.findOneWhereOrdered({ active: true }, { createdAt: "desc" });
+
+        expect(fakeAdapter.findOne.mock.calls[0]?.[0]).toEqual({ active: true });
+        expect(fakeAdapter.findOne.mock.calls[0]?.[1]).toEqual(
+            expect.objectContaining({ order: { createdAt: "desc" } }),
+        );
+    });
+
+    it("'countByActiveOrdered' propaga (where resolvido do nome, order)", async () => {
+        fakeAdapter.count.mockResolvedValueOnce(4);
+
+        await repo.countByActiveOrdered(true, { createdAt: "desc" });
+
+        expect(fakeAdapter.count.mock.calls[0]?.[0]).toEqual({ active: true });
+        expect(fakeAdapter.count.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ order: { createdAt: "desc" } }));
+    });
+});
+
 // =============================================================================
 // Options do decorator: 'proxyTo' e 'injectOrdering'
 // =============================================================================
@@ -726,5 +1073,25 @@ describe("validação de quantidade de argumentos", () => {
 
     it("não rejeita métodos cujo sufixo dispensa argumento (IsNull/IsTrue/etc)", async () => {
         await expect(repo.findByEmailIsNull()).resolves.not.toThrow();
+    });
+
+    it("rejeita quando falta o argumento de um sub-filtro de relação (cita o campo da relação)", async () => {
+        await expect((repo as any).findByProductsSomeNameContains()).rejects.toThrow(/products/i);
+    });
+
+    it("rejeita 'updateWhere' quando falta o 'data'", async () => {
+        await expect((repo as any).updateWhere({ active: true })).rejects.toThrow(/data/i);
+    });
+
+    it("rejeita 'upsertByEmail' quando faltam 'create'/'update'", async () => {
+        await expect((repo as any).upsertByEmail("e@x.com")).rejects.toThrow(/create/i);
+    });
+
+    it("'Optional' é só documental — continua rejeitando a chamada sem o argumento", async () => {
+        await expect((repo as any).findByNameOptional()).rejects.toThrow(/name/i);
+    });
+
+    it("argumento extra é tratado como 'MethodOptions' e validado — valor inválido em 'see' rejeita com 'VSRepoError'", async () => {
+        await expect((repo as any).findByName("João", { see: "nonsense" })).rejects.toThrow(VSRepoError);
     });
 });
