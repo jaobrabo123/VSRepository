@@ -66,6 +66,13 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
     private readonly defaultOrdering?: Ordering<Entity>;
 
     /**
+     * Whether `resolveDynamicMethods` has already run once for this instance.
+     * Used to warn on redundant re-resolutions (e.g. calling it manually
+     * more than once, or on top of an already-eager resolution).
+     */
+    private dynamicMethodsResolved = false;
+
+    /**
      * This is a property managed by VSRepository, please don't modify it!!
      * @internal
      */
@@ -126,7 +133,28 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
         );
     }
 
+    /**
+     * Resolves every `@DynamicMethod`/`@QueryMethod` field declared on the
+     * subclass, assigning each one a working implementation on `this`.
+     *
+     * Called automatically at the end of the constructor unless
+     * `lazyDynamicMethods: true` was passed in the options — in that case,
+     * the subclass is responsible for calling it manually to make its
+     * dynamic/query methods available.
+     *
+     * Calling this method again after it has already resolved once is
+     * harmless but redundant — it just re-runs the resolution and logs a
+     * `WARN`, since it's usually a sign of a mistake.
+     */
     protected resolveDynamicMethods(): { dynamicMethodsCount: number; queryMethodsCount: number } {
+        if (this.dynamicMethodsResolved) {
+            this.logger.logWarn(
+                `resolveDynamicMethods() was called more than once on ${this.constructor.name}. ` +
+                    `If you are calling it manually, make sure lazyDynamicMethods is set to true ` +
+                    `in the constructor options to skip the automatic resolution.`,
+            );
+        }
+
         const dynamicMethodsResolver = new DynamicMethodsResolver<Entity, PKType>(
             this.logger,
             this.adapter,
@@ -150,6 +178,8 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
             this.logger.logError(`Failed to initialize ${this.constructor.name}`, err);
             throw err;
         }
+
+        this.dynamicMethodsResolved = true;
 
         return { dynamicMethodsCount, queryMethodsCount };
     }

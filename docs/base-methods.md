@@ -18,6 +18,7 @@
 | `defaultOrdering`    | `Ordering<T>`       | Optional. Default ordering applied automatically to queries that accept `order`, unless overridden per call.                                                                                                                       |
 | `logLevel`           | `VSLogLevel`        | Optional. Minimum severity printed by the internal logger. Defaults to `VSLogLevel.WARN`.                                                                                                                                          |
 | `logSlowThresholdMs` | `number \| boolean` | Optional. Duration (ms) above which a finished operation is logged as `WARN`. Defaults to 300ms. Pass `false` to disable slow-operation warnings entirely; pass `true` to use the 300ms default explicitly.                        |
+| `lazyDynamicMethods`  | `boolean`           | Optional. Defaults to `false`. When `true`, postpones resolving `@DynamicMethod`/`@QueryMethod` methods — the repository itself must call `resolveDynamicMethods()` manually later. See [Lazily resolving dynamic methods](./dynamic-methods.md#lazily-resolving-dynamic-methods). |
 
 ---
 

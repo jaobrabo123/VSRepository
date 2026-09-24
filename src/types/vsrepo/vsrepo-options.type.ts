@@ -36,6 +36,11 @@ export type VSRepoOptions<T, K> = {
     /** Default ordering automatically applied to queries that accept `order`, unless the call overrides it. */
     defaultOrdering?: Ordering<T>;
     /**
+     * When `true`, postpones resolving every `@DynamicMethod`/`@QueryMethod`
+     * field of the subclass: the constructor skips that step, and the
+     * subclass itself must call the inherited `resolveDynamicMethods()` to
+     * make those methods available.
+     *
      * @default false
      */
     lazyDynamicMethods?: boolean;

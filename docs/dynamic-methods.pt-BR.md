@@ -257,4 +257,68 @@ await userRepository.findOneByEmail("john@example.com", { relations: { address: 
 - Funciona junto com as [options do decorador](#options-do-decorador) (`proxyTo`, `injectOrdering`).
 - Foi pensado para métodos dinâmicos que retornam entidades (`findBy…`, `findOneBy…`, `findWhere…`, …). Os que não retornam — `countBy…`, `existsBy…` — mantêm a assinatura normal.
 
+## Resolução lazy dos métodos dinâmicos
+
+Por padrão, o construtor do `VSRepository` já resolve todo `@DynamicMethod`/`@QueryMethod` da subclasse de forma síncrona. Passando `lazyDynamicMethods: true` nas options do construtor, essa resolução é adiada — o repository fica pronto para uso (métodos base como `get`, `save`, etc.), mas os métodos dinâmicos só existem depois que a própria subclasse chamar o método `protected resolveDynamicMethods()`, herdado de `VSRepository`:
+
+```typescript
+class UserRepository extends VSRepository<User, string> {
+    constructor() {
+        super({ pkName: "id", adapter, lazyDynamicMethods: true });
+        this.resolveDynamicMethods();
+    }
+
+    @DynamicMethod()
+    declare findByEmail: (email: string) => Promise<User[]>;
+}
+```
+
+Adiar a chamada ainda mais — para um hook de ciclo de vida posterior — é igualmente válido, e é onde a option realmente se torna útil: dá para empurrar o custo da resolução (relevante em repositories com muitos métodos decorados) para um momento mais oportuno do ciclo de vida da aplicação, ex.: um hook de inicialização assíncrona:
+
+```typescript
+class UserRepository extends VSRepository<User, string> {
+    constructor() {
+        super({ pkName: "id", adapter, lazyDynamicMethods: true });
+    }
+
+    @DynamicMethod()
+    declare findByEmail: (email: string) => Promise<User[]>;
+
+    // ex.: chamado no onModuleInit do Nest
+    init() {
+        this.resolveDynamicMethods();
+    }
+}
+```
+
+### O `declare` se torna opcional
+
+Normalmente, o campo anotado com `@DynamicMethod()`/`@QueryMethod()` precisa do modificador `declare`:
+
+```typescript
+@DynamicMethod()
+declare findByEmail: (email: string) => Promise<User[]>;
+```
+
+Isso existe por causa do `useDefineForClassFields` do TypeScript: sem `declare`, o compilador emite um `this.findByEmail = undefined` como parte da inicialização dos campos da subclasse, que roda logo após o `super()` retornar — ou seja, **depois** que o construtor do `VSRepository` já atribuiu a função ao método. Sem `declare`, esse `undefined` sobrescreveria a função recém-atribuída.
+
+Com `lazyDynamicMethods: true`, essa inicialização de campo já rodou no momento em que `resolveDynamicMethods()` executa — seja chamado na linha seguinte ao `super(...)`, seja num hook posterior como o `onModuleInit` — então não tem mais nada para sobrescrever a função atribuída, e o `declare` se torna opcional:
+
+```typescript
+class UserRepository extends VSRepository<User, string> {
+    constructor() {
+        super({ pkName: "id", adapter, lazyDynamicMethods: true });
+        this.resolveDynamicMethods();
+    }
+
+    // sem "declare"
+    @DynamicMethod()
+    findByEmail: (email: string) => Promise<User[]>;
+}
+```
+
+### Chamando `resolveDynamicMethods()` mais de uma vez
+
+Chamar `resolveDynamicMethods()` de novo depois que os métodos dinâmicos já foram resolvidos (seja porque você chamou manualmente mais de uma vez, seja por engano em cima de uma resolução eager) não lança erro — ela só reexecuta a resolução, sobrescrevendo os métodos com closures equivalentes. Como isso normalmente é redundante e indica um engano, o repository registra um `WARN` no logger interno nesse caso.
+
 [⬆️ Voltar ao topo](#top)
