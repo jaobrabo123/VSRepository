@@ -74,6 +74,16 @@ export class DynamicMethodsResolver<T, K> {
         AND: this.keywordTemplate("AND"),
     };
 
+    private customizationModifiers = {
+        Distinct: this.keywordTemplate("Distinct"),
+        OrderBy: this.keywordTemplate("OrderBy"),
+        PaginatedAndOrdered: /PaginatedAndOrdered$/,
+        OrderedAndPaginated: /OrderedAndPaginated$/,
+        Paginated: /Paginated$/,
+        Ordered: /Ordered$/,
+        IgnoreConflicts: /IgnoreConflicts$/,
+    };
+
     private logAndThrowError(errorMessage: string): never {
         this.logger.logError(errorMessage);
 
@@ -124,16 +134,7 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.ignoreOrderByAndPagination = false;
             dynamicMethodInfo.ignoreDistinct = false;
             dynamicMethodInfo.method = "findMany";
-        }
-        // else if (dynamicMethod === "groupBy") {
-        //     dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("groupBy", "");
-        //     dynamicMethodInfo.ignoreSelect = true;
-        //     dynamicMethodInfo.ignoreWhere = true;
-        //     dynamicMethodInfo.method = "groupBy";
-        //     dynamicMethodInfo.otherParams.push("prismaArgs"); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //     dynamicMethodInfo.argsCount++;
-        // }
-        else if (dynamicMethod.startsWith("findOneOrThrowBy")) {
+        } else if (dynamicMethod.startsWith("findOneOrThrowBy")) {
             dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("findOneOrThrowBy", "");
             dynamicMethodInfo.ignoreOrderByAndPagination = false;
             dynamicMethodInfo.method = "findOneOrThrow";
@@ -351,18 +352,21 @@ export class DynamicMethodsResolver<T, K> {
         const dynamicMethodCustomization: DynamicMethodCustomization = {};
 
         if (!dynamicMethodInfo.ignoreIgnoreConflicts) {
-            if (dynamicMethodInfo.keyToMapReplaced.endsWith("IgnoreConflicts")) {
-                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(/IgnoreConflicts$/, "");
+            if (this.customizationModifiers.IgnoreConflicts.test(dynamicMethodInfo.keyToMapReplaced)) {
+                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
+                    this.customizationModifiers.IgnoreConflicts,
+                    "",
+                );
                 dynamicMethodCustomization.ignoreConflicts = true;
             }
-        } else if (dynamicMethodInfo.keyToMapReplaced.endsWith("IgnoreConflicts")) {
+        } else if (this.customizationModifiers.IgnoreConflicts.test(dynamicMethodInfo.keyToMapReplaced)) {
             this.logAndThrowError(
                 `This dynamic method prefix doesn't support the "IgnoreConflicts" modifier: ${dynamicMethodInfo.originalDynamicMethodName}.`,
             );
         }
 
         if (!dynamicMethodInfo.ignoreOrderByAndPagination) {
-            if (dynamicMethodInfo.keyToMapReplaced.endsWith("PaginatedAndOrdered")) {
+            if (this.customizationModifiers.PaginatedAndOrdered.test(dynamicMethodInfo.keyToMapReplaced)) {
                 dynamicMethodCustomization.orderPosition = -2;
                 dynamicMethodCustomization.paginationPosition = -3;
 
@@ -370,12 +374,12 @@ export class DynamicMethodsResolver<T, K> {
                 dynamicMethodInfo.otherParams.push("order");
 
                 dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
-                    /PaginatedAndOrdered$/,
+                    this.customizationModifiers.PaginatedAndOrdered,
                     "",
                 );
 
                 dynamicMethodInfo.argsCount += 2;
-            } else if (dynamicMethodInfo.keyToMapReplaced.endsWith("OrderedAndPaginated")) {
+            } else if (this.customizationModifiers.OrderedAndPaginated.test(dynamicMethodInfo.keyToMapReplaced)) {
                 dynamicMethodCustomization.orderPosition = -3;
                 dynamicMethodCustomization.paginationPosition = -2;
 
@@ -383,32 +387,44 @@ export class DynamicMethodsResolver<T, K> {
                 dynamicMethodInfo.otherParams.push("pagination");
 
                 dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
-                    /OrderedAndPaginated$/,
+                    this.customizationModifiers.OrderedAndPaginated,
                     "",
                 );
 
                 dynamicMethodInfo.argsCount += 2;
-            } else if (dynamicMethodInfo.keyToMapReplaced.endsWith("Paginated")) {
+            } else if (this.customizationModifiers.Paginated.test(dynamicMethodInfo.keyToMapReplaced)) {
                 dynamicMethodCustomization.paginationPosition = -2;
 
                 dynamicMethodInfo.otherParams.push("pagination");
 
-                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(/Paginated$/, "");
+                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
+                    this.customizationModifiers.Paginated,
+                    "",
+                );
 
                 dynamicMethodInfo.argsCount++;
-            } else if (dynamicMethodInfo.keyToMapReplaced.endsWith("Ordered")) {
+            } else if (this.customizationModifiers.Ordered.test(dynamicMethodInfo.keyToMapReplaced)) {
                 dynamicMethodCustomization.orderPosition = -2;
 
                 dynamicMethodInfo.otherParams.push("order");
 
-                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(/Ordered$/, "");
+                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
+                    this.customizationModifiers.Ordered,
+                    "",
+                );
 
                 dynamicMethodInfo.argsCount++;
             }
 
-            const keySplitedOrderBy = dynamicMethodInfo.keyToMapReplaced.split(this.keywordTemplate("OrderBy"));
+            const keySplitedOrderBy = dynamicMethodInfo.keyToMapReplaced.split(this.customizationModifiers.OrderBy);
 
             if (keySplitedOrderBy[1]) {
+                if (this.customizationModifiers.Distinct.test(keySplitedOrderBy[1])) {
+                    this.logAndThrowError(
+                        `The "Distinct" modifier cannot appear after the "OrderBy" modifier: ${dynamicMethodInfo.originalDynamicMethodName}.`,
+                    );
+                }
+
                 const orderByFields = keySplitedOrderBy[1].split(this.operators.And).map(uncapitalize);
 
                 dynamicMethodCustomization.injectOrdering = orderByFields.map(field => {
@@ -428,9 +444,9 @@ export class DynamicMethodsResolver<T, K> {
 
             dynamicMethodCustomization.injectOrdering ??= methodData.injectOrdering;
         } else if (
-            dynamicMethodInfo.keyToMapReplaced.endsWith("Paginated") ||
-            dynamicMethodInfo.keyToMapReplaced.endsWith("Ordered") ||
-            this.keywordTemplate("OrderBy").test(dynamicMethodInfo.keyToMapReplaced)
+            this.customizationModifiers.Paginated.test(dynamicMethodInfo.keyToMapReplaced) ||
+            this.customizationModifiers.Ordered.test(dynamicMethodInfo.keyToMapReplaced) ||
+            this.customizationModifiers.OrderBy.test(dynamicMethodInfo.keyToMapReplaced)
         ) {
             this.logAndThrowError(
                 `This dynamic method prefix doesn't support the ordering or pagination modifiers: ${dynamicMethodInfo.originalDynamicMethodName}.`,
@@ -438,7 +454,7 @@ export class DynamicMethodsResolver<T, K> {
         }
 
         if (!dynamicMethodInfo.ignoreDistinct) {
-            const keySplitedDistinct = dynamicMethodInfo.keyToMapReplaced.split(this.keywordTemplate("Distinct"));
+            const keySplitedDistinct = dynamicMethodInfo.keyToMapReplaced.split(this.customizationModifiers.Distinct);
 
             if (keySplitedDistinct[1]) {
                 dynamicMethodCustomization.distinctKeys = keySplitedDistinct[1]
@@ -447,7 +463,7 @@ export class DynamicMethodsResolver<T, K> {
             }
 
             dynamicMethodInfo.keyToMapReplaced = keySplitedDistinct[0]!;
-        } else if (this.keywordTemplate("Distinct").test(dynamicMethodInfo.keyToMapReplaced)) {
+        } else if (this.customizationModifiers.Distinct.test(dynamicMethodInfo.keyToMapReplaced)) {
             this.logAndThrowError(
                 `This dynamic method prefix doesn't support the "Distinct" modifier: ${dynamicMethodInfo.originalDynamicMethodName}.`,
             );

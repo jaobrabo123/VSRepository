@@ -1,4 +1,3 @@
-import "reflect-metadata";
 import { VSRepoOptions } from "./types/vsrepo/vsrepo-options.type";
 import { CountResult } from "./types/utils/count-result.type";
 import { DeepPartial } from "./types/utils/deep-partial.type";
