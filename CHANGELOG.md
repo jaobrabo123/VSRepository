@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased]
+## [2.6.0] - 2026-09-24
 
 ### Added
 - **`createQueryBuilder(db?)`** — new method on every `VSRepository` that returns a fluent query builder for queries assembled at runtime. Chain `select`, `relations`, `where`, `orderBy`, `limit`, `offset`, `distinctOn` and `see`, then run it with `getResult()`, `getOneResult()`, `getOneResultOrThrow()`, `getCount()`, `getExistence()` or `getResultAndCount()`. `where()` takes the same `VSRepoWhere` filter used by the rest of the library (including `AND`/`OR`/`NOT`). The last terminal method fetches a page and the total of records matching the `where` (ignoring `order`/`pagination`, so it can be used for pagination) in parallel. The builder respects soft-delete (`see("active")` by default), `clone()` derives independent builders from a common base, and `setDb()` lets you choose lazily where the query runs — e.g. build it first and run it inside a `transaction()`. `distinctOn` only affects `getResult()`, since `count` doesn't support `distinct`
@@ -23,7 +23,8 @@ All notable changes to this project will be documented in this file.
 - Using an ordering/pagination suffix (`Paginated`/`Ordered`/`OrderBy...`), `Distinct` or `IgnoreConflicts` on a dynamic-method prefix that doesn't support it, or using `Or` after an `AND` (all caps) block, now throws a `VSRepoError` (`RESOLVER`) when the repository is constructed, instead of silently becoming part of the field name
 
 ### Fixed
-- A relation filter (`With`/`Without`/`Some`/`Every`/`None`) combined with equality and `IgnoreCase` (e.g. `findByAddressWithCityEqualsIgnoreCase`) now nests correctly as `{ equals, ignoreCase }`, instead of dropping the `equals` wrapper
+- A relation filter (`With`/`Without`/`Some`/`Every`/`None`) combined with equality and `IgnoreCase` (e.g. `findByAddressWithCityEqualsIgnoreCase`) now nests correctly as `{ equals, ignoreCase }`
+- A dynamic-method name that places `Distinct` **after** `OrderBy` (e.g. `findByActiveOrderByCreatedAtDescDistinctName`) now throws a `VSRepoError` (`RESOLVER`) when the repository is constructed, instead of silently parsing `Distinct` as part of a non-existent ordering field
 
 ### Documentation
 - Both READMEs document the query builder: new "Query builder" section, a new row in the base methods table, `QUERY_BUILDER` in the error types tables, and a note about the builder in the Logging section
@@ -33,7 +34,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [Unreleased] (Português)
+## [2.6.0] - 2026-09-24 (Português)
 
 ### Adicionado
 - **`createQueryBuilder(db?)`** — novo método em todo `VSRepository` que retorna um query builder fluente para queries montadas em tempo de execução. Encadeie `select`, `relations`, `where`, `orderBy`, `limit`, `offset`, `distinctOn` e `see`, e execute com `getResult()`, `getOneResult()`, `getOneResultOrThrow()`, `getCount()`, `getExistence()` ou `getResultAndCount()`. O `where()` recebe o mesmo filtro `VSRepoWhere` usado no resto da biblioteca (inclusive `AND`/`OR`/`NOT`). O último método terminal busca uma página e o total de registros que batem com o `where` (ignorando `order`/`pagination`, então serve para paginação) em paralelo. O builder respeita o soft-delete (`see("active")` por padrão), o `clone()` deriva builders independentes de uma base comum, e o `setDb()` permite escolher de forma lazy onde a query roda — ex.: montá-la antes e executá-la dentro de um `transaction()`. O `distinctOn` só afeta o `getResult()`, já que o `count` não suporta `distinct`
@@ -50,7 +51,8 @@ All notable changes to this project will be documented in this file.
 - Usar um sufixo de ordenação/paginação (`Paginated`/`Ordered`/`OrderBy...`), `Distinct` ou `IgnoreConflicts` num prefixo de método dinâmico que não os suporta, ou usar `Or` depois de um bloco `AND` (maiúsculo), agora lança um `VSRepoError` (`RESOLVER`) ao construir o repository, em vez de virar silenciosamente parte do nome do campo
 
 ### Corrigido
-- Um filtro de relação (`With`/`Without`/`Some`/`Every`/`None`) combinado com igualdade e `IgnoreCase` (ex.: `findByAddressWithCityEqualsIgnoreCase`) agora aninha corretamente como `{ equals, ignoreCase }`, em vez de perder o wrapper `equals`
+- Um filtro de relação (`With`/`Without`/`Some`/`Every`/`None`) combinado com igualdade e `IgnoreCase` (ex.: `findByAddressWithCityEqualsIgnoreCase`) agora aninha corretamente como `{ equals, ignoreCase }`
+- Um nome de método dinâmico que coloca `Distinct` **depois** de `OrderBy` (ex.: `findByActiveOrderByCreatedAtDescDistinctName`) agora lança um `VSRepoError` (`RESOLVER`) ao construir o repository, em vez de silenciosamente interpretar o `Distinct` como parte de um campo de ordenação inexistente
 
 ### Documentação
 - Ambos os READMEs documentam o query builder: nova seção "Query builder", uma nova linha na tabela de métodos base, `QUERY_BUILDER` nas tabelas de tipos de erro, e uma observação sobre o builder na seção de Logging
