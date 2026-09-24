@@ -194,4 +194,17 @@ export abstract class VSRepoAdapter<T> {
 
     /** Optional method for the adapter itself to return the "pkName", instead of the user having to configure it manually in the VSRepository constructor. */
     public getPkName?(): string;
+
+    /**
+     * Optional method for the adapter to declare the placeholder syntax its
+     * database/driver expects in a raw `query()` string, given the 0-based
+     * position of the parameter in the `args` array (e.g. Postgres would
+     * return `` `$${index + 1}` ``, SQLite/MySQL would ignore `index` and
+     * always return `"?"`).
+     *
+     * Implementing this is what lets `VSRepository.query()` accept a `VSSql`
+     * fragment (built with `VSSql.sql`/`raw`/`join`/`empty`) in addition to a
+     * plain string: without it, passing a `VSSql` fragment throws.
+     */
+    public getPlaceholder?(index: number): string;
 }

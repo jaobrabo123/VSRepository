@@ -21,6 +21,7 @@ import { VSRepoQueryOptions } from "./types/vsrepo/vsrepo-query-options.type";
 import { NumericKeys } from "./types/utils/numeric-keys.type";
 import { RestrictMethodOptions } from "./types/utils/restrict-method-options.type";
 import { VSQueryBuilder } from "./internal/utils/vs-query-builder.util";
+import { VSSql } from "./internal/utils/vs-sql.util";
 
 /**
  * ORM-agnostic base repository, exposing a complete set of ready-to-use CRUD
@@ -277,9 +278,14 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
     /**
      * Executes a raw query/statement directly against the underlying database.
      *
-     * Use placeholders for values passed via `options.args` — never interpolate
-     * values directly into `query`, to avoid SQL injection. The placeholder
-     * syntax depends on the database/driver behind your adapter.
+     * Accepts either a plain SQL string — use placeholders for values passed
+     * via `options.args`, never interpolate values directly into `query`, to
+     * avoid SQL injection; the placeholder syntax depends on the
+     * database/driver behind your adapter — or a `VSSql` fragment built with
+     * `VSSql.sql`/`raw`/`join`/`empty`, which is parameterized automatically
+     * and compiled using your adapter's own placeholder syntax (requires the
+     * adapter to implement `getPlaceholder()`; see {@link VSSql}).
+     *
      * Set `options.modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements.
      * Set `options.singleResult: true` to collapse an array result into its
      * first element (`null` if empty) — see {@link VSRepoQueryOptions.singleResult}.
@@ -302,14 +308,37 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
      *     'SELECT * FROM "user" WHERE id = $1 LIMIT 1',
      *     { args: ["123"], singleResult: true },
      * );
+     *
+     * // Same thing, built with a `VSSql` fragment instead of a hand-written
+     * // placeholder string — `email` is still sent as a parameter.
+     * const { sql } = VSSql;
+     * const usersViaSql = await userRepository.query<User[]>(sql`SELECT * FROM "user" WHERE email = ${"joao@email.com"}`);
      * ```
      */
-    async query<T = any>(query: string, options?: VSRepoQueryOptions<OrmTypes>): Promise<T> {
-        if (typeof query !== "string") {
-            this.fail("'query' must be a valid string", VSRepoErrorType.BASE);
+    async query<T = any>(query: string, options?: VSRepoQueryOptions<OrmTypes>): Promise<T>;
+    async query<T = any>(sql: VSSql, options?: Omit<VSRepoQueryOptions<OrmTypes>, "args">): Promise<T>;
+    async query<T = any>(queryOrSql: string | VSSql, options?: VSRepoQueryOptions<OrmTypes>): Promise<T> {
+        let query: string;
+        let args: any[] | undefined = options?.args;
+
+        if (queryOrSql instanceof VSSql) {
+            if (!this.adapter.getPlaceholder) {
+                this.fail(
+                    "Your adapter did not implement the 'getPlaceholder' method, required to compile a 'VSSql' fragment; try updating your adapter to a newer version, or pass a plain SQL string with 'options.args' instead.",
+                    VSRepoErrorType.VALIDATOR,
+                );
+            }
+
+            const compiled = queryOrSql.compile(index => this.adapter.getPlaceholder!(index));
+            query = compiled.text;
+            args = compiled.args;
+        } else if (typeof queryOrSql === "string") {
+            query = queryOrSql;
+        } else {
+            this.fail("'query' must be a valid string or a 'VSSql' fragment", VSRepoErrorType.BASE);
         }
 
-        const optionsValidated = this.validator.validateQueryOptions(options);
+        const optionsValidated = this.validator.validateQueryOptions({ ...options, args });
         optionsValidated.db ??= this.getDbClient();
 
         const start = this.logger.startPerformLog("run query");
