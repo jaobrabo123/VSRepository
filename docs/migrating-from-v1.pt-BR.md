@@ -19,6 +19,7 @@ Esta página é a referência única do que mudou entre a v1 e a v2. Se você es
 | Acesso ao banco | Fala diretamente com o **Prisma**, embutido no pacote core | Fala com um **`VSRepoAdapter`**; o suporte a cada ORM é distribuído em pacotes separados (`@vsrepo/prisma7-adapter`, `@vsrepo/drizzle-adapter`, ...) em vez de vir embutido no pacote core `vsrepo` |
 | Definindo um repository | `setupVSRepo<T, M>()({...}).build(prisma)` funcional, **ou** uma classe `DynamicRepository` | Uma única API **baseada em classes**: `extends VSRepository<Entity, PKType, OrmTypes>` |
 | Métodos dinâmicos | Objeto de config `methods: { findByEmail: { map: true } }` | Decorator `@DynamicMethod()` em um campo `declare` |
+| Options de método e de config | `map`, `fbMode`, `whereType`, `selectModel`, `pushWhere`, `injectPagination` e `query` por método em `methods: {...}`; `baseMethods: { active, defaultSelect, ignoreRequiredWhere }` no build | Somente `proxyTo` + `injectOrdering` permanecem no `@DynamicMethod` (veja [Options do decorador](./dynamic-methods.pt-BR.md#options-do-decorador)); `baseMethods` não é mais configurável — os métodos base estão sempre ativos |
 | Projeções de dados | `selectModels` + `defaultSelectModel` nomeados e reutilizáveis | `select`/`relations` ad-hoc passados em cada chamada (sem modelos nomeados) |
 | Eager loading | `include`/`includeModels` (específico do Prisma) | Option `relations` agnóstica de ORM |
 | Filtros globais | `requiredWhere` e `pushWhere` | **Removidos**; restam apenas `softRemoveKey` + `see: "active" \| "removed" \| "all"` |
@@ -29,7 +30,11 @@ Esta página é a referência única do que mudou entre a v1 e a v2. Se você es
 | Tipos de erro | `VSRepoError` + subclasses (`VSRepoConfigError`, `VSRepoBuildError`, `VSRepoExtendError`, `VSRepoRuntimeError`) | Uma classe base `VSRepoError` com um campo `type: VSRepoErrorType` (`DECORATOR`, `RESOLVER`, `DYNAMIC`, `VALIDATOR`, `BASE`, `ADAPTER`, `QUERY_BUILDER`), além de uma subclasse `VSRepoAdapterError` que carrega um `AdapterErrorCode` e o erro original do ORM |
 | Log de debug | Boolean `showWorking: true` | `logLevel: VSLogLevel` (`DEBUG`/`INFO`/`WARN`/`ERROR`) + `logSlowThresholdMs` para avisos de queries lentas |
 | CLI `vsrepo generate` (etapa de geração de tipos) | Obrigatória antes de usar | Não faz parte do núcleo da v2 — os tipos vêm diretamente das suas entidades/tipos do ORM |
-| Extras de CRUD | `patchList`, `options.select`/`options.include` raw | `select`/`relations` já são o padrão (sempre "raw"); `patch`/`merge` mantêm a mesma semântica. **`patchList` foi removido** — para uma atualização parcial em lote, use um dynamic method `updateManyBy`/`updateManyReturningBy` |
+| Extras de CRUD | `patchList`, `options.select`/`options.include` raw | `select`/`relations` já são o padrão (sempre "raw"); `patch`/`merge` mantêm a mesma semântica. **`patchList` foi removido** — para uma atualização parcial em lote, use um dynamic method `updateManyWhere`/`updateManyReturningWhere` |
+| Opção de soft-delete | `softRemovekName` (sic — o nome de config original da v1) | `softRemoveKey` |
+| Acesso ao cliente do ORM | `repository.prisma` | `getDbClient()` |
+| Estendendo um repository | `.extend({ ... })` (mixin) | Defina métodos diretamente na classe (herança/composição de classe) |
+| Query methods | Opção `query` de config (API funcional) + decorator `@QueryMethod('SQL', { modifying })` | Apenas o decorator `@QueryMethod` — agora com `singleResult` e `spreadArgs` — além de um novo método ad-hoc `query()` |
 
 ## Sufixos renomeados
 
@@ -40,12 +45,39 @@ Dois sufixos mudaram de nome entre a v1 e a v2 — a funcionalidade é idêntica
 | `Insensitive` | `IgnoreCase` | Combinador case-insensitive para filtros de texto em [métodos dinâmicos](./dynamic-methods.pt-BR.md#filtros-de-campo) |
 | `SkipDuplicates` | `IgnoreConflicts` | Tratamento de duplicatas no `createMany`/`createManyReturning` em [métodos dinâmicos](./dynamic-methods.pt-BR.md#ordenação-paginação-e-distinct) |
 
+## Prefixos de métodos dinâmicos renomeados
+
+Vários prefixos de nome de método da v1 foram renomeados — ou removidos — para consistência com os métodos base da v2:
+
+| v1 | v2 |
+| --- | --- |
+| `findMany` / `findManyBy` | `findBy` / `findWhere` |
+| `findFirst` | `findOne` |
+| `findFirstBy` | `findOneBy` |
+| `findFirstOrThrow` | `findOneOrThrow` |
+| `findFirstOrThrowBy` | `findOneOrThrowBy` |
+| `findListWhere` | `findWhere` |
+| `findOneWhere` | `findOneWhere` (inalterado) |
+| `createManyAndReturn` | `createManyReturning` |
+| `updateManyAndReturnBy` | `updateManyReturningBy` |
+| `updateManyAndReturnWhere` | `updateManyReturningWhere` |
+
+A opção `fbMode` — que permitia o `findBy` da v1 retornar o primeiro registro em vez de uma lista — foi removida. Na v2, `findBy` sempre retorna uma lista; use `findOneBy` para um único registro.
+
+**Removidos** (sem equivalente): `findUniqueBy` e `findUniqueOrThrowBy` — use `findOneBy`/`findOneOrThrowBy` no lugar.
+
+**Novos na v2** (não existiam na v1): `findOneOrThrow`, `findOneOrThrowWhere`, `updateWhere`, `upsertWhere`, `deleteWhere` e `deleteManyReturning*`. Veja [Prefixos disponíveis](./dynamic-methods.pt-BR.md#prefixos-disponíveis).
+
 ## Funcionalidades removidas
 
-- **`patchList`** — removido. Para uma atualização parcial em lote, use um dynamic method `updateManyBy`/`updateManyReturningBy`.
+- **`patchList`** — removido. Para uma atualização parcial em lote, use um dynamic method `updateManyWhere`/`updateManyReturningWhere`.
 - **`requiredWhere` / `pushWhere`** — removidos. Restam apenas `softRemoveKey` + `see`.
 - **`selectModels` / `defaultSelectModel` (projeções nomeadas)** — removidos. Passe `select`/`relations` em cada chamada (veja [`select` e `relations`](./select-and-relations.pt-BR.md#select-e-relations)).
+- **`includeModels`** — removido junto com as projeções nomeadas. Use a option `relations` em cada chamada.
 - **CLI `vsrepo generate`** — não faz mais parte do núcleo; os tipos vêm das suas entidades/tipos do ORM diretamente.
+- **Options de config de métodos dinâmicos** — `map`, `fbMode`, `whereType`, `selectModel`, `pushWhere`, `injectPagination` e a opção funcional `query` foram removidas. Restam apenas `proxyTo` e `injectOrdering` (veja [Options do decorador](./dynamic-methods.pt-BR.md#options-do-decorador)).
+- **Config de `baseMethods`** (`active`, `defaultSelect`, `ignoreRequiredWhere`) — removida; os métodos base estão sempre ativos.
+- **`findUniqueBy` / `findUniqueOrThrowBy`** — removidos; use `findOneBy`/`findOneOrThrowBy`.
 
 ## Para onde cada conceito foi
 
@@ -55,19 +87,39 @@ Dois sufixos mudaram de nome entre a v1 e a v2 — a funcionalidade é idêntica
 | Config `methods: {...}` | Decorator `@DynamicMethod()` | [Métodos dinâmicos](./dynamic-methods.pt-BR.md) |
 | `options.select` / `options.include` raw | `select` / `relations` em cada chamada | [`select` e `relations`](./select-and-relations.pt-BR.md) |
 | `showWorking: true` | `logLevel` + `logSlowThresholdMs` | [Logging](./logging.pt-BR.md) |
+| `repository.prisma` | `getDbClient()` | [Métodos base](./base-methods.pt-BR.md) |
+| `.extend({ ... })` | Métodos de classe diretos (herdar ou compor) | [Métodos dinâmicos](./dynamic-methods.pt-BR.md) |
+| Opção `query` de config / `@QueryMethod` | Decorator `@QueryMethod` + método ad-hoc `query()` | [Query methods](./query-methods.pt-BR.md) |
+| `prisma.$transaction(...)` + `{ db: tx }` | `transaction(fn)` (a option `db` continua suportada) | [Transações](./transactions.pt-BR.md), [Métodos base](./base-methods.pt-BR.md) |
 | `VSRepoConfigError` + subclasses | `VSRepoError` + campo `type`, `VSRepoAdapterError` | [Tratamento de erros](./error-handling.pt-BR.md) |
 | Passthrough de `aggregate`/`groupBy` do Prisma | Métodos base (`sum`, `average`, `min`, `max`, ...) ou `@QueryMethod` | [Métodos base](./base-methods.pt-BR.md#métodos-atômicos-e-de-agregação), [Query methods](./query-methods.pt-BR.md) |
+
+## O que a v2 adiciona
+
+Estas capacidades não existiam na v1 — vale conhecer durante a migração:
+
+- **`transaction(fn)`** — um método base de primeira linha que executa `fn` dentro de uma transação nativa do ORM. Na v1 você precisava passar `{ db: tx }` manualmente via `prisma.$transaction` (veja [Transações](./transactions.pt-BR.md)).
+- **Métodos base atômicos e de agregação** — `increment`, `decrement`, `multiply`, `divide`, `sum`, `average`, `min`, `max` de fábrica (veja [Métodos atômicos e de agregação](./base-methods.pt-BR.md#métodos-atômicos-e-de-agregação)).
+- **Queries raw pontuais** — `query(sql, options?)` executa SQL arbitrário sob demanda (veja [Queries raw pontuais com `query()`](./query-methods.pt-BR.md#queries-raw-pontuais-com-query)).
+- **Query builder** — `createQueryBuilder()` monta queries fluentemente em tempo de execução, sobrescrevendo filtros/ordenação/paginação por chamada (veja [Query builder](./query-builder.pt-BR.md)).
+- **Novos tipos utilitários** — `InferMethodReturn`, `InferMethodType`, `KeysOfType`, `Ordering`, `DeepPartial`, `VSRepoWhere` (veja [Tipos utilitários](./utility-types.pt-BR.md)).
 
 ## Migrando um repository da v1 para a v2
 
 1. **Instale** o pacote core mais um adapter para o seu ORM — ex.: `npm i vsrepo @vsrepo/prisma7-adapter`.
 2. **Substitua** `setupVSRepo<T, M>()({...}).build(prisma)` (ou uma classe `DynamicRepository`) por uma classe que estende `VSRepository<Entity, PKType, OrmTypes>`.
 3. **Mova** a config `methods: {...}` para decorators `@DynamicMethod()` em campos `declare`d.
-4. **Substitua** `selectModels`/`defaultSelectModel` (e os `options.select`/`options.include` raw) por `select`/`relations` em cada chamada.
-5. **Renomeie** os sufixos: `Insensitive` → `IgnoreCase`, `SkipDuplicates` → `IgnoreConflicts`.
-6. **Troque** `showWorking: true` por `logLevel` (e `logSlowThresholdMs` para avisos de queries lentas).
-7. **Atualize** o tratamento de erros para o novo campo `type` do `VSRepoError` e o `VSRepoAdapterError` (veja [Tratamento de erros](./error-handling.pt-BR.md)).
-8. **Remova** a etapa `vsrepo generate` — os tipos vêm diretamente das suas entidades/tipos do ORM.
-9. **Migre** chamadas de `patchList` para dynamic methods `updateManyBy`/`updateManyReturningBy`.
+4. **Renomeie** os prefixos de nome de método para os equivalentes da v2 — `findMany`/`findFirst*`/`findListWhere`/`createManyAndReturn`/`updateManyAndReturn*` conforme listado [acima](#prefixos-de-métodos-dinâmicos-renomeados), e remova `findUniqueBy`/`findUniqueOrThrowBy`.
+5. **Remova** as options de config que não existem mais — `map`, `fbMode`, `whereType`, `selectModel`, `pushWhere`, `injectPagination`, `query` e os toggles de `baseMethods`. Restam apenas `proxyTo`/`injectOrdering`.
+6. **Troque** chamadas de `.extend()` por métodos diretos na classe, `repository.prisma` por `getDbClient()` e `softRemovekName` por `softRemoveKey`.
+7. **Mova** qualquer config `query` (API funcional) ou funções `@QueryMethod` avulsas para o decorator `@QueryMethod` da v2, adicionando `singleResult`/`spreadArgs` quando preciso; use o novo método ad-hoc `query()` para SQL pontual.
+8. **Substitua** `selectModels`/`defaultSelectModel` (e os `options.select`/`options.include` raw) por `select`/`relations` em cada chamada.
+9. **Renomeie** os sufixos: `Insensitive` → `IgnoreCase`, `SkipDuplicates` → `IgnoreConflicts`.
+10. **Troque** `showWorking: true` por `logLevel` (e `logSlowThresholdMs` para avisos de queries lentas).
+11. **Atualize** o tratamento de erros para o novo campo `type` do `VSRepoError` e o `VSRepoAdapterError` (veja [Tratamento de erros](./error-handling.pt-BR.md)).
+12. **Remova** a etapa `vsrepo generate` — os tipos vêm diretamente das suas entidades/tipos do ORM.
+13. **Migre** chamadas de `patchList` para dynamic methods `updateManyWhere`/`updateManyReturningWhere`.
 
 > Veja o [README principal](../README.pt-BR.md) para instalação, status dos adapters e uso básico.
+
+[⬆️ Voltar ao topo](#top)
