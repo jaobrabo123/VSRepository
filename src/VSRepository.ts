@@ -300,7 +300,7 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
      *
      * Set `options.modifying: true` for `INSERT`/`UPDATE`/`DELETE` statements.
      * Set `options.singleResult: true` to collapse an array result into its
-     * first element (`null` if empty) — see {@link VSRepoQueryOptions.singleResult}.
+     * first element (`null` if empty).
      *
      * @example
      * ```typescript
@@ -323,8 +323,7 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
      *
      * // Same thing, built with a `VSSql` fragment instead of a hand-written
      * // placeholder string — `email` is still sent as a parameter.
-     * const { sql } = VSSql;
-     * const usersViaSql = await userRepository.query<User[]>(sql`SELECT * FROM "user" WHERE email = ${"joao@email.com"}`);
+     * const usersViaSql = await userRepository.query<User[]>(VSSql.sql`SELECT * FROM "user" WHERE email = ${"joao@email.com"}`);
      *
      * // With `vsPlaceholders: true` in the constructor options, plain
      * // strings use VSRepository's own `?1`, `?2`, ... placeholders instead
@@ -367,6 +366,13 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
 
         const optionsValidated = this.validator.validateQueryOptions({ ...options, args });
         optionsValidated.db ??= this.getDbClient();
+
+        this.logger.logDebug(`${this.constructor.name} query:`, {
+            query,
+            args: optionsValidated.args ?? [],
+            modifying: optionsValidated.modifying ?? false,
+            singleResult: optionsValidated.singleResult ?? false,
+        });
 
         const start = this.logger.startPerformLog("run query");
 

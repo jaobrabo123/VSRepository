@@ -1054,16 +1054,17 @@ export class DynamicMethodsResolver<T, K> {
 
                     const result = await (this.adapter as any)[dynamicMethodInfo.method](...argsOrdered);
 
+                    this.logger.endPerformLog(start);
+
                     return result;
                 } catch (err) {
+                    this.logger.endPerformLog(start);
                     this.logger.logError(
                         `Failed to run dynamic method '${String(originalKey)}' (-> ${dynamicMethodInfo.method})`,
                         err,
                     );
 
                     throw err;
-                } finally {
-                    this.logger.endPerformLog(start);
                 }
             };
         }
@@ -1082,7 +1083,7 @@ export class DynamicMethodsResolver<T, K> {
 
             const modifyingQueryMethod = method.modifying ?? false;
             const valueQueryMethod = method.value;
-            const singleResult = method.singleResult;
+            const singleResult = method.singleResult ?? false;
             const spreadArgsMode = method.spreadArgs;
 
             (instance as any)[originalKey] = async (...args: unknown[]) => {
@@ -1121,6 +1122,13 @@ export class DynamicMethodsResolver<T, K> {
                     finalQuery = compiled.text;
                     finalArgs = compiled.args;
                 }
+
+                this.logger.logDebug(`QueryMethod '${String(originalKey)}':`, {
+                    query: finalQuery,
+                    args: finalArgs ?? [],
+                    modifying: modifyingQueryMethod,
+                    singleResult,
+                });
 
                 const start = this.logger.startPerformLog(
                     `run ${String(originalKey)} (Modifying: ${modifyingQueryMethod})`,
