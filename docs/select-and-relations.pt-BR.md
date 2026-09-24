@@ -6,7 +6,7 @@
 
 # `select` e `relations`
 
-Os `selectModels`/`defaultSelectModel` nomeados e reutilizáveis da v1 não existem mais. Na v2 você passa `select` e `relations` diretamente em cada chamada — não há nada para pré-registrar:
+Os `selectModels`/`defaultSelectModel` nomeados e reutilizáveis não existem mais — você passa `select` e `relations` diretamente em cada chamada, não há nada para pré-registrar. *(Se você está migrando da v1, essa mudança está coberta em [Migrando da v1](./migrating-from-v1.pt-BR.md).)*:
 
 ```typescript
 const usuario = await userRepository.get(id, {

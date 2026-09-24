@@ -77,11 +77,11 @@ class UserRepository extends VSRepository<User, string> {
 | `deleteManyReturningBy`    | `deleteManyReturning`  | `Entity[]`        | Filtros de campo seguem o prefixo.                                                  |
 | `deleteManyReturningWhere` | `deleteManyReturning`  | `Entity[]`        | Recebe um `VSRepoWhere<T>` como primeiro argumento.                                 |
 
-> `groupBy` **não está planejado** para a v2 — ele não se encaixa bem no contrato agnóstico de ORM. Um prefixo `aggregate` separado também dificilmente será implementado: as operações de agregação mais comuns (`sum`, `average`, `min`, `max`, `increment`, `decrement`, `multiply`, `divide`) já estão disponíveis como métodos base dedicados — veja [Métodos atômicos e de agregação](./base-methods.pt-BR.md#métodos-atômicos-e-de-agregação). Para qualquer coisa mais complexa, use um `@QueryMethod` com SQL raw.
+> `groupBy` **não está planejado** — ele não se encaixa bem no contrato agnóstico de ORM. Um prefixo `aggregate` separado também dificilmente será implementado: as operações de agregação mais comuns (`sum`, `average`, `min`, `max`, `increment`, `decrement`, `multiply`, `divide`) já estão disponíveis como métodos base dedicados — veja [Métodos atômicos e de agregação](./base-methods.pt-BR.md#métodos-atômicos-e-de-agregação). Para qualquer coisa mais complexa, use um `@QueryMethod` com SQL raw.
 
 ## Filtros de campo
 
-Aplicados como sufixos ao nome do campo dentro do método (mesma ideia da v1, com um sufixo renomeado):
+Aplicados como sufixos ao nome do campo dentro do método:
 
 | Sufixo             | Significado                                                                                                                                                | Argumento                                |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
@@ -105,7 +105,7 @@ Aplicados como sufixos ao nome do campo dentro do método (mesma ideia da v1, co
 | `IsNotNull`        | campo não é `null`                                                                                                                                         | não                                      |
 | `IsTrue`           | campo é `true`                                                                                                                                             | não                                      |
 | `IsFalse`          | campo é `false`                                                                                                                                            | não                                      |
-| `IgnoreCase`       | combinador case-insensitive para filtros de texto                                                                                                          | sim _(renomeado do `Insensitive` da v1)_ |
+| `IgnoreCase`       | combinador case-insensitive para filtros de texto                                                                                                          | sim |
 | `Optional`         | flag opcional para deixar explícito que o parâmetro é opcional | sim _(na prática não muda nada)_                                       |
 
 ```typescript
@@ -126,7 +126,7 @@ declare findByAgeBetween: (age: [number, number]) => Promise<User[]>;
 | `Or`     | entre dois campos              | `findByNameOrEmail`                                 |
 | `AND`    | separa um bloco final em `AND` | `findByEmailOrNameANDActiveStatusAndAgeGreaterThan` |
 
-Regras do `AND` (em capslock), iguais às da v1: só é permitido **um** `AND` por nome de método; todo campo conectado por `And` depois dele é aninhado dentro de `AND: []`; `Or` não pode aparecer depois de um `AND` — usar dessa forma lança um `VSRepoError` (`RESOLVER`) ao construir o repository. Veja [Tratamento de erros](./error-handling.pt-BR.md#tratamento-de-erros).
+Regras do `AND` (em capslock): só é permitido **um** `AND` por nome de método; todo campo conectado por `And` depois dele é aninhado dentro de `AND: []`; `Or` não pode aparecer depois de um `AND` — usar dessa forma lança um `VSRepoError` (`RESOLVER`) ao construir o repository. Veja [Tratamento de erros](./error-handling.pt-BR.md#tratamento-de-erros).
 
 ## Filtros de relação
 
@@ -163,7 +163,7 @@ declare findByProductsSome: () => Promise<User[]>;
 | `PaginatedAndOrdered`                      | Injeta `pagination` como antepenúltimo, depois `order` como penúltimo — ambos antes do `MethodOptions`.                                                                        |
 | `OrderBy<Campo>Asc` / `OrderBy<Campo>Desc` | Embute uma ordenação fixa diretamente no nome do método — encadeie campos com `And` (ex.: `OrderByCreatedAtAscAndNameDesc`). Não precisa de argumento `order`. *OBS: Se você não especificar `Asc` ou `Desc` ele considera como `Asc`* |
 | `Distinct<Campo>And<Campo>...`             | Embute campos `distinct` fixos diretamente no nome do método (só válido em métodos da família `findBy`/`findWhere`).                                                           |
-| `IgnoreConflicts`                          | No `createMany`/`createManyReturning`, ignora registros que violariam uma constraint única, em vez de lançar erro. _(Renomeado do `SkipDuplicates` da v1.)_                    |
+| `IgnoreConflicts`                          | No `createMany`/`createManyReturning`, ignora registros que violariam uma constraint única, em vez de lançar erro.                    |
 
 > ⚠️ **Ordem dos parâmetros:** `pagination` e `order` sempre vêm **antes** do último argumento opcional `MethodOptions<T>`. Quando `order` e `pagination` estão presentes juntos, a ordem relativa entre eles segue o nome do sufixo (`OrderedAndPaginated` → order, pagination; `PaginatedAndOrdered` → pagination, order).
 >

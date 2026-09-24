@@ -4,7 +4,7 @@
 
 [← Voltar para o README principal](../README.pt-BR.md)
 
-Guias detalhados e com bastante exemplos para cada funcionalidade do VSRepository. Para o quickstart, notas de migração da v1 e status dos adapters, veja o [README principal](../README.pt-BR.md).
+Guias detalhados e com bastante exemplos para cada funcionalidade do VSRepository. Para o quickstart e status dos adapters, veja o [README principal](../README.pt-BR.md). Vindo da v1? A referência completa v1 → v2 vive em [Migrando da v1](./migrating-from-v1.pt-BR.md).
 
 | Guia | Cobre |
 | --- | --- |
@@ -18,3 +18,4 @@ Guias detalhados e com bastante exemplos para cada funcionalidade do VSRepositor
 | [Escrevendo seu próprio adapter](./writing-an-adapter.pt-BR.md) | Como implementar o `VSRepoAdapter` para um novo ORM ou banco, método a método. |
 | [Tratamento de erros](./error-handling.pt-BR.md) | `VSRepoError`, `VSRepoErrorType`, e `VSRepoAdapterError`/`AdapterErrorCode`. |
 | [Logging](./logging.pt-BR.md) | `logLevel`, `logSlowThresholdMs`, e o formato de log usado pelo repository e pelo query builder. |
+| [Migrando da v1](./migrating-from-v1.pt-BR.md) | Tudo o que mudou entre a v1 e a v2 — API, config, sufixos renomeados, funcionalidades removidas — e um passo a passo de migração. |

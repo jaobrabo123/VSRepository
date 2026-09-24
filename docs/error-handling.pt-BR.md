@@ -6,7 +6,7 @@
 
 # Tratamento de erros
 
-A v2 simplifica a hierarquia de erros da v1: em vez de várias subclasses, existe uma classe base `VSRepoError` carregando um campo `type: VSRepoErrorType`, além de uma subclasse dedicada `VSRepoAdapterError` (veja abaixo) para falhas vindas do ORM/banco subjacente.
+O modelo de erros é construído em torno de uma única classe base `VSRepoError` carregando um campo `type: VSRepoErrorType`, além de uma subclasse dedicada `VSRepoAdapterError` (veja abaixo) para falhas vindas do ORM/banco subjacente. (Se você está migrando da v1, isso está coberto em [Migrando da v1](./migrating-from-v1.pt-BR.md).)
 
 ```typescript
 import { VSRepoError } from "vsrepo";

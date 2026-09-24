@@ -6,7 +6,7 @@
 
 # Error handling
 
-v2 simplifies the error hierarchy from v1: instead of several subclasses, there's a base `VSRepoError` class carrying a `type: VSRepoErrorType`, plus a dedicated `VSRepoAdapterError` subclass (see below) for failures coming from the underlying ORM/database.
+The error model is built around a single base `VSRepoError` class carrying a `type: VSRepoErrorType`, plus a dedicated `VSRepoAdapterError` subclass (see below) for failures coming from the underlying ORM/database. (If you're migrating from v1, this is covered in [Migrating from v1](./migrating-from-v1.md).)
 
 ```typescript
 import { VSRepoError } from "vsrepo";

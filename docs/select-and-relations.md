@@ -6,7 +6,7 @@
 
 # `select` and `relations`
 
-v1's named, reusable `selectModels`/`defaultSelectModel` are gone. In v2 you pass `select` and `relations` directly on each call — there's nothing to pre-register:
+Named, reusable projections (`selectModels`/`defaultSelectModel`) are no longer used — you pass `select` and `relations` directly on each call, there's nothing to pre-register. *(If you're migrating from v1, this change is covered in [Migrating from v1](./migrating-from-v1.md).)*:
 
 ```typescript
 const user = await userRepository.get(id, {

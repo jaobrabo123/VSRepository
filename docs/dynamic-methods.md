@@ -77,11 +77,11 @@ class UserRepository extends VSRepository<User, string> {
 | `deleteManyReturningBy`    | `deleteManyReturning`  | `Entity[]`        | Field filters follow the prefix.                                                    |
 | `deleteManyReturningWhere` | `deleteManyReturning`  | `Entity[]`        | Receives a `VSRepoWhere<T>` as the first argument.                                  |
 
-> `groupBy` is **not planned** for v2 — it doesn't map cleanly onto the ORM-agnostic contract. `aggregate` as a separate prefix is also unlikely to be implemented: the most common aggregate operations (`sum`, `average`, `min`, `max`, `increment`, `decrement`, `multiply`, `divide`) are already available as dedicated base methods — see [Atomic and aggregate methods](./base-methods.md#atomic-and-aggregate-methods). For anything more complex, use a `@QueryMethod` with raw SQL.
+> `groupBy` is **not planned** — it doesn't map cleanly onto the ORM-agnostic contract. `aggregate` as a separate prefix is also unlikely to be implemented: the most common aggregate operations (`sum`, `average`, `min`, `max`, `increment`, `decrement`, `multiply`, `divide`) are already available as dedicated base methods — see [Atomic and aggregate methods](./base-methods.md#atomic-and-aggregate-methods). For anything more complex, use a `@QueryMethod` with raw SQL.
 
 ## Field filters
 
-Applied as suffixes to the field name inside the method (same idea as v1, one renamed suffix):
+Applied as suffixes to the field name inside the method:
 
 | Suffix             | Meaning                                                                                                                                                       | Argument                               |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
@@ -105,7 +105,7 @@ Applied as suffixes to the field name inside the method (same idea as v1, one re
 | `IsNotNull`        | field is not `null`                                                                                                                                           | no                                     |
 | `IsTrue`           | field is `true`                                                                                                                                               | no                                     |
 | `IsFalse`          | field is `false`                                                                                                                                              | no                                     |
-| `IgnoreCase`       | case-insensitive combinator for text filters                                                                                                                  | yes _(renamed from v1's `Insensitive`)_ |
+| `IgnoreCase`       | case-insensitive combinator for text filters                                                                                                                  | yes |
 | `Optional`         | optional flag to make it explicit that the parameter is optional      | yes _(in practice, nothing changes)_                                      |
 
 ```typescript
@@ -126,7 +126,7 @@ declare findByAgeBetween: (age: [number, number]) => Promise<User[]>;
 | `Or`     | between two fields              | `findByNameOrEmail`                                 |
 | `AND`    | splits a final block into `AND` | `findByEmailOrNameANDActiveStatusAndAgeGreaterThan` |
 
-`AND` (all caps) rules, same as v1: only one `AND` per method name is allowed; every field connected with `And` after it is nested inside `AND: []`; `Or` cannot appear after an `AND` — using it that way throws a `VSRepoError` (`RESOLVER`) when the repository is constructed. See [Error handling](./error-handling.md#error-handling).
+`AND` (all caps) rules: only one `AND` per method name is allowed; every field connected with `And` after it is nested inside `AND: []`; `Or` cannot appear after an `AND` — using it that way throws a `VSRepoError` (`RESOLVER`) when the repository is constructed. See [Error handling](./error-handling.md#error-handling).
 
 ## Relation filters
 
@@ -163,7 +163,7 @@ declare findByProductsSome: () => Promise<User[]>;
 | `PaginatedAndOrdered`                      | Injects `pagination` as the antepenultimate, then `order` as the penultimate — both before `MethodOptions`.                                                        |
 | `OrderBy<Field>Asc` / `OrderBy<Field>Desc` | Bakes a fixed ordering directly into the method name — chain fields with `And` (e.g. `OrderByCreatedAtAscAndNameDesc`). No `order` argument needed. *Note: If you do not specify `Asc` or `Desc`, it defaults to `Asc`.* |
 | `Distinct<Field>And<Field>...`             | Bakes fixed `distinct` fields directly into the method name (only valid on `findBy`/`findWhere`-family methods).                                                   |
-| `IgnoreConflicts`                          | On `createMany`/`createManyReturning`, skips records that would violate a unique constraint instead of throwing. _(Renamed from v1's `SkipDuplicates`.)_           |
+| `IgnoreConflicts`                          | On `createMany`/`createManyReturning`, skips records that would violate a unique constraint instead of throwing.           |
 
 > ⚠️ **Parameter order:** `pagination` and `order` are always placed **before** the optional `MethodOptions<T>` last argument. When both `order` and `pagination` are present, their relative order follows the suffix name (`OrderedAndPaginated` → order, pagination; `PaginatedAndOrdered` → pagination, order).
 >
