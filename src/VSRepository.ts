@@ -1,4 +1,3 @@
-import "reflect-metadata";
 import { VSRepoOptions } from "./types/vsrepo/vsrepo-options.type";
 import { CountResult } from "./types/utils/count-result.type";
 import { DeepPartial } from "./types/utils/deep-partial.type";
@@ -21,6 +20,7 @@ import { VSRepoErrorType } from "./internal/enums/vsrepo-error-type.enum";
 import { VSRepoQueryOptions } from "./types/vsrepo/vsrepo-query-options.type";
 import { NumericKeys } from "./types/utils/numeric-keys.type";
 import { RestrictMethodOptions } from "./types/utils/restrict-method-options.type";
+import { VSQueryBuilder } from "./internal/utils/vs-query-builder.util";
 
 /**
  * ORM-agnostic base repository, exposing a complete set of ready-to-use CRUD
@@ -63,6 +63,13 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
 
     private readonly softRemoveKey?: keyof Entity;
     private readonly defaultOrdering?: Ordering<Entity>;
+
+    /**
+     * Whether `resolveDynamicMethods` has already run once for this instance.
+     * Used to warn on redundant re-resolutions (e.g. calling it manually
+     * more than once, or on top of an already-eager resolution).
+     */
+    private dynamicMethodsResolved = false;
 
     /**
      * This is a property managed by VSRepository, please don't modify it!!
@@ -111,6 +118,42 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
                 `)`,
         );
 
+        let dynamicMethodsCount: number | undefined;
+        let queryMethodsCount: number | undefined;
+
+        if (!optionsValidated.lazyDynamicMethods) {
+            const result = this.resolveDynamicMethods();
+            dynamicMethodsCount = result.dynamicMethodsCount;
+            queryMethodsCount = result.queryMethodsCount;
+        }
+
+        this.logger.logInfo(
+            `${this.constructor.name} ready (${optionsValidated.lazyDynamicMethods ? "Resolution of dynamic methods postponed" : `${dynamicMethodsCount} dynamic method(s), ${queryMethodsCount} query method(s) resolved`})`,
+        );
+    }
+
+    /**
+     * Resolves every `@DynamicMethod`/`@QueryMethod` field declared on the
+     * subclass, assigning each one a working implementation on `this`.
+     *
+     * Called automatically at the end of the constructor unless
+     * `lazyDynamicMethods: true` was passed in the options — in that case,
+     * the subclass is responsible for calling it manually to make its
+     * dynamic/query methods available.
+     *
+     * Calling this method again after it has already resolved once is
+     * harmless but redundant — it just re-runs the resolution and logs a
+     * `WARN`, since it's usually a sign of a mistake.
+     */
+    protected resolveDynamicMethods(): { dynamicMethodsCount: number; queryMethodsCount: number } {
+        if (this.dynamicMethodsResolved) {
+            this.logger.logWarn(
+                `resolveDynamicMethods() was called more than once on ${this.constructor.name}. ` +
+                    `If you are calling it manually, make sure lazyDynamicMethods is set to true ` +
+                    `in the constructor options to skip the automatic resolution.`,
+            );
+        }
+
         const dynamicMethodsResolver = new DynamicMethodsResolver<Entity, PKType>(
             this.logger,
             this.adapter,
@@ -135,9 +178,9 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
             throw err;
         }
 
-        this.logger.logInfo(
-            `${this.constructor.name} ready (${dynamicMethodsCount} dynamic method(s), ${queryMethodsCount} query method(s) resolved)`,
-        );
+        this.dynamicMethodsResolved = true;
+
+        return { dynamicMethodsCount, queryMethodsCount };
     }
 
     // * Loga o erro antes de lançar, pra guard clauses (mau uso da API) não passarem em silêncio
@@ -202,6 +245,33 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
     /** Returns the underlying ORM client instance used outside of transactions. */
     getDbClient<DB extends any = OrmTypes["dbClient"]>(): DB {
         return this.adapter.getDbClient();
+    }
+
+    /**
+     * Creates a fluent {@link VSQueryBuilder} for queries assembled at runtime (optional filters,
+     * user-controlled ordering and pagination, ...). Nothing runs until one of its terminal methods
+     * (`getResult`, `getCount`, `getResultAndCount`, ...) is called.
+     *
+     * @param db Client or transaction the query runs on. Defaults to the repository's client; it can
+     * also be set later with {@link VSQueryBuilder.setDb}.
+     *
+     * @example
+     * ```typescript
+     * const users = await userRepository
+     *     .createQueryBuilder()
+     *     .where({ active: true })
+     *     .orderBy({ createdAt: "desc" })
+     *     .limit(10)
+     *     .getResult();
+     * ```
+     */
+    createQueryBuilder(db?: OrmTypes["dbClient"] | OrmTypes["dbTransaction"]): VSQueryBuilder<Entity, OrmTypes> {
+        return new VSQueryBuilder(
+            db ?? this.adapter.getDbClient(),
+            this.adapter,
+            this.mergeWheresResolver,
+            this.logger,
+        );
     }
 
     /**

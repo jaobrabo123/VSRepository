@@ -62,6 +62,13 @@ Cada arquivo cobre uma área do core:
 - `transactions.test.ts` — delegação de `transaction()` para `adapter.runInTransaction`, e
   compartilhamento do client de transação via `options.db` (evitando uma nova chamada a
   `adapter.getDbClient()`).
+- `query-builder.test.ts` — o query builder (`createQueryBuilder()`): o que cada método terminal
+  (`getResult`, `getOneResult`, `getOneResultOrThrow`, `getCount`, `getExistence`,
+  `getResultAndCount`) repassa ao adapter, o encadeamento (`select`, `relations`, `where`/`andWhere`/
+  `orWhere`, `orderBy`, `limit`/`offset`, `distinctOn`), a validação dos argumentos (`VSRepoError` do
+  tipo `QUERY_BUILDER`), o filtro de soft-delete via `see()`, `setDb()` (inclusive dentro de uma
+  `transaction()`), `clone()`, e os logs de debug/performance — verificados tanto com um logger
+  falso injetado no builder quanto com o `VSLogger` real do repository.
 
 Nenhum pré-requisito externo é necessário — os testes usam apenas o `VSRepoAdapter` falso.
 

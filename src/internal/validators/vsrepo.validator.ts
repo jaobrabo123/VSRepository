@@ -18,6 +18,8 @@ import { VSRepoWhere } from "../../types/vsrepo/vsrepo-where.type";
 import { VSRepoQueryOptions } from "../../types/vsrepo/vsrepo-query-options.type";
 import { NumericLike } from "../../types/utils/numeric-like.type";
 import { RestrictMethodOptions } from "../../types/utils/restrict-method-options.type";
+import selectSchema from "./schemas/select.schema";
+import relationsSchema from "./schemas/relations.schema";
 
 export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
     // * Setado depois pelo VSRepository, pois no momento em que validateConstructorOptions
@@ -45,6 +47,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
         logLevel: v.optional(v.enum(VSLogLevel)),
         logSlowThresholdMs: v.optional(v.union([v.pipe(v.number(), v.gtValue(0)), v.boolean()])),
         defaultOrdering: v.optional(orderingSchema),
+        lazyDynamicMethods: v.optional(v.boolean()),
     });
 
     validateConstructorOptions(options: unknown): VSRepoOptions<T, K> {
@@ -60,8 +63,8 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
     private readonly methodOptionsSchema = v.object({
         db: v.optional(v.any()),
         see: v.optional(v.picklist(["active", "removed", "all"])),
-        relations: v.optional(v.looseObject({})),
-        select: v.optional(v.looseObject({})),
+        relations: v.optional(relationsSchema),
+        select: v.optional(selectSchema),
     });
 
     validateMethodOptions(options?: unknown): MethodOptions<T, O> {
@@ -71,7 +74,7 @@ export class VSRepoValidator<T, K, O extends VSRepoOrmTypes = VSRepoOrmTypes> {
             this.failValidation(parsed.issues[0], VSRepoErrorType.VALIDATOR);
         }
 
-        return parsed.output as unknown as MethodOptions<T>;
+        return parsed.output as MethodOptions<T>;
     }
 
     private readonly restrictMethodOptionsSchema = v.object({

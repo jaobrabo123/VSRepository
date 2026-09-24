@@ -34,6 +34,62 @@ export class DynamicMethodsResolver<T, K> {
         private readonly defaultOrdering?: Ordering<T>,
     ) {}
 
+    private keywordTemplate = (keyword: string, allowAtTheEnd = false) =>
+        new RegExp(`${keyword}(?=[\\p{Lu}]|[^\\p{ASCII}]${allowAtTheEnd ? "|$" : ""})`, "u");
+
+    private fieldModifiers = {
+        IsNull: this.keywordTemplate("IsNull", true),
+        IsNotNull: this.keywordTemplate("IsNotNull", true),
+        IsTrue: this.keywordTemplate("IsTrue", true),
+        IsFalse: this.keywordTemplate("IsFalse", true),
+        IgnoreCase: this.keywordTemplate("IgnoreCase", true),
+        Optional: this.keywordTemplate("Optional", true),
+        NotBetween: this.keywordTemplate("NotBetween", true),
+        Between: this.keywordTemplate("Between", true),
+        NotStartsWith: this.keywordTemplate("NotStartsWith", true),
+        StartsWith: this.keywordTemplate("StartsWith", true),
+        NotEndsWith: this.keywordTemplate("NotEndsWith", true),
+        EndsWith: this.keywordTemplate("EndsWith", true),
+        NotContains: this.keywordTemplate("NotContains", true),
+        Contains: this.keywordTemplate("Contains", true),
+        LessThanEqual: this.keywordTemplate("LessThanEqual", true),
+        LessThan: this.keywordTemplate("LessThan", true),
+        GreaterThanEqual: this.keywordTemplate("GreaterThanEqual", true),
+        GreaterThan: this.keywordTemplate("GreaterThan", true),
+        NotIn: this.keywordTemplate("NotIn", true),
+        In: this.keywordTemplate("In", true),
+        Not: this.keywordTemplate("Not", true),
+        Equals: this.keywordTemplate("Equals", true),
+        NotEquals: this.keywordTemplate("NotEquals", true),
+        Without: this.keywordTemplate("Without", true),
+        With: this.keywordTemplate("With", true),
+        Some: this.keywordTemplate("Some", true),
+        Every: this.keywordTemplate("Every", true),
+        None: this.keywordTemplate("None", true),
+    };
+
+    private operators = {
+        And: this.keywordTemplate("And"),
+        Or: this.keywordTemplate("Or"),
+        AND: this.keywordTemplate("AND"),
+    };
+
+    private customizationModifiers = {
+        Distinct: this.keywordTemplate("Distinct"),
+        OrderBy: this.keywordTemplate("OrderBy"),
+        PaginatedAndOrdered: /PaginatedAndOrdered$/,
+        OrderedAndPaginated: /OrderedAndPaginated$/,
+        Paginated: /Paginated$/,
+        Ordered: /Ordered$/,
+        IgnoreConflicts: /IgnoreConflicts$/,
+    };
+
+    private logAndThrowError(errorMessage: string): never {
+        this.logger.logError(errorMessage);
+
+        throw new VSRepoError(errorMessage, VSRepoErrorType.RESOLVER);
+    }
+
     private validateIndexedArg<R>(
         args: any[],
         positionIndex: number,
@@ -66,6 +122,7 @@ export class DynamicMethodsResolver<T, K> {
             ignoreDistinct: true,
             whereParams: [],
             otherParams: [],
+            originalDynamicMethodName: dynamicMethod,
         };
 
         if (dynamicMethod.startsWith("findOneBy")) {
@@ -77,16 +134,7 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.ignoreOrderByAndPagination = false;
             dynamicMethodInfo.ignoreDistinct = false;
             dynamicMethodInfo.method = "findMany";
-        }
-        // else if (dynamicMethod === "groupBy") {
-        //     dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("groupBy", "");
-        //     dynamicMethodInfo.ignoreSelect = true;
-        //     dynamicMethodInfo.ignoreWhere = true;
-        //     dynamicMethodInfo.method = "groupBy";
-        //     dynamicMethodInfo.otherParams.push("prismaArgs"); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //     dynamicMethodInfo.argsCount++;
-        // }
-        else if (dynamicMethod.startsWith("findOneOrThrowBy")) {
+        } else if (dynamicMethod.startsWith("findOneOrThrowBy")) {
             dynamicMethodInfo.keyToMapReplaced = dynamicMethod.replace("findOneOrThrowBy", "");
             dynamicMethodInfo.ignoreOrderByAndPagination = false;
             dynamicMethodInfo.method = "findOneOrThrow";
@@ -291,10 +339,7 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.onlyBaseWheres = true;
             dynamicMethodInfo.method = "findOne";
         } else {
-            const errorMessage = `Unknown dynamic method: ${dynamicMethod}.`;
-            this.logger.logError(errorMessage);
-
-            throw new VSRepoError(errorMessage, VSRepoErrorType.RESOLVER);
+            this.logAndThrowError(`Unknown dynamic method: ${dynamicMethod}.`);
         }
 
         return dynamicMethodInfo;
@@ -307,14 +352,21 @@ export class DynamicMethodsResolver<T, K> {
         const dynamicMethodCustomization: DynamicMethodCustomization = {};
 
         if (!dynamicMethodInfo.ignoreIgnoreConflicts) {
-            if (dynamicMethodInfo.keyToMapReplaced.endsWith("IgnoreConflicts")) {
-                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace("IgnoreConflicts", "");
+            if (this.customizationModifiers.IgnoreConflicts.test(dynamicMethodInfo.keyToMapReplaced)) {
+                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
+                    this.customizationModifiers.IgnoreConflicts,
+                    "",
+                );
                 dynamicMethodCustomization.ignoreConflicts = true;
             }
+        } else if (this.customizationModifiers.IgnoreConflicts.test(dynamicMethodInfo.keyToMapReplaced)) {
+            this.logAndThrowError(
+                `This dynamic method prefix doesn't support the "IgnoreConflicts" modifier: ${dynamicMethodInfo.originalDynamicMethodName}.`,
+            );
         }
 
         if (!dynamicMethodInfo.ignoreOrderByAndPagination) {
-            if (dynamicMethodInfo.keyToMapReplaced.endsWith("PaginatedAndOrdered")) {
+            if (this.customizationModifiers.PaginatedAndOrdered.test(dynamicMethodInfo.keyToMapReplaced)) {
                 dynamicMethodCustomization.orderPosition = -2;
                 dynamicMethodCustomization.paginationPosition = -3;
 
@@ -322,12 +374,12 @@ export class DynamicMethodsResolver<T, K> {
                 dynamicMethodInfo.otherParams.push("order");
 
                 dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
-                    "PaginatedAndOrdered",
+                    this.customizationModifiers.PaginatedAndOrdered,
                     "",
                 );
 
                 dynamicMethodInfo.argsCount += 2;
-            } else if (dynamicMethodInfo.keyToMapReplaced.endsWith("OrderedAndPaginated")) {
+            } else if (this.customizationModifiers.OrderedAndPaginated.test(dynamicMethodInfo.keyToMapReplaced)) {
                 dynamicMethodCustomization.orderPosition = -3;
                 dynamicMethodCustomization.paginationPosition = -2;
 
@@ -335,40 +387,52 @@ export class DynamicMethodsResolver<T, K> {
                 dynamicMethodInfo.otherParams.push("pagination");
 
                 dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
-                    "OrderedAndPaginated",
+                    this.customizationModifiers.OrderedAndPaginated,
                     "",
                 );
 
                 dynamicMethodInfo.argsCount += 2;
-            } else if (dynamicMethodInfo.keyToMapReplaced.endsWith("Paginated")) {
+            } else if (this.customizationModifiers.Paginated.test(dynamicMethodInfo.keyToMapReplaced)) {
                 dynamicMethodCustomization.paginationPosition = -2;
 
                 dynamicMethodInfo.otherParams.push("pagination");
 
-                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace("Paginated", "");
+                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
+                    this.customizationModifiers.Paginated,
+                    "",
+                );
 
                 dynamicMethodInfo.argsCount++;
-            } else if (dynamicMethodInfo.keyToMapReplaced.endsWith("Ordered")) {
+            } else if (this.customizationModifiers.Ordered.test(dynamicMethodInfo.keyToMapReplaced)) {
                 dynamicMethodCustomization.orderPosition = -2;
 
                 dynamicMethodInfo.otherParams.push("order");
 
-                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace("Ordered", "");
+                dynamicMethodInfo.keyToMapReplaced = dynamicMethodInfo.keyToMapReplaced.replace(
+                    this.customizationModifiers.Ordered,
+                    "",
+                );
 
                 dynamicMethodInfo.argsCount++;
             }
 
-            const keySplitedOrderBy = dynamicMethodInfo.keyToMapReplaced.split("OrderBy");
+            const keySplitedOrderBy = dynamicMethodInfo.keyToMapReplaced.split(this.customizationModifiers.OrderBy);
 
             if (keySplitedOrderBy[1]) {
-                const orderByFields = keySplitedOrderBy[1].split("And").map(uncapitalize);
+                if (this.customizationModifiers.Distinct.test(keySplitedOrderBy[1])) {
+                    this.logAndThrowError(
+                        `The "Distinct" modifier cannot appear after the "OrderBy" modifier: ${dynamicMethodInfo.originalDynamicMethodName}.`,
+                    );
+                }
+
+                const orderByFields = keySplitedOrderBy[1].split(this.operators.And).map(uncapitalize);
 
                 dynamicMethodCustomization.injectOrdering = orderByFields.map(field => {
                     if (field.endsWith("Asc")) {
-                        field = field.replace("Asc", "");
+                        field = field.replace(/Asc$/, "");
                         return { [field]: "ASC" };
                     } else if (field.endsWith("Desc")) {
-                        field = field.replace("Desc", "");
+                        field = field.replace(/Desc$/, "");
                         return { [field]: "DESC" };
                     }
 
@@ -379,16 +443,30 @@ export class DynamicMethodsResolver<T, K> {
             dynamicMethodInfo.keyToMapReplaced = keySplitedOrderBy[0]!;
 
             dynamicMethodCustomization.injectOrdering ??= methodData.injectOrdering;
+        } else if (
+            this.customizationModifiers.Paginated.test(dynamicMethodInfo.keyToMapReplaced) ||
+            this.customizationModifiers.Ordered.test(dynamicMethodInfo.keyToMapReplaced) ||
+            this.customizationModifiers.OrderBy.test(dynamicMethodInfo.keyToMapReplaced)
+        ) {
+            this.logAndThrowError(
+                `This dynamic method prefix doesn't support the ordering or pagination modifiers: ${dynamicMethodInfo.originalDynamicMethodName}.`,
+            );
         }
 
         if (!dynamicMethodInfo.ignoreDistinct) {
-            const keySplitedDistinct = dynamicMethodInfo.keyToMapReplaced.split("Distinct");
+            const keySplitedDistinct = dynamicMethodInfo.keyToMapReplaced.split(this.customizationModifiers.Distinct);
 
             if (keySplitedDistinct[1]) {
-                dynamicMethodCustomization.distinctKeys = keySplitedDistinct[1].split("And").map(uncapitalize);
+                dynamicMethodCustomization.distinctKeys = keySplitedDistinct[1]
+                    .split(this.operators.And)
+                    .map(uncapitalize);
             }
 
             dynamicMethodInfo.keyToMapReplaced = keySplitedDistinct[0]!;
+        } else if (this.customizationModifiers.Distinct.test(dynamicMethodInfo.keyToMapReplaced)) {
+            this.logAndThrowError(
+                `This dynamic method prefix doesn't support the "Distinct" modifier: ${dynamicMethodInfo.originalDynamicMethodName}.`,
+            );
         }
 
         return dynamicMethodCustomization;
@@ -398,88 +476,94 @@ export class DynamicMethodsResolver<T, K> {
         const uglyWhere: VSRepoUglyWhere = { name: "", pushProperty: "$$$" };
         let nullMode: "is" | "not" | undefined = undefined;
 
-        if (keySplitedAnd.includes("IsNull")) {
+        if (this.fieldModifiers.IsNull.test(keySplitedAnd)) {
             uglyWhere.pushProperty = "$$$";
             uglyWhere.autoInjectVal = null;
             nullMode = "is";
-            keySplitedAnd = keySplitedAnd.replace("IsNull", "");
-        } else if (keySplitedAnd.includes("IsNotNull")) {
+            keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.IsNull, "");
+        } else if (this.fieldModifiers.IsNotNull.test(keySplitedAnd)) {
             uglyWhere.pushProperty = "not";
             uglyWhere.autoInjectVal = null;
             nullMode = "not";
-            keySplitedAnd = keySplitedAnd.replace("IsNotNull", "");
-        } else if (keySplitedAnd.includes("IsTrue")) {
+            keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.IsNotNull, "");
+        } else if (this.fieldModifiers.IsTrue.test(keySplitedAnd)) {
             uglyWhere.pushProperty = "$$$";
             uglyWhere.autoInjectVal = true;
-            keySplitedAnd = keySplitedAnd.replace("IsTrue", "");
-        } else if (keySplitedAnd.includes("IsFalse")) {
+            keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.IsTrue, "");
+        } else if (this.fieldModifiers.IsFalse.test(keySplitedAnd)) {
             uglyWhere.pushProperty = "$$$";
             uglyWhere.autoInjectVal = false;
-            keySplitedAnd = keySplitedAnd.replace("IsFalse", "");
+            keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.IsFalse, "");
         } else {
-            if (keySplitedAnd.includes("IgnoreCase")) {
+            if (this.fieldModifiers.IgnoreCase.test(keySplitedAnd)) {
                 uglyWhere.properties = {};
                 uglyWhere.properties.ignoreCase = true;
-                keySplitedAnd = keySplitedAnd.replace("IgnoreCase", "");
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.IgnoreCase, "");
             }
-            if (keySplitedAnd.includes("Optional")) {
-                keySplitedAnd = keySplitedAnd.replace("Optional", "");
+            if (this.fieldModifiers.Optional.test(keySplitedAnd)) {
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.Optional, "");
             }
 
-            if (keySplitedAnd.includes("NotBetween")) {
+            if (this.fieldModifiers.NotBetween.test(keySplitedAnd)) {
                 uglyWhere.pushProperty = "not";
                 uglyWhere.betweenMode = true;
-                keySplitedAnd = keySplitedAnd.replace("NotBetween", "");
-            } else if (keySplitedAnd.includes("Between")) {
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.NotBetween, "");
+            } else if (this.fieldModifiers.Between.test(keySplitedAnd)) {
                 uglyWhere.pushProperty = "$$$";
                 uglyWhere.betweenMode = true;
-                keySplitedAnd = keySplitedAnd.replace("Between", "");
-            } else if (keySplitedAnd.includes("NotStartsWith")) {
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.Between, "");
+            } else if (this.fieldModifiers.NotStartsWith.test(keySplitedAnd)) {
                 uglyWhere.pushProperty = "not.startsWith";
-                keySplitedAnd = keySplitedAnd.replace("NotStartsWith", "");
-            } else if (keySplitedAnd.includes("StartsWith")) {
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.NotStartsWith, "");
+            } else if (this.fieldModifiers.StartsWith.test(keySplitedAnd)) {
                 uglyWhere.pushProperty = "startsWith";
-                keySplitedAnd = keySplitedAnd.replace("StartsWith", "");
-            } else if (keySplitedAnd.includes("NotEndsWith")) {
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.StartsWith, "");
+            } else if (this.fieldModifiers.NotEndsWith.test(keySplitedAnd)) {
                 uglyWhere.pushProperty = "not.endsWith";
-                keySplitedAnd = keySplitedAnd.replace("NotEndsWith", "");
-            } else if (keySplitedAnd.includes("EndsWith")) {
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.NotEndsWith, "");
+            } else if (this.fieldModifiers.EndsWith.test(keySplitedAnd)) {
                 uglyWhere.pushProperty = "endsWith";
-                keySplitedAnd = keySplitedAnd.replace("EndsWith", "");
-            } else if (keySplitedAnd.includes("NotContains")) {
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.EndsWith, "");
+            } else if (this.fieldModifiers.NotContains.test(keySplitedAnd)) {
                 uglyWhere.pushProperty = "not.contains";
-                keySplitedAnd = keySplitedAnd.replace("NotContains", "");
-            } else if (keySplitedAnd.includes("Contains")) {
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.NotContains, "");
+            } else if (this.fieldModifiers.Contains.test(keySplitedAnd)) {
                 uglyWhere.pushProperty = "contains";
-                keySplitedAnd = keySplitedAnd.replace("Contains", "");
-            } else if (keySplitedAnd.includes("LessThanEqual")) {
-                uglyWhere.pushProperty = "lte";
-                keySplitedAnd = keySplitedAnd.replace("LessThanEqual", "");
-            } else if (keySplitedAnd.includes("LessThan")) {
-                uglyWhere.pushProperty = "lt";
-                keySplitedAnd = keySplitedAnd.replace("LessThan", "");
-            } else if (keySplitedAnd.includes("GreaterThanEqual")) {
-                uglyWhere.pushProperty = "gte";
-                keySplitedAnd = keySplitedAnd.replace("GreaterThanEqual", "");
-            } else if (keySplitedAnd.includes("GreaterThan")) {
-                uglyWhere.pushProperty = "gt";
-                keySplitedAnd = keySplitedAnd.replace("GreaterThan", "");
-            } else if (keySplitedAnd.includes("NotIn")) {
-                uglyWhere.pushProperty = "notIn";
-                keySplitedAnd = keySplitedAnd.replace("NotIn", "");
-            } else if (keySplitedAnd.includes("In")) {
-                uglyWhere.pushProperty = "in";
-                keySplitedAnd = keySplitedAnd.replace("In", "");
-            } else if (keySplitedAnd.includes("Not")) {
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.Contains, "");
+            } else if (this.fieldModifiers.NotEquals.test(keySplitedAnd)) {
                 uglyWhere.pushProperty = "not";
-                keySplitedAnd = keySplitedAnd.replace("Not", "");
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.NotEquals, "");
+            } else if (this.fieldModifiers.Equals.test(keySplitedAnd)) {
+                uglyWhere.pushProperty = "$$$";
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.Equals, "");
+            } else if (this.fieldModifiers.LessThanEqual.test(keySplitedAnd)) {
+                uglyWhere.pushProperty = "lte";
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.LessThanEqual, "");
+            } else if (this.fieldModifiers.LessThan.test(keySplitedAnd)) {
+                uglyWhere.pushProperty = "lt";
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.LessThan, "");
+            } else if (this.fieldModifiers.GreaterThanEqual.test(keySplitedAnd)) {
+                uglyWhere.pushProperty = "gte";
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.GreaterThanEqual, "");
+            } else if (this.fieldModifiers.GreaterThan.test(keySplitedAnd)) {
+                uglyWhere.pushProperty = "gt";
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.GreaterThan, "");
+            } else if (this.fieldModifiers.NotIn.test(keySplitedAnd)) {
+                uglyWhere.pushProperty = "notIn";
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.NotIn, "");
+            } else if (this.fieldModifiers.In.test(keySplitedAnd)) {
+                uglyWhere.pushProperty = "in";
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.In, "");
+            } else if (this.fieldModifiers.Not.test(keySplitedAnd)) {
+                uglyWhere.pushProperty = "not";
+                keySplitedAnd = keySplitedAnd.replace(this.fieldModifiers.Not, "");
             } else {
                 uglyWhere.pushProperty = "$$$";
             }
         }
 
-        if (keySplitedAnd.includes("Without")) {
-            const keySplitedConector = keySplitedAnd.split("Without");
+        if (this.fieldModifiers.Without.test(keySplitedAnd)) {
+            const keySplitedConector = keySplitedAnd.split(this.fieldModifiers.Without);
             const specificField = keySplitedConector[1];
             if (!specificField) {
                 if (nullMode) {
@@ -489,12 +573,12 @@ export class DynamicMethodsResolver<T, K> {
                     uglyWhere.autoInjectVal = {};
                 }
             } else {
-                uglyWhere.pushProperty = `_without.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? "" : `.${uglyWhere.pushProperty}`}`;
+                uglyWhere.pushProperty = `_without.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? (uglyWhere.properties ? ".equals" : "") : `.${uglyWhere.pushProperty}`}`;
             }
 
             keySplitedAnd = keySplitedConector[0]!;
-        } else if (keySplitedAnd.includes("With")) {
-            const keySplitedConector = keySplitedAnd.split("With");
+        } else if (this.fieldModifiers.With.test(keySplitedAnd)) {
+            const keySplitedConector = keySplitedAnd.split(this.fieldModifiers.With);
             const specificField = keySplitedConector[1];
             if (!specificField) {
                 if (nullMode) {
@@ -504,40 +588,40 @@ export class DynamicMethodsResolver<T, K> {
                     uglyWhere.autoInjectVal = {};
                 }
             } else {
-                uglyWhere.pushProperty = `_with.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? "" : `.${uglyWhere.pushProperty}`}`;
+                uglyWhere.pushProperty = `_with.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? (uglyWhere.properties ? ".equals" : "") : `.${uglyWhere.pushProperty}`}`;
             }
 
             keySplitedAnd = keySplitedConector[0]!;
-        } else if (keySplitedAnd.includes("Some")) {
-            const keySplitedConector = keySplitedAnd.split("Some");
+        } else if (this.fieldModifiers.Some.test(keySplitedAnd)) {
+            const keySplitedConector = keySplitedAnd.split(this.fieldModifiers.Some);
             const specificField = keySplitedConector[1];
             if (!specificField) {
                 uglyWhere.pushProperty = "_some";
                 uglyWhere.autoInjectVal = {};
             } else {
-                uglyWhere.pushProperty = `_some.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? "" : `.${uglyWhere.pushProperty}`}`;
+                uglyWhere.pushProperty = `_some.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? (uglyWhere.properties ? ".equals" : "") : `.${uglyWhere.pushProperty}`}`;
             }
 
             keySplitedAnd = keySplitedConector[0]!;
-        } else if (keySplitedAnd.includes("Every")) {
-            const keySplitedConector = keySplitedAnd.split("Every");
+        } else if (this.fieldModifiers.Every.test(keySplitedAnd)) {
+            const keySplitedConector = keySplitedAnd.split(this.fieldModifiers.Every);
             const specificField = keySplitedConector[1];
             if (!specificField) {
                 uglyWhere.pushProperty = "_every";
                 uglyWhere.autoInjectVal = {};
             } else {
-                uglyWhere.pushProperty = `_every.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? "" : `.${uglyWhere.pushProperty}`}`;
+                uglyWhere.pushProperty = `_every.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? (uglyWhere.properties ? ".equals" : "") : `.${uglyWhere.pushProperty}`}`;
             }
 
             keySplitedAnd = keySplitedConector[0]!;
-        } else if (keySplitedAnd.includes("None")) {
-            const keySplitedConector = keySplitedAnd.split("None");
+        } else if (this.fieldModifiers.None.test(keySplitedAnd)) {
+            const keySplitedConector = keySplitedAnd.split(this.fieldModifiers.None);
             const specificField = keySplitedConector[1];
             if (!specificField) {
                 uglyWhere.pushProperty = "_none";
                 uglyWhere.autoInjectVal = {};
             } else {
-                uglyWhere.pushProperty = `_none.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? "" : `.${uglyWhere.pushProperty}`}`;
+                uglyWhere.pushProperty = `_none.${uncapitalize(specificField)}${uglyWhere.pushProperty === "$$$" ? (uglyWhere.properties ? ".equals" : "") : `.${uglyWhere.pushProperty}`}`;
             }
 
             keySplitedAnd = keySplitedConector[0]!;
@@ -557,14 +641,26 @@ export class DynamicMethodsResolver<T, K> {
         };
 
         let ANDMode = false;
-        let keysSplitedAND = dynamicMethodInfo.keyToMapReplaced.split("AND");
+        let keysSplitedAND = dynamicMethodInfo.keyToMapReplaced.split(this.operators.AND);
         if (keysSplitedAND.length > 1) {
             ANDMode = true;
         }
 
         keysSplitedAND.forEach((keySplitedAND, idx) => {
             let orMode = false;
-            let keysSplitedOr = idx === 0 ? keySplitedAND.split("Or") : [keySplitedAND];
+            let keysSplitedOr: string[];
+
+            if (idx === 0) {
+                keysSplitedOr = keySplitedAND.split(this.operators.Or);
+            } else {
+                if (this.operators.Or.test(keySplitedAND)) {
+                    this.logAndThrowError(
+                        `The logical operator "Or" cannot appear after an "AND" (all caps): ${dynamicMethodInfo.originalDynamicMethodName}.`,
+                    );
+                }
+                keysSplitedOr = [keySplitedAND];
+            }
+
             if (keysSplitedOr.length > 1) {
                 orMode = true;
             }
@@ -572,7 +668,7 @@ export class DynamicMethodsResolver<T, K> {
             for (let i = 0; i < keysSplitedOr.length; i++) {
                 if (keysSplitedOr[i] === "") continue;
 
-                const keysSplitedAnd = keysSplitedOr[i]!.split("And");
+                const keysSplitedAnd = keysSplitedOr[i]!.split(this.operators.And);
 
                 for (const keySplitedAnd of keysSplitedAnd) {
                     if (keySplitedAnd === "") continue;

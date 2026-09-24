@@ -6,6 +6,62 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [2.6.0] - 2026-09-24
+
+### Added
+- **`createQueryBuilder(db?)`** — new method on every `VSRepository` that returns a fluent query builder for queries assembled at runtime. Chain `select`, `relations`, `where`, `orderBy`, `limit`, `offset`, `distinctOn` and `see`, then run it with `getResult()`, `getOneResult()`, `getOneResultOrThrow()`, `getCount()`, `getExistence()` or `getResultAndCount()`. `where()` takes the same `VSRepoWhere` filter used by the rest of the library (including `AND`/`OR`/`NOT`). The last terminal method fetches a page and the total of records matching the `where` (ignoring `order`/`pagination`, so it can be used for pagination) in parallel. The builder respects soft-delete (`see("active")` by default), `clone()` derives independent builders from a common base, and `setDb()` lets you choose lazily where the query runs — e.g. build it first and run it inside a `transaction()`. `distinctOn` only affects `getResult()`, since `count` doesn't support `distinct`
+- **`VSQueryBuilder`** — the class is exported from the package entry point, so builders can be typed (e.g. as a function parameter). All its public methods are documented with JSDoc
+- **`VSRepoErrorType.QUERY_BUILDER`** — new error type, thrown as a `VSRepoError` when an invalid argument is passed to a query builder method
+- **Query builder logs** — the builder uses the repository's logger: at `DEBUG` it traces every chained call and the resolved query of each terminal method (the `db` is never logged), and each terminal method is timed (`Took Xms to run query builder <method>`, promoted to `WARN` above `logSlowThresholdMs`)
+- **`Equals` / `NotEquals`** field-filter suffixes for dynamic methods — same effect as no suffix and `Not`, respectively; useful to disambiguate a field name that ends at the same camelCase boundary as an existing keyword suffix (e.g. `findByCheckInEquals` resolves to the field `checkIn`, instead of the default `check` + `In` reading)
+- **`lazyDynamicMethods`** constructor option — when `true`, postpones resolving `@DynamicMethod`/`@QueryMethod` methods until the subclass calls the `protected resolveDynamicMethods()` itself, instead of resolving them synchronously in the constructor. Useful for deferring the resolution cost to a more convenient point in the app's lifecycle (e.g. an async init hook), and lets fields annotated with `@DynamicMethod`/`@QueryMethod` skip the `declare` modifier as long as `resolveDynamicMethods()` is called after calls `supper()`. Calling `resolveDynamicMethods()` again after it already resolved once logs a `WARN`, since it's redundant
+
+### Changed
+- `pagination` validation is now stricter: `limit` and `offset` must be non-negative integers. Negative, decimal and infinite values, previously accepted, are now rejected
+- `select` and `relations` passed in the `options` of any method are now validated recursively: every value must be a `boolean` or a nested object (previously any object was accepted)
+- Dynamic-method name parsing is significantly more robust (inspired by Spring Data JPA's `PartTree`): keywords and operators (`Or`, `And`, `AND`, `Not`, `In`, `With`, `Without`, `Some`, `Every`, `None`, `Optional`, ...) are now only recognized at a camelCase word boundary, so field names that merely contain one of these words — `organizationId`, `notes`, `orderId`, `instagramHandle`, `withdrawnAt`, `androidVersion`, `everyoneId`, and the like — are no longer misparsed
+- Using an ordering/pagination suffix (`Paginated`/`Ordered`/`OrderBy...`), `Distinct` or `IgnoreConflicts` on a dynamic-method prefix that doesn't support it, or using `Or` after an `AND` (all caps) block, now throws a `VSRepoError` (`RESOLVER`) when the repository is constructed, instead of silently becoming part of the field name
+
+### Fixed
+- A relation filter (`With`/`Without`/`Some`/`Every`/`None`) combined with equality and `IgnoreCase` (e.g. `findByAddressWithCityEqualsIgnoreCase`) now nests correctly as `{ equals, ignoreCase }`
+- A dynamic-method name that places `Distinct` **after** `OrderBy` (e.g. `findByActiveOrderByCreatedAtDescDistinctName`) now throws a `VSRepoError` (`RESOLVER`) when the repository is constructed, instead of silently parsing `Distinct` as part of a non-existent ordering field
+
+### Documentation
+- Both READMEs document the query builder: new "Query builder" section, a new row in the base methods table, `QUERY_BUILDER` in the error types tables, and a note about the builder in the Logging section
+- Both READMEs document `Equals`/`NotEquals`, the camelCase-boundary rule for keyword collisions (with the `Equals`/`NotEquals` disambiguation example), and the new explicit errors for unsupported suffix/prefix combinations and for `Or` after `AND`
+- New "Lazily resolving dynamic methods" section in the dynamic-methods guide, covering `lazyDynamicMethods`, why `declare` becomes unnecessary once resolution is deferred, and the `WARN` logged on a redundant `resolveDynamicMethods()` call; `lazyDynamicMethods` also added to the constructor options table in the base-methods guide
+- **Docs restructured**: the root READMEs (EN/PT) are now a short overview — intro, what changed from v1, adapter status, installation, basic usage, development, requirements, contributing — with a documentation index. Feature-by-feature detail (base methods & configuration, soft-delete, `select`/`relations`, dynamic methods, query methods, query builder, transactions, utility types, writing an adapter, error handling, logging) moved into its own guide under [`docs/`](./docs), each in English and Portuguese, with more examples than before (e.g. concrete DEBUG/WARN log output in the logging guide, transaction return-value/rollback and query-builder examples in the transactions guide)
+
+---
+
+## [2.6.0] - 2026-09-24 (Português)
+
+### Adicionado
+- **`createQueryBuilder(db?)`** — novo método em todo `VSRepository` que retorna um query builder fluente para queries montadas em tempo de execução. Encadeie `select`, `relations`, `where`, `orderBy`, `limit`, `offset`, `distinctOn` e `see`, e execute com `getResult()`, `getOneResult()`, `getOneResultOrThrow()`, `getCount()`, `getExistence()` ou `getResultAndCount()`. O `where()` recebe o mesmo filtro `VSRepoWhere` usado no resto da biblioteca (inclusive `AND`/`OR`/`NOT`). O último método terminal busca uma página e o total de registros que batem com o `where` (ignorando `order`/`pagination`, então serve para paginação) em paralelo. O builder respeita o soft-delete (`see("active")` por padrão), o `clone()` deriva builders independentes de uma base comum, e o `setDb()` permite escolher de forma lazy onde a query roda — ex.: montá-la antes e executá-la dentro de um `transaction()`. O `distinctOn` só afeta o `getResult()`, já que o `count` não suporta `distinct`
+- **`VSQueryBuilder`** — a classe é exportada pelo ponto de entrada do pacote, então dá para tipar builders (ex.: como parâmetro de função). Todos os seus métodos públicos têm JSDoc
+- **`VSRepoErrorType.QUERY_BUILDER`** — novo tipo de erro, lançado como `VSRepoError` quando um argumento inválido é passado para um método do query builder
+- **Logs do query builder** — o builder usa o logger do repository: em `DEBUG` ele registra cada chamada encadeada e a query resolvida de cada método terminal (o `db` nunca é logado), e cada método terminal tem o tempo medido (`Took Xms to run query builder <método>`, promovido a `WARN` acima de `logSlowThresholdMs`)
+- **Sufixos `Equals` / `NotEquals`** para métodos dinâmicos — mesmo efeito de sem sufixo e de `Not`, respectivamente; úteis para desambiguar um campo cujo nome termina na mesma fronteira de camelCase de um sufixo/palavra-chave já existente (ex.: `findByCheckInEquals` resolve para o campo `checkIn`, em vez da leitura padrão `check` + `In`)
+- **Option `lazyDynamicMethods` do construtor** — quando `true`, adia a resolução dos métodos `@DynamicMethod`/`@QueryMethod` até que a própria subclasse chame o `protected resolveDynamicMethods()`, em vez de resolvê-los de forma síncrona no construtor. Útil para adiar o custo da resolução para um momento mais oportuno do ciclo de vida da aplicação (ex.: um hook de inicialização assíncrona), e permite que campos anotados com `@DynamicMethod`/`@QueryMethod` dispensem o modificador `declare`, desde que `resolveDynamicMethods()` seja chamado depois de chamar `super()`. Chamar `resolveDynamicMethods()` de novo depois que ele já resolveu uma vez registra um `WARN`, já que é redundante
+
+### Alterado
+- A validação de `pagination` ficou mais estrita: `limit` e `offset` precisam ser inteiros não negativos. Valores negativos, decimais e infinitos, antes aceitos, agora são rejeitados
+- `select` e `relations` passados nas `options` de qualquer método agora são validados recursivamente: todo valor precisa ser `boolean` ou um objeto aninhado (antes qualquer objeto era aceito)
+- A resolução de nomes de métodos dinâmicos ficou bem mais robusta (inspirada no `PartTree` do Spring Data JPA): palavras-chave e operadores (`Or`, `And`, `AND`, `Not`, `In`, `With`, `Without`, `Some`, `Every`, `None`, `Optional`, ...) só são reconhecidos numa fronteira de camelCase, então campos cujo nome apenas contém uma dessas palavras — `organizationId`, `notes`, `orderId`, `instagramHandle`, `withdrawnAt`, `androidVersion`, `everyoneId` e afins — deixam de ser interpretados errado
+- Usar um sufixo de ordenação/paginação (`Paginated`/`Ordered`/`OrderBy...`), `Distinct` ou `IgnoreConflicts` num prefixo de método dinâmico que não os suporta, ou usar `Or` depois de um bloco `AND` (maiúsculo), agora lança um `VSRepoError` (`RESOLVER`) ao construir o repository, em vez de virar silenciosamente parte do nome do campo
+
+### Corrigido
+- Um filtro de relação (`With`/`Without`/`Some`/`Every`/`None`) combinado com igualdade e `IgnoreCase` (ex.: `findByAddressWithCityEqualsIgnoreCase`) agora aninha corretamente como `{ equals, ignoreCase }`
+- Um nome de método dinâmico que coloca `Distinct` **depois** de `OrderBy` (ex.: `findByActiveOrderByCreatedAtDescDistinctName`) agora lança um `VSRepoError` (`RESOLVER`) ao construir o repository, em vez de silenciosamente interpretar o `Distinct` como parte de um campo de ordenação inexistente
+
+### Documentação
+- Ambos os READMEs documentam o query builder: nova seção "Query builder", uma nova linha na tabela de métodos base, `QUERY_BUILDER` nas tabelas de tipos de erro, e uma observação sobre o builder na seção de Logging
+- Ambos os READMEs documentam `Equals`/`NotEquals`, a regra de fronteira de camelCase para colisões de palavra-chave (com o exemplo de desambiguação via `Equals`/`NotEquals`), e os novos erros explícitos para combinações de sufixo/prefixo não suportadas e para `Or` depois de `AND`
+- Nova seção "Resolução lazy dos métodos dinâmicos" no guia de métodos dinâmicos, cobrindo o `lazyDynamicMethods`, o porquê do `declare` deixar de ser necessário quando a resolução é adiada, e o `WARN` registrado numa chamada redundante de `resolveDynamicMethods()`; `lazyDynamicMethods` também foi adicionado à tabela de options do construtor no guia de métodos base
+- **Documentação reestruturada**: os READMEs da raiz (EN/PT) agora são uma visão geral curta — intro, o que mudou da v1, status dos adapters, instalação, uso básico, desenvolvimento, requisitos, contribuição — com um índice de documentação. O detalhamento de cada funcionalidade (métodos base & configuração, soft-delete, `select`/`relations`, métodos dinâmicos, query methods, query builder, transações, tipos utilitários, escrevendo um adapter, tratamento de erros, logging) foi para um guia próprio dentro de [`docs/`](./docs), cada um em português e em inglês, com mais exemplos do que antes (ex.: saída real de log em DEBUG/WARN no guia de logging, exemplos de valor de retorno/rollback de transação e de query builder no guia de transações)
+
+---
+
 ## [2.5.0] - 2026-09-20
 
 > Promotes `2.5.0-beta` to stable.
