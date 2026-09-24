@@ -69,6 +69,13 @@ Cada arquivo cobre uma área do core:
   tipo `QUERY_BUILDER`), o filtro de soft-delete via `see()`, `setDb()` (inclusive dentro de uma
   `transaction()`), `clone()`, e os logs de debug/performance — verificados tanto com um logger
   falso injetado no builder quanto com o `VSLogger` real do repository.
+- `sql-injection.test.ts` — testes de SQL Injection do pipeline de query/VSSql: garantem que
+  nenhum payload malicioso (string, comentário, UNION, unicode...) aparece no TEXTO SQL entregue ao
+  adapter — ele só chega no array de `args` (parâmetros ligados), em todos os caminhos
+  (`VSSql.sql`/`join`/composição -> `compile()`, `VSRepository.query()` com `VSSql` ou string +
+  `vsPlaceholders`, e `@QueryMethod` com `modifying: true` para UPDATE/INSERT/DELETE). Também trava
+  o contrato do `VSSql.raw`: é o único escape hatch que inlina texto por design, e `sql`/`join`
+  nunca inlinam.
 
 Nenhum pré-requisito externo é necessário — os testes usam apenas o `VSRepoAdapter` falso.
 

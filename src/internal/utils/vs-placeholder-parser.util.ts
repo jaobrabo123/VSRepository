@@ -2,9 +2,6 @@ import { VSRepoError } from "../../errors/VSRepoError";
 import { VSRepoErrorType } from "../enums/vsrepo-error-type.enum";
 import { VSSql } from "./vs-sql.util";
 
-/**
- * @internal
- */
 export class VSPlaceholdersParser {
     /**
      * Parses a raw SQL string written with VSRepository's own agnostic,
