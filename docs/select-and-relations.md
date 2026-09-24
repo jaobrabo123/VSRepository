@@ -6,7 +6,7 @@
 
 # `select` and `relations`
 
-Named, reusable projections (`selectModels`/`defaultSelectModel`) are no longer used — you pass `select` and `relations` directly on each call, there's nothing to pre-register. *(If you're migrating from v1, this change is covered in [Migrating from v1](./migrating-from-v1.md).)*:
+You pass `select` and `relations` directly on each call:
 
 ```typescript
 const user = await userRepository.get(id, {
@@ -21,6 +21,8 @@ const userWithAddress = await userRepository.get(id, {
 - `select` mirrors the entity's shape: scalar fields take a `boolean`; relation fields take a `boolean` or a nested `select`.
 - `relations` eagerly loads related records; each relation field takes a `boolean` or a nested `relations` object.
 - Whether `select` and `relations` can be combined depends on the adapter (see below).
+
+> **How it differs from v1:** projections used to be named and reusable (`selectModels`/`defaultSelectModel`). That's gone — every call passes its own `select`/`relations`. See [Migrating from v1](./migrating-from-v1.md) for the full breakdown.
 
 > ⚠️ **Adapter-dependent behavior for `relations`:**
 >

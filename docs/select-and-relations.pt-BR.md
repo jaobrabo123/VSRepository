@@ -6,7 +6,7 @@
 
 # `select` e `relations`
 
-Os `selectModels`/`defaultSelectModel` nomeados e reutilizáveis não existem mais — você passa `select` e `relations` diretamente em cada chamada, não há nada para pré-registrar. *(Se você está migrando da v1, essa mudança está coberta em [Migrando da v1](./migrating-from-v1.pt-BR.md).)*:
+Você passa `select` e `relations` diretamente em cada chamada:
 
 ```typescript
 const usuario = await userRepository.get(id, {
@@ -21,6 +21,8 @@ const usuarioComEndereco = await userRepository.get(id, {
 - `select` espelha o formato da entidade: campos escalares recebem um `boolean`; campos de relação recebem um `boolean` ou um `select` aninhado.
 - `relations` carrega registros relacionados; cada campo de relação recebe um `boolean` ou um objeto `relations` aninhado.
 - Se `select` e `relations` podem ser combinados depende do adapter (veja abaixo).
+
+> **Como difere da v1:** as projeções eram nomeadas e reutilizáveis (`selectModels`/`defaultSelectModel`). Isso não existe mais — cada chamada passa seu próprio `select`/`relations`. Veja [Migrando da v1](./migrating-from-v1.pt-BR.md) para o detalhamento completo.
 
 > ⚠️ **Comportamento de `relations` depende do adapter:**
 >

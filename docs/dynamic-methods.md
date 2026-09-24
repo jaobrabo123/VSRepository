@@ -200,7 +200,7 @@ declare findOne: (options?: MethodOptions<User>) => Promise<User | null>;
 >     (active: boolean) => Promise<User[]>;
 > ```
 >
-> Putting `OrderBy` before `Distinct` (e.g. `findByActiveOrderByCreatedAtDescDistinctName`) is not a valid pattern and won't be parsed as expected.
+> Putting `OrderBy` before `Distinct` (e.g. `findByActiveOrderByCreatedAtDescDistinctName`) is not a valid pattern and throws a `VSRepoError` (`RESOLVER`) when the repository is constructed: `The "Distinct" modifier cannot appear after the "OrderBy" modifier.`
 
 ## Decorator options
 
