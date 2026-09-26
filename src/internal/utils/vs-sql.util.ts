@@ -17,9 +17,6 @@ import { VSRepoErrorType } from "../enums/vsrepo-error-type.enum";
  * ```typescript
  * import { VSSql } from "vsrepo";
  *
- * const onlyActive = true;
- * const ids = ["user-1", "user-2", "user-3"];
- *
  * const filter = onlyActive ? VSSql.sql`AND active = ${true}` : VSSql.empty;
  *
  * const fragment = VSSql.sql`
