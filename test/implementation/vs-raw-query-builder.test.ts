@@ -151,6 +151,19 @@ describe("VSRawQueryBuilder — montagem das cláusulas (toVSSql)", () => {
         });
     });
 
+    it("aceita uma função de subquery em from()/join(), recebendo um builder novo com o mesmo db/adapter/logger", () => {
+        const qb = userRepository
+            .createRawQueryBuilder()
+            .select("u.id")
+            .from("user", "u")
+            .innerJoin(sub => sub.select("user_id").from("order").groupBy("user_id"), "o", VSSql.sql`o.user_id = u.id`);
+
+        expect(qb.toVSSql().compile(numberedPlaceholder)).toEqual({
+            text: "SELECT u.id FROM user AS u INNER JOIN (SELECT user_id FROM order GROUP BY user_id) AS o ON o.user_id = u.id",
+            args: [],
+        });
+    });
+
     it("aceita string crua (sem parâmetros) em where/andWhere/orWhere/having/on", () => {
         const qb = userRepository
             .createRawQueryBuilder()
@@ -194,6 +207,127 @@ describe("VSRawQueryBuilder — montagem das cláusulas (toVSSql)", () => {
     it("lança VSRepoError QUERY_BUILDER para limit/offset negativos", () => {
         expect(() => userRepository.createRawQueryBuilder().limit(-1)).toThrow(VSRepoError);
         expect(() => userRepository.createRawQueryBuilder().offset(-1)).toThrow(VSRepoError);
+    });
+});
+
+describe("VSRawQueryBuilder — with()/withRecursive() (CTEs)", () => {
+    it("compila um único with(), referenciável em from() como uma tabela normal", () => {
+        const qb = userRepository
+            .createRawQueryBuilder()
+            .with("big_spenders", cte =>
+                cte
+                    .select("user_id")
+                    .from("order")
+                    .groupBy("user_id")
+                    .having(VSSql.sql`sum(total) > ${1000}`),
+            )
+            .select("*")
+            .from("big_spenders");
+
+        expect(qb.toVSSql().compile(numberedPlaceholder)).toEqual({
+            text: "WITH big_spenders AS (SELECT user_id FROM order GROUP BY user_id HAVING (sum(total) > $1)) SELECT * FROM big_spenders",
+            args: [1000],
+        });
+    });
+
+    it("aceita um VSSql diretamente e um VSRawQueryBuilder já pronto como corpo do with()", () => {
+        const asSql = userRepository
+            .createRawQueryBuilder()
+            .with("a", VSSql.sql`SELECT ${1} AS n`)
+            .select("*")
+            .from("a");
+
+        expect(asSql.toVSSql().compile(numberedPlaceholder)).toEqual({
+            text: "WITH a AS (SELECT $1 AS n) SELECT * FROM a",
+            args: [1],
+        });
+
+        const preBuilt = userRepository.createRawQueryBuilder().select("id").from("user");
+        const asBuilder = userRepository.createRawQueryBuilder().with("u", preBuilt).select("*").from("u");
+
+        expect(asBuilder.toVSSql().compile(numberedPlaceholder)).toEqual({
+            text: "WITH u AS (SELECT id FROM user) SELECT * FROM u",
+            args: [],
+        });
+    });
+
+    it("compila múltiplos with(), na ordem em que foram adicionados, separados por vírgula", () => {
+        const qb = userRepository
+            .createRawQueryBuilder()
+            .with("a", VSSql.sql`SELECT 1 AS n`)
+            .with("b", VSSql.sql`SELECT 2 AS n`)
+            .select("*")
+            .from("a");
+
+        expect(qb.toVSSql().compile(numberedPlaceholder).text).toBe(
+            "WITH a AS (SELECT 1 AS n), b AS (SELECT 2 AS n) SELECT * FROM a",
+        );
+    });
+
+    it("with(name, query, columns) inclui a lista explícita de colunas", () => {
+        const qb = userRepository
+            .createRawQueryBuilder()
+            .with("a", VSSql.sql`SELECT 1, 2`, ["x", "y"])
+            .select("*")
+            .from("a");
+
+        expect(qb.toVSSql().compile(numberedPlaceholder).text).toBe("WITH a (x, y) AS (SELECT 1, 2) SELECT * FROM a");
+    });
+
+    it("withRecursive() renderiza 'WITH RECURSIVE', mesmo combinado com with() não-recursivos", () => {
+        const qb = userRepository
+            .createRawQueryBuilder()
+            .with("a", VSSql.sql`SELECT 1 AS n`)
+            .withRecursive(
+                "subordinates",
+                VSSql.sql`
+                    SELECT id, manager_id FROM employee WHERE id = ${1}
+                    UNION ALL
+                    SELECT e.id, e.manager_id FROM employee e INNER JOIN subordinates s ON e.manager_id = s.id
+                `,
+                ["id", "manager_id"],
+            )
+            .select("*")
+            .from("subordinates");
+
+        const { text, args } = qb.toVSSql().compile(numberedPlaceholder);
+
+        expect(text).toContain("WITH RECURSIVE a AS (SELECT 1 AS n), subordinates (id, manager_id) AS (");
+        expect(text).toContain("UNION ALL");
+        expect(args).toEqual([1]);
+    });
+
+    it("uma CTE pode ser referenciada num join() por nome, como uma tabela normal", () => {
+        const qb = userRepository
+            .createRawQueryBuilder()
+            .with("big_spenders", cte => cte.select("user_id").from("order").groupBy("user_id"))
+            .select("u.*")
+            .from("user", "u")
+            .innerJoin("big_spenders", "bs", "bs.user_id = u.id");
+
+        expect(qb.toVSSql().compile(numberedPlaceholder).text).toBe(
+            "WITH big_spenders AS (SELECT user_id FROM order GROUP BY user_id) " +
+                "SELECT u.* FROM user AS u INNER JOIN big_spenders AS bs ON bs.user_id = u.id",
+        );
+    });
+
+    it("clone() carrega as CTEs do builder original", () => {
+        const base = userRepository
+            .createRawQueryBuilder()
+            .with("a", VSSql.sql`SELECT 1 AS n`)
+            .select("*")
+            .from("a");
+
+        const clone = base.clone().with("b", VSSql.sql`SELECT 2 AS n`);
+
+        expect(base.toVSSql().compile(numberedPlaceholder).text).toBe("WITH a AS (SELECT 1 AS n) SELECT * FROM a");
+        expect(clone.toVSSql().compile(numberedPlaceholder).text).toBe(
+            "WITH a AS (SELECT 1 AS n), b AS (SELECT 2 AS n) SELECT * FROM a",
+        );
+    });
+
+    it("lança VSRepoError QUERY_BUILDER se 'name' não for informado", () => {
+        expect(() => userRepository.createRawQueryBuilder().with("", VSSql.sql`SELECT 1`)).toThrow(VSRepoError);
     });
 });
 
