@@ -208,6 +208,33 @@ describe("VSRawQueryBuilder — montagem das cláusulas (toVSSql)", () => {
         expect(() => userRepository.createRawQueryBuilder().limit(-1)).toThrow(VSRepoError);
         expect(() => userRepository.createRawQueryBuilder().offset(-1)).toThrow(VSRepoError);
     });
+
+    it("lança VSRepoError QUERY_BUILDER para string crua vazia/em branco em select/groupBy/orderBy/where/andWhere/orWhere/having/andHaving/orHaving/on", () => {
+        expect(() => userRepository.createRawQueryBuilder().select("id", "")).toThrow(VSRepoError);
+        expect(() => userRepository.createRawQueryBuilder().select("  ")).toThrow(VSRepoError);
+        expect(() => userRepository.createRawQueryBuilder().from("user").groupBy("id", "")).toThrow(VSRepoError);
+        expect(() => userRepository.createRawQueryBuilder().orderBy("")).toThrow(VSRepoError);
+        expect(() => userRepository.createRawQueryBuilder().where("")).toThrow(VSRepoError);
+        expect(() => userRepository.createRawQueryBuilder().andWhere("")).toThrow(VSRepoError);
+        expect(() => userRepository.createRawQueryBuilder().orWhere("")).toThrow(VSRepoError);
+        expect(() => userRepository.createRawQueryBuilder().having("")).toThrow(VSRepoError);
+        expect(() => userRepository.createRawQueryBuilder().andHaving("")).toThrow(VSRepoError);
+        expect(() => userRepository.createRawQueryBuilder().orHaving("")).toThrow(VSRepoError);
+        expect(() =>
+            userRepository.createRawQueryBuilder().select("u.id").from("user", "u").innerJoin("order", "o", ""),
+        ).toThrow(VSRepoError);
+    });
+
+    it("lança VSRepoError QUERY_BUILDER para from()/join() com nome de tabela ou alias vazio/em branco", () => {
+        expect(() => userRepository.createRawQueryBuilder().from("")).toThrow(VSRepoError);
+        expect(() => userRepository.createRawQueryBuilder().from("user", "  ")).toThrow(VSRepoError);
+        expect(() =>
+            userRepository
+                .createRawQueryBuilder()
+                .from("user", "u")
+                .innerJoin("order", "", VSSql.sql`1 = 1`),
+        ).toThrow(VSRepoError);
+    });
 });
 
 describe("VSRawQueryBuilder — with()/withRecursive() (CTEs)", () => {
@@ -326,8 +353,15 @@ describe("VSRawQueryBuilder — with()/withRecursive() (CTEs)", () => {
         );
     });
 
-    it("lança VSRepoError QUERY_BUILDER se 'name' não for informado", () => {
+    it("lança VSRepoError QUERY_BUILDER se 'name' não for informado ou for uma string em branco", () => {
         expect(() => userRepository.createRawQueryBuilder().with("", VSSql.sql`SELECT 1`)).toThrow(VSRepoError);
+        expect(() => userRepository.createRawQueryBuilder().with("   ", VSSql.sql`SELECT 1`)).toThrow(VSRepoError);
+    });
+
+    it("lança VSRepoError QUERY_BUILDER se algum item de 'columns' for uma string vazia/em branco", () => {
+        expect(() => userRepository.createRawQueryBuilder().with("a", VSSql.sql`SELECT 1, 2`, ["x", ""])).toThrow(
+            VSRepoError,
+        );
     });
 });
 
