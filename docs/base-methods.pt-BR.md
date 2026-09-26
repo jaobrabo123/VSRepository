@@ -19,6 +19,7 @@
 | `logLevel`           | `VSLogLevel`        | Opcional. Severidade mínima impressa pelo logger interno. Padrão: `VSLogLevel.WARN`.                                                                                                                                                          |
 | `logSlowThresholdMs` | `number \| boolean` | Opcional. Duração (ms) acima da qual uma operação concluída é logada como `WARN`. Padrão: 300ms. Passe `false` para desabilitar completamente os avisos de operação lenta; passe `true` para usar explicitamente o threshold padrão de 300ms. |
 | `lazyDynamicMethods`  | `boolean`           | Opcional. Padrão: `false`. Quando `true`, adia a resolução dos métodos `@DynamicMethod`/`@QueryMethod` — quem chama é o próprio repository, manualmente, via `resolveDynamicMethods()`. Veja [Resolução lazy dos métodos dinâmicos](./dynamic-methods.pt-BR.md#resolução-lazy-dos-métodos-dinâmicos). |
+| `vsPlaceholders`      | `boolean`           | Opcional. Padrão: `false`. Quando `true`, strings SQL cruas passadas para `query()` e `@QueryMethod` usam os placeholders próprios, agnósticos, posicionais e de base 1 do VSRepository (`?1`, `?2`, ...) em vez da sintaxe nativa do seu adapter. Exige que o adapter implemente `getPlaceholder()`. Veja [Placeholders agnósticos com `vsPlaceholders`](./query-methods.pt-BR.md#placeholders-agnósticos-com-vsplaceholders). |
 
 ---
 
@@ -50,7 +51,7 @@ Disponíveis automaticamente em toda subclasse de `VSRepository`:
 | `max(field, where?, options?)`          | Valor máximo de um campo numérico em todos os registros que baterem no filtro; `null` se nenhum bater.                                |
 | `transaction(fn, options?)`             | Executa `fn` dentro de uma transação nativa do ORM.                                                                                   |
 | `getDbClient()`                         | Retorna a instância do client do ORM.                                                                                                 |
-| `query<T>(query, options?)`             | Executa uma instrução SQL raw diretamente contra o banco. Veja [Queries raw pontuais com `query()`](./query-methods.pt-BR.md#queries-raw-pontuais-com-query). |
+| `query<T>(query, options?)`             | Executa uma instrução SQL raw diretamente contra o banco — aceita uma string crua ou um fragmento `VSSql`. Veja [Queries raw pontuais com `query()`](./query-methods.pt-BR.md#queries-raw-pontuais-com-query). |
 | `createQueryBuilder(db?)`               | Cria um [query builder](./query-builder.pt-BR.md#query-builder) fluente para queries montadas em tempo de execução.                                           |
 
 A maioria dos métodos acima aceita um objeto `MethodOptions<Entity, OrmTypes>` como último argumento (`select`, `relations`, `see`, `db`). Alguns — `total`, `has`, `removeList`, `sum`, `average`, `min`, `max`, e os métodos em lote de soft-delete (`softRemoveList`/`restoreList`) — não retornam/moldam uma `Entity`, então aceitam o tipo mais restrito `RestrictMethodOptions<Entity, OrmTypes>` (só `see`, `db`; sem `select`/`relations`). `transaction`, `query` e `getDbClient` recebem options próprias ou nenhuma.

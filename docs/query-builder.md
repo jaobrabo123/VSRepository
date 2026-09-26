@@ -21,6 +21,8 @@ const { result, count } = await userRepository
 
 Nothing reaches the database until a **terminal method** (`getResult()`, `getCount()`, ...) is called. The builder is **mutable**: every chained call changes the same instance and returns it, so use [`clone()`](#reusing-and-cloning-a-builder) to derive variations from a common base. The `VSQueryBuilder<Entity>` class is exported from `vsrepo` in case you need to type a builder (e.g. as a function parameter).
 
+For queries whose SQL is too specific for this builder's `where`/`relations` model — window functions, vendor-specific syntax, ad-hoc subqueries, CTEs — see the [Raw query builder](./raw-query-builder.md) instead.
+
 ## Building the query
 
 | Method                 | Description                                                                                                                                                |

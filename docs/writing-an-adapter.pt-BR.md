@@ -115,10 +115,13 @@ export abstract class VSRepoAdapter<T> {
         options?: AdapterMethodOptions<T>,
     ): Promise<number | null>;
     getPkName?(): string;
+    getPlaceholder?(index: number): string;
 }
 ```
 
 O `getPkName()` opcional permite que o adapter declare ao repository qual campo é a primary key da entidade. Ao instanciar um `VSRepository`, você pode omitir o `pkName` das options do construtor e ele será lido do `adapter.getPkName()`. Se você omitir e o adapter não implementar o `getPkName()`, o construtor lança um `VSRepoError`.
+
+O `getPlaceholder?(index)` opcional declara a sintaxe de placeholder que seu banco/driver espera para o N-ésimo (base 0) parâmetro ligado numa query raw — ex.: PostgreSQL retorna `` `$${index + 1}` `` (`$1`, `$2`, ...), enquanto SQLite/MySQL ignoram `index` e sempre retornam `"?"`. Implementá-lo é o que libera os recursos de query parametrizada: `query()` passa a aceitar um fragmento `VSSql`, e `vsPlaceholders: true` compila os placeholders `?1`, `?2`, ... do próprio VSRepository — ambos através do `getPlaceholder()`. Sem ele, passar um fragmento `VSSql` ou ligar `vsPlaceholders` lança um `VSRepoError`. Veja [Query methods](./query-methods.pt-BR.md#fragmentos-parametrizados-com-vssql).
 
 O `VSRepository` nunca fala diretamente com o ORM — ele só chama esses métodos com um `VSRepoWhere<T>` e um `AdapterMethodOptions<T>` já resolvidos. Uma vez que um adapter implemente esse contrato, todo método base, método dinâmico e query method passa a funcionar com ele automaticamente. Pra uma implementação completa e funcional, veja o repositório externo [`VSRepoPrisma7Adapter`](https://github.com/jaobrabo123/VSRepoPrisma7Adapter).
 

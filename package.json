@@ -1,6 +1,6 @@
 {
   "name": "vsrepo",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "description": "ORM-agnostic repository pattern library",
   "homepage": "https://github.com/jaobrabo123/VSRepository#readme",
   "repository": {
@@ -41,7 +41,8 @@
     "test": "bun run test:typing && bun run test:implementation",
     "lint": "oxlint --type-aware src/ test/",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\""
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "full-validation": "bun run typecheck && bun run lint && bun run format:check && bun run test"
   },
   "keywords": [
     "prisma",

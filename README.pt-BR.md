@@ -20,7 +20,7 @@ O VSRepository permite criar repositories fortemente tipados com:
 - **Métodos base** automáticos: `get`, `getOrThrow`, `getList`, `save`, `saveList`, `remove`, `removeList`, `patch`, `merge`, `getAll`, `total`, `has`
 - **Soft-delete nativo**: `softRemove`, `softRemoveList`, `restore`, `restoreList`
 - **Métodos dinâmicos** inferidos a partir do nome de um campo `declare` via o decorador `@DynamicMethod`: `findOneByEmail`, `findByStatusPaginated`, `updateById`
-- **Métodos de query SQL raw** através do decorador `@QueryMethod`, ignorando totalmente o engine de parsing por nome
+- **Métodos de query SQL raw** através do decorador `@QueryMethod` (ignorando totalmente o engine de parsing por nome), fragmentos parametrizados `VSSql` para chamadas pontuais de `query()`, e placeholders agnósticos `?1`, `?2` com `vsPlaceholders`
 - **`select`/`relations`** ad-hoc em cada chamada — sem mais projeções nomeadas pré-declaradas
 - **Type safety** em 100% das operações
 - **Transações** nativas do ORM, compartilhadas entre repositories
@@ -37,8 +37,9 @@ As seções abaixo (status dos adapters, instalação, uso básico) são o essen
 | [Métodos base, configuração & soft-delete](./docs/base-methods.pt-BR.md) | Options do construtor, os 12 métodos CRUD automáticos, soft-delete nativo, e os 8 métodos atômicos/de agregação (`increment`, `sum`, ...). |
 | [`select` e `relations`](./docs/select-and-relations.pt-BR.md) | Seleção de campos e carregamento de relações ad-hoc em qualquer chamada, e o `InferMethodReturn` para estreitar o tipo de retorno de acordo. |
 | [Métodos dinâmicos](./docs/dynamic-methods.pt-BR.md) | Métodos no estilo `findByEmail`, resolvidos a partir de um nome de método `declare`d: prefixos, filtros de campo, operadores lógicos, filtros de relação, ordenação/paginação/distinct. |
-| [Query methods (SQL raw)](./docs/query-methods.pt-BR.md) | Métodos de SQL raw via `@QueryMethod`, ignorando totalmente o parser de nomes dos métodos dinâmicos. |
+| [Query methods (SQL raw)](./docs/query-methods.pt-BR.md) | SQL raw via `@QueryMethod`, fragmentos parametrizados `VSSql` e os placeholders agnósticos `?1`/`?2` (`vsPlaceholders`). |
 | [Query builder](./docs/query-builder.pt-BR.md) | A API fluente `createQueryBuilder()` para queries montadas em tempo de execução, incluindo paginação, visibilidade de soft-delete e transações. |
+| [Raw query builder](./docs/raw-query-builder.pt-BR.md) | A API fluente `createRawQueryBuilder()` para queries `SELECT` escritas à mão, específicas demais para o query builder — joins, subqueries, CTEs (`with`/`withRecursive`). |
 | [Transações](./docs/transactions.pt-BR.md) | Rodando vários repositories na mesma transação nativa do ORM. |
 | [Tipos utilitários](./docs/utility-types.pt-BR.md) | Os tipos utilitários exportados (`InferMethodType`, `InferMethodReturn`, `KeysOfType`, ...) e onde cada um é usado. |
 | [Escrevendo seu próprio adapter](./docs/writing-an-adapter.pt-BR.md) | Como implementar o `VSRepoAdapter` para um novo ORM ou banco, método a método. |

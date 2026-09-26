@@ -30,7 +30,7 @@ export class DecoratorsValidator {
     });
 
     static validateQueryMethodOptions(options: unknown): QueryMethodOptions {
-        const parsed = v.safeParse(this.queryMethodOptionsSchema, options);
+        const parsed = v.safeParse(this.queryMethodOptionsSchema, options ?? {});
 
         if (!parsed.success) {
             const firstIssue = parsed.issues[0];

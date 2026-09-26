@@ -10,6 +10,7 @@ import "reflect-metadata";
 import { describe, it, expect, beforeEach } from "@jest/globals";
 import { VSRepository } from "../../src/VSRepository";
 import { VSRepoAdapter } from "../../src/VSRepoAdapter";
+import { VSSql } from "../../src/internal/utils/vs-sql.util";
 import { createFakeAdapter } from "../helpers/fake-adapter";
 import { User, buildUser } from "../helpers/entities";
 
@@ -216,6 +217,44 @@ describe("transaction / getDbClient / query", () => {
 
     it("'query' rejeita quando 'query' não é uma string", async () => {
         await expect(userRepository.query(123 as any)).rejects.toThrow();
+    });
+
+    describe("'query' com um fragmento 'VSSql'", () => {
+        it("compila o fragmento com 'adapter.getPlaceholder' e delega para 'adapter.query'", async () => {
+            fakeAdapter.getPlaceholder = jest.fn((index: number) => `$${index + 1}`);
+            fakeAdapter.query.mockResolvedValueOnce([buildUser()]);
+
+            const fragment = VSSql.sql`SELECT * FROM "user" WHERE email = ${"joao@email.com"}`;
+            await userRepository.query(fragment);
+
+            expect(fakeAdapter.getPlaceholder).toHaveBeenCalledWith(0);
+            expect(fakeAdapter.query).toHaveBeenCalledWith(
+                'SELECT * FROM "user" WHERE email = $1',
+                expect.objectContaining({ args: ["joao@email.com"], modifying: false }),
+            );
+        });
+
+        it("respeita o estilo de placeholder do adapter (ex.: '?')", async () => {
+            fakeAdapter.getPlaceholder = jest.fn(() => "?");
+            fakeAdapter.query.mockResolvedValueOnce([]);
+
+            const fragment = VSSql.sql`WHERE id = ${"user-1"}`;
+            await userRepository.query(fragment);
+
+            expect(fakeAdapter.query).toHaveBeenCalledWith(
+                "WHERE id = ?",
+                expect.objectContaining({ args: ["user-1"] }),
+            );
+        });
+
+        it("rejeita quando o adapter não implementa 'getPlaceholder'", async () => {
+            const fragment = VSSql.sql`WHERE id = ${"user-1"}`;
+
+            await expect(userRepository.query(fragment)).rejects.toThrow(
+                /did not implement the 'getPlaceholder' method/,
+            );
+            expect(fakeAdapter.query).not.toHaveBeenCalled();
+        });
     });
 
     describe("'singleResult'", () => {

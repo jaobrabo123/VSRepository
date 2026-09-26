@@ -19,6 +19,7 @@
 | `logLevel`           | `VSLogLevel`        | Optional. Minimum severity printed by the internal logger. Defaults to `VSLogLevel.WARN`.                                                                                                                                          |
 | `logSlowThresholdMs` | `number \| boolean` | Optional. Duration (ms) above which a finished operation is logged as `WARN`. Defaults to 300ms. Pass `false` to disable slow-operation warnings entirely; pass `true` to use the 300ms default explicitly.                        |
 | `lazyDynamicMethods`  | `boolean`           | Optional. Defaults to `false`. When `true`, postpones resolving `@DynamicMethod`/`@QueryMethod` methods — the repository itself must call `resolveDynamicMethods()` manually later. See [Lazily resolving dynamic methods](./dynamic-methods.md#lazily-resolving-dynamic-methods). |
+| `vsPlaceholders`      | `boolean`           | Optional. Defaults to `false`. When `true`, raw SQL strings passed to `query()` and `@QueryMethod` use VSRepository's own agnostic, 1-based, positional placeholders (`?1`, `?2`, ...) instead of your adapter's native syntax. Requires the adapter to implement `getPlaceholder()`. See [Agnostic placeholders with `vsPlaceholders`](./query-methods.md#agnostic-placeholders-with-vsplaceholders). |
 
 ---
 
@@ -50,7 +51,7 @@ Available automatically on every `VSRepository` subclass:
 | `max(field, where?, options?)`          | Maximum value of a numeric field across every matching record; `null` if none match.                                                 |
 | `transaction(fn, options?)`             | Runs `fn` inside a native transaction of the underlying ORM.                                                                         |
 | `getDbClient()`                         | Returns the ORM client instance.                                                                                                     |
-| `query<T>(query, options?)`             | Executes a raw SQL statement directly against the database. See [Ad-hoc raw queries with `query()`](./query-methods.md#ad-hoc-raw-queries-with-query). |
+| `query<T>(query, options?)`             | Executes a raw SQL statement directly against the database — accepts a plain string or a `VSSql` fragment. See [Ad-hoc raw queries with `query()`](./query-methods.md#ad-hoc-raw-queries-with-query). |
 | `createQueryBuilder(db?)`               | Creates a fluent [query builder](./query-builder.md#query-builder) for queries assembled at runtime.                                                   |
 
 Most of the above accept a `MethodOptions<Entity, OrmTypes>` object as their last argument (`select`, `relations`, `see`, `db`). A few — `total`, `has`, `removeList`, `sum`, `average`, `min`, `max`, and the soft-delete batch methods (`softRemoveList`/`restoreList`) — don't return/shape an `Entity`, so they accept the narrower `RestrictMethodOptions<Entity, OrmTypes>` instead (`see`, `db` only; no `select`/`relations`). `transaction`, `query`, and `getDbClient` accept their own options or none at all.
