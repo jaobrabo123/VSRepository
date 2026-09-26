@@ -13,6 +13,7 @@ Detailed, example-heavy guides for each VSRepository feature. For the quickstart
 | [Dynamic methods](./dynamic-methods.md) | `findByEmail`-style methods parsed from a `declare`d method name: prefixes, field filters, logical operators, relation filters, ordering/pagination/distinct. |
 | [Query methods (raw SQL)](./query-methods.md) | Raw SQL via `@QueryMethod`, parameterized `VSSql` fragments and the agnostic `?1`/`?2` placeholders (`vsPlaceholders`). |
 | [Query builder](./query-builder.md) | The fluent `createQueryBuilder()` API for queries assembled at runtime, including pagination, soft-delete visibility and transactions. |
+| [Raw query builder](./raw-query-builder.md) | The fluent `createRawQueryBuilder()` API for hand-written `SELECT` queries too SQL-specific for the query builder — joins, subqueries, CTEs (`with`/`withRecursive`). |
 | [Transactions](./transactions.md) | Running several repositories against the same native ORM transaction. |
 | [Utility types](./utility-types.md) | The exported helper types (`InferMethodType`, `InferMethodReturn`, `KeysOfType`, ...) and where each one is used. |
 | [Writing your own adapter](./writing-an-adapter.md) | How to implement `VSRepoAdapter` for a new ORM or database, method by method. |

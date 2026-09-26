@@ -39,6 +39,7 @@ As seções abaixo (status dos adapters, instalação, uso básico) são o essen
 | [Métodos dinâmicos](./docs/dynamic-methods.pt-BR.md) | Métodos no estilo `findByEmail`, resolvidos a partir de um nome de método `declare`d: prefixos, filtros de campo, operadores lógicos, filtros de relação, ordenação/paginação/distinct. |
 | [Query methods (SQL raw)](./docs/query-methods.pt-BR.md) | SQL raw via `@QueryMethod`, fragmentos parametrizados `VSSql` e os placeholders agnósticos `?1`/`?2` (`vsPlaceholders`). |
 | [Query builder](./docs/query-builder.pt-BR.md) | A API fluente `createQueryBuilder()` para queries montadas em tempo de execução, incluindo paginação, visibilidade de soft-delete e transações. |
+| [Raw query builder](./docs/raw-query-builder.pt-BR.md) | A API fluente `createRawQueryBuilder()` para queries `SELECT` escritas à mão, específicas demais para o query builder — joins, subqueries, CTEs (`with`/`withRecursive`). |
 | [Transações](./docs/transactions.pt-BR.md) | Rodando vários repositories na mesma transação nativa do ORM. |
 | [Tipos utilitários](./docs/utility-types.pt-BR.md) | Os tipos utilitários exportados (`InferMethodType`, `InferMethodReturn`, `KeysOfType`, ...) e onde cada um é usado. |
 | [Escrevendo seu próprio adapter](./docs/writing-an-adapter.pt-BR.md) | Como implementar o `VSRepoAdapter` para um novo ORM ou banco, método a método. |
