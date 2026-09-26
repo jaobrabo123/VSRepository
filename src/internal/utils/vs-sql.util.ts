@@ -93,10 +93,11 @@ export class VSSql {
         const chunks: string[] = [strings[0] ?? ""];
         const outValues: unknown[] = [];
 
-        values.forEach((value, i) => {
+        for (let i = 0; i < values.length; i++) {
+            const value = values[i];
             VSSql.appendValue(chunks, outValues, value);
             chunks[chunks.length - 1] += strings[i + 1] ?? "";
-        });
+        }
 
         return new VSSql(chunks, outValues);
     }
@@ -150,10 +151,11 @@ export class VSSql {
         const chunks: string[] = [prefix];
         const outValues: unknown[] = [];
 
-        values.forEach((value, i) => {
+        for (let i = 0; i < values.length; i++) {
+            const value = values[i];
             VSSql.appendValue(chunks, outValues, value);
             chunks[chunks.length - 1] += i === values.length - 1 ? suffix : separator;
-        });
+        }
 
         return new VSSql(chunks, outValues);
     }
