@@ -161,7 +161,13 @@ const withMinAge = await base.clone().andWhere(VSSql.sql`age > ${18}`).execute()
 
 ## Validação e erros
 
-Os argumentos são validados assim que passados a um método encadeado, não quando a query roda. Um argumento inválido lança um `VSRepoError` com `type: VSRepoErrorType.QUERY_BUILDER`, cuja mensagem começa com o argumento problemático, e deixa o builder inalterado. `limit` e `offset` devem ser inteiros não-negativos; `with()`/`withRecursive()` exigem um `name` não-vazio.
+Os argumentos são validados assim que passados a um método encadeado, não quando a query roda. Um argumento inválido lança um `VSRepoError` com `type: VSRepoErrorType.QUERY_BUILDER`, cuja mensagem começa com o argumento problemático, e deixa o builder inalterado. `limit` e `offset` devem ser inteiros não-negativos. Toda string crua aceita como identificador, condição, alias ou nome/coluna de CTE (diferente de um fragmento `VSSql`) deve ser não-vazia/não-em-branco — uma vazia, do contrário, compilaria silenciosamente em SQL quebrado (uma vírgula sobrando, um `WHERE ()` vazio, ...) em vez de falhar onde você a chamou:
+
+- Colunas de `select`/`groupBy`/`orderBy`, e condições de `where`/`andWhere`/`orWhere`/`having`/`andHaving`/`orHaving`/`on`, quando passadas como string
+- `alias` de `from`/join, quando informado
+- `name` de `with`/`withRecursive`, e cada item de seu `columns` opcional
+
+Isso é só uma checagem de presença — a biblioteca nunca faz parsing nem valida de qualquer outra forma o *conteúdo* de uma string SQL crua.
 
 ```typescript
 import { VSRepoError, VSRepoErrorType } from "vsrepo";

@@ -161,7 +161,13 @@ const withMinAge = await base.clone().andWhere(VSSql.sql`age > ${18}`).execute()
 
 ## Validation and errors
 
-Arguments are validated as soon as they're passed to a chained method, not when the query runs. An invalid one throws a `VSRepoError` with `type: VSRepoErrorType.QUERY_BUILDER`, whose message starts with the offending argument, and leaves the builder unchanged. `limit` and `offset` must be non-negative integers; `with()`/`withRecursive()` require a non-empty `name`.
+Arguments are validated as soon as they're passed to a chained method, not when the query runs. An invalid one throws a `VSRepoError` with `type: VSRepoErrorType.QUERY_BUILDER`, whose message starts with the offending argument, and leaves the builder unchanged. `limit` and `offset` must be non-negative integers. Every raw string accepted as an identifier, condition, alias or CTE name/column (as opposed to a `VSSql` fragment) must be non-empty/non-blank — an empty one would otherwise silently compile into broken SQL (a trailing comma, an empty `WHERE ()`, ...) instead of failing where you called it:
+
+- `select`/`groupBy`/`orderBy` columns, and `where`/`andWhere`/`orWhere`/`having`/`andHaving`/`orHaving`/`on` conditions, when passed as a string
+- `from`/join `alias`, when given
+- `with`/`withRecursive`'s `name`, and every item of its optional `columns`
+
+This is a presence check only — the library never parses or otherwise validates the *content* of a raw SQL string.
 
 ```typescript
 import { VSRepoError, VSRepoErrorType } from "vsrepo";
