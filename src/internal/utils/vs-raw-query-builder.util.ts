@@ -86,8 +86,28 @@ export class VSRawQueryBuilder<OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes>
         this.logger?.logDebug(`VSRawQueryBuilder: ${message}`, obj);
     }
 
-    private static toFragment(value: string | VSSql): VSSql {
-        return typeof value === "string" ? VSSql.raw(value) : value;
+    private static validateNonEmptyString(value: string, context: string): void {
+        if (value.trim().length === 0) {
+            throw new VSRepoError(
+                `${context}: Invalid value: Expected a non-empty string but received ${value}`,
+                VSRepoErrorType.QUERY_BUILDER,
+            );
+        }
+    }
+
+    /** Converts a raw string into a `VSSql.raw` fragment (validating it isn't empty/blank first,
+     * since that would silently compile into broken SQL — e.g. a trailing comma or an empty
+     * `WHERE ()`) or passes an already-built `VSSql` fragment through untouched.
+     *
+     * @param context Name of the calling method/argument, used in the `VSRepoError` message. */
+    private static toFragment(value: string | VSSql, context: string): VSSql {
+        if (typeof value !== "string") {
+            return value;
+        }
+
+        VSRawQueryBuilder.validateNonEmptyString(value, context);
+
+        return VSSql.raw(value);
     }
 
     private newSubBuilder(): VSRawQueryBuilder<OrmTypes> {
@@ -100,13 +120,19 @@ export class VSRawQueryBuilder<OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes>
         return result instanceof VSRawQueryBuilder ? result.toVSSql() : result;
     }
 
-    private resolveTarget(target: VSRawQueryBuilderTarget, alias?: string): VSSql {
+    private resolveTarget(target: VSRawQueryBuilderTarget, context: string, alias?: string): VSSql {
         const base =
             target instanceof VSRawQueryBuilder || typeof target === "function"
                 ? VSSql.sql`(${this.resolveSubquery(target)})`
-                : VSRawQueryBuilder.toFragment(target);
+                : VSRawQueryBuilder.toFragment(target, context);
 
-        return alias ? VSSql.sql`${base} AS ${VSSql.raw(alias)}` : base;
+        if (alias === undefined) {
+            return base;
+        }
+
+        VSRawQueryBuilder.validateNonEmptyString(alias, "alias");
+
+        return VSSql.sql`${base} AS ${VSSql.raw(alias)}`;
     }
 
     private resolveCteQuery(query: VSRawQueryBuilderCteQuery): VSSql {
@@ -143,7 +169,9 @@ export class VSRawQueryBuilder<OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes>
      * to `SELECT *`.
      */
     select(...columns: (string | VSSql)[]): this {
-        this.selectColumns = columns.length ? columns.map(VSRawQueryBuilder.toFragment) : [VSSql.raw("*")];
+        this.selectColumns = columns.length
+            ? columns.map(column => VSRawQueryBuilder.toFragment(column, "select"))
+            : [VSSql.raw("*")];
 
         return this;
     }
@@ -156,14 +184,19 @@ export class VSRawQueryBuilder<OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes>
      * @param alias Optional alias, appended as `AS alias` (raw, trusted text).
      */
     from(target: VSRawQueryBuilderTarget, alias?: string): this {
-        this.fromTarget = this.resolveTarget(target, alias);
+        this.fromTarget = this.resolveTarget(target, "from", alias);
 
         return this;
     }
 
     private addCte(name: string, query: VSRawQueryBuilderCteQuery, columns?: string[]): this {
-        if (!name) {
-            throw new VSRepoError("with: 'name' is required", VSRepoErrorType.QUERY_BUILDER);
+        VSRawQueryBuilder.validateNonEmptyString(name, "with");
+
+        if (columns) {
+            for (let i = 0; i < columns.length; i++) {
+                const column = columns[i]!;
+                VSRawQueryBuilder.validateNonEmptyString(column, `with columns[${i}]`);
+            }
         }
 
         this.cteClauses.push({ name, columns, query: this.resolveCteQuery(query) });
@@ -231,8 +264,8 @@ export class VSRawQueryBuilder<OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes>
     private addJoin(type: JoinType, target: VSRawQueryBuilderTarget, alias: string, on: string | VSSql): this {
         this.joinClauses.push({
             type,
-            target: this.resolveTarget(target, alias),
-            on: VSRawQueryBuilder.toFragment(on),
+            target: this.resolveTarget(target, "join", alias),
+            on: VSRawQueryBuilder.toFragment(on, "on"),
         });
 
         return this;
@@ -272,19 +305,21 @@ export class VSRawQueryBuilder<OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes>
      * Use {@link VSRawQueryBuilder.orWhere} to `OR`-combine instead.
      */
     where(condition: string | VSSql): this {
-        this.whereConditions.push({ connector: "AND", sql: VSRawQueryBuilder.toFragment(condition) });
+        this.whereConditions.push({ connector: "AND", sql: VSRawQueryBuilder.toFragment(condition, "where") });
 
         return this;
     }
 
     /** Alias for {@link VSRawQueryBuilder.where} — `AND`-combines `condition` with the existing filter. */
     andWhere(condition: string | VSSql): this {
-        return this.where(condition);
+        this.whereConditions.push({ connector: "AND", sql: VSRawQueryBuilder.toFragment(condition, "andWhere") });
+
+        return this;
     }
 
     /** `OR`-combines `condition` with the existing `WHERE` filter. */
     orWhere(condition: string | VSSql): this {
-        this.whereConditions.push({ connector: "OR", sql: VSRawQueryBuilder.toFragment(condition) });
+        this.whereConditions.push({ connector: "OR", sql: VSRawQueryBuilder.toFragment(condition, "orWhere") });
 
         return this;
     }
@@ -294,7 +329,7 @@ export class VSRawQueryBuilder<OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes>
      * common base if you need independent variations.
      */
     groupBy(...columns: (string | VSSql)[]): this {
-        this.groupByColumns.push(...columns.map(VSRawQueryBuilder.toFragment));
+        this.groupByColumns.push(...columns.map(column => VSRawQueryBuilder.toFragment(column, "groupBy")));
 
         return this;
     }
@@ -304,19 +339,21 @@ export class VSRawQueryBuilder<OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes>
      * {@link VSRawQueryBuilder.where}). Use {@link VSRawQueryBuilder.orHaving} to `OR`-combine.
      */
     having(condition: string | VSSql): this {
-        this.havingConditions.push({ connector: "AND", sql: VSRawQueryBuilder.toFragment(condition) });
+        this.havingConditions.push({ connector: "AND", sql: VSRawQueryBuilder.toFragment(condition, "having") });
 
         return this;
     }
 
     /** Alias for {@link VSRawQueryBuilder.having} — `AND`-combines `condition` with the existing `HAVING` filter. */
     andHaving(condition: string | VSSql): this {
-        return this.having(condition);
+        this.havingConditions.push({ connector: "AND", sql: VSRawQueryBuilder.toFragment(condition, "andHaving") });
+
+        return this;
     }
 
     /** `OR`-combines `condition` with the existing `HAVING` filter. */
     orHaving(condition: string | VSSql): this {
-        this.havingConditions.push({ connector: "OR", sql: VSRawQueryBuilder.toFragment(condition) });
+        this.havingConditions.push({ connector: "OR", sql: VSRawQueryBuilder.toFragment(condition, "orHaving") });
 
         return this;
     }
@@ -326,7 +363,7 @@ export class VSRawQueryBuilder<OrmTypes extends VSRepoOrmTypes = VSRepoOrmTypes>
      * multi-column ordering.
      */
     orderBy(column: string | VSSql, direction?: "asc" | "desc" | "ASC" | "DESC"): this {
-        const base = VSRawQueryBuilder.toFragment(column);
+        const base = VSRawQueryBuilder.toFragment(column, "orderBy");
 
         this.orderByClauses.push(direction ? VSSql.sql`${base} ${VSSql.raw(direction.toUpperCase())}` : base);
 
