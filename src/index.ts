@@ -7,6 +7,7 @@ export { VSRepoError } from "./errors/VSRepoError.js";
 export { VSRepoAdapterError } from "./errors/VSRepoAdapterError.js";
 export { DbArg } from "./internal/utils/db-arg.util.js";
 export { VSQueryBuilder } from "./internal/utils/vs-query-builder.util.js";
+export { VSRawQueryBuilder } from "./internal/utils/vs-raw-query-builder.util.js";
 export { VSSql } from "./internal/utils/vs-sql.util.js";
 
 // Decorators
@@ -57,6 +58,7 @@ export type { NumericKeys } from "./types/utils/numeric-keys.type.js";
 export type { NumericLike } from "./types/utils/numeric-like.type.js";
 export type { RestrictMethodOptions } from "./types/utils/restrict-method-options.type.js";
 export type { QueryArgs } from "./types/utils/query-args.type.js";
+export type { VSRawQueryBuilderTarget } from "./internal/utils/vs-raw-query-builder.util.js";
 
 // Internal features
 export { VSLogger } from "./internal/utils/vs-logger.util.js";

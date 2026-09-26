@@ -21,6 +21,7 @@ import { VSRepoQueryOptions } from "./types/vsrepo/vsrepo-query-options.type";
 import { NumericKeys } from "./types/utils/numeric-keys.type";
 import { RestrictMethodOptions } from "./types/utils/restrict-method-options.type";
 import { VSQueryBuilder } from "./internal/utils/vs-query-builder.util";
+import { VSRawQueryBuilder } from "./internal/utils/vs-raw-query-builder.util";
 import { VSSql } from "./internal/utils/vs-sql.util";
 import { VSPlaceholdersParser } from "./internal/utils/vs-placeholder-parser.util";
 
@@ -285,6 +286,34 @@ export abstract class VSRepository<Entity, PKType, OrmTypes extends VSRepoOrmTyp
             this.mergeWheresResolver,
             this.logger,
         );
+    }
+
+    /**
+     * Returns a fluent {@link VSRawQueryBuilder}, for hand-written `SELECT` queries whose SQL is
+     * too specific (window functions, vendor-specific syntax, ad-hoc subqueries, ...) for
+     * {@link VSRepository.createQueryBuilder}'s `where`/`relations` model.
+     *
+     * Goes through the same adapter as every other method, and requires the adapter to implement
+     * `getPlaceholder()` (see {@link VSSql}). Nothing runs until
+     * {@link VSRawQueryBuilder.execute} is called.
+     *
+     * @param db Client or transaction to run in. Defaults to the repository's own client — see
+     * `VSRawQueryBuilder.setDb()` to change it later, or run inside a `transaction()`.
+     *
+     * @example
+     * ```typescript
+     * const rows = await userRepository
+     *     .createRawQueryBuilder()
+     *     .select("id", "name")
+     *     .from("user")
+     *     .where(VSSql.sql`active = ${true}`)
+     *     .orderBy("name")
+     *     .limit(20)
+     *     .execute<User[]>();
+     * ```
+     */
+    createRawQueryBuilder(db?: OrmTypes["dbClient"] | OrmTypes["dbTransaction"]): VSRawQueryBuilder<OrmTypes> {
+        return new VSRawQueryBuilder<OrmTypes>(db ?? this.adapter.getDbClient(), this.adapter, this.logger);
     }
 
     /**

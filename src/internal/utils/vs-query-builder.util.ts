@@ -21,7 +21,7 @@ import * as v from "valibot";
 
 /**
  * Fluent builder for queries whose shape is only known at runtime (optional filters, user-controlled
- * ordering and pagination, ...). Get one from `VSRepository#createQueryBuilder()`.
+ * ordering and pagination, ...). Get one from `VSRepository.createQueryBuilder()`.
  *
  * Chain the configuration methods (`select`, `relations`, `where`, `orderBy`, `limit`, `offset`,
  * `distinctOn`, `see`) and run the query with a terminal method (`getResult`,
@@ -109,31 +109,19 @@ export class VSQueryBuilder<Entity, OrmTypes extends VSRepoOrmTypes = VSRepoOrmT
         }
     }
 
-    /**
-     * @internal
-     */
-    setOptions(options: Omit<AdapterMethodOptions<Entity>, "db">): void {
+    private setOptions(options: Omit<AdapterMethodOptions<Entity>, "db">): void {
         this.options = options;
     }
 
-    /**
-     * @internal
-     */
-    setWhereFilter(whereFilter?: VSRepoWhere<Entity>): void {
+    private setWhereFilter(whereFilter?: VSRepoWhere<Entity>): void {
         this.whereFilter = whereFilter;
     }
 
-    /**
-     * @internal
-     */
-    setDistinct(distinct?: KeysOfType<Entity, Primitive>[]): void {
+    private setDistinct(distinct?: KeysOfType<Entity, Primitive>[]): void {
         this.distinct = distinct;
     }
 
-    /**
-     * @internal
-     */
-    setSeeMode(seeMode: SeeMode): void {
+    private setSeeMode(seeMode: SeeMode): void {
         this.seeMode = seeMode;
     }
 
