@@ -40,9 +40,7 @@ export function QueryMethod(value: string, options?: QueryMethodOptions): Proper
         throw new VSRepoError(`'value' must be a valid string`, VSRepoErrorType.DECORATOR);
     }
 
-    const validatedConfig: QueryMethodOptions = options
-        ? DecoratorsValidator.validateQueryMethodOptions(options)
-        : { modifying: false };
+    const validatedConfig: QueryMethodOptions = DecoratorsValidator.validateQueryMethodOptions(options);
 
     return (target: object, propertyKey: string | symbol) => {
         const methods: VSRepoQuery[] = Reflect.getMetadata(QUERY_METHODS_KEY, target) ?? [];

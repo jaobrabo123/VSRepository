@@ -92,19 +92,10 @@ export class DynamicMethodsResolver<T, K> {
         throw new VSRepoError(errorMessage, VSRepoErrorType.RESOLVER);
     }
 
-    private validateIndexedArg<R>(
-        args: any[],
-        positionIndex: number,
-        validate: (value: unknown) => R,
-        parseDebugToString = true,
-    ): R {
+    private validateIndexedArg<R>(args: any[], positionIndex: number, validate: (value: unknown) => R): R {
         const value = args.at(positionIndex);
         if (value === DEBUG_ARG_SYMBOL) {
-            return (
-                parseDebugToString
-                    ? `<args>[${positionIndex < 0 ? args.length + positionIndex : positionIndex}]`
-                    : value
-            ) as R;
+            return `<args>[${positionIndex < 0 ? args.length + positionIndex : positionIndex}]` as R;
         }
 
         return validate(value);
@@ -793,10 +784,9 @@ export class DynamicMethodsResolver<T, K> {
 
         if (!withoutWhere) {
             vsrepoArgs.where =
-                // * Essa validação é so para o debug mode
-                specificWhere === (DEBUG_ARG_SYMBOL as any)
-                    ? // * 0 pois o whereIndex sempre vem no 0, se algum dia ele puder aparecer em outro lugar irá precisar corrigir isso
-                      ("<args>[0]" as any)
+                // * Validação necessária para o DEBUG MODE
+                typeof specificWhere === "string"
+                    ? specificWhere
                     : this.mergeWheresResolver.resolve(options.see, specificWhere);
         }
 
@@ -987,11 +977,8 @@ export class DynamicMethodsResolver<T, K> {
                 } else if (dynamicMethodInfo.onlyBaseWheres) {
                     vsrepoResolveArgsData.specificWhere =
                         dynamicMethodInfo.whereIndex !== undefined
-                            ? this.validateIndexedArg(
-                                  args,
-                                  dynamicMethodInfo.whereIndex,
-                                  value => this.validator.validateWhere(value),
-                                  false,
+                            ? this.validateIndexedArg(args, dynamicMethodInfo.whereIndex, value =>
+                                  this.validator.validateWhere(value),
                               )
                             : {};
                 }
